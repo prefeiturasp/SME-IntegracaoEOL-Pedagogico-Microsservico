@@ -9,14 +9,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    apt-transport-https \
     build-essential \
     ca-certificates \
     curl \
     git \
-    gnupg2 \
-    make \
-    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml README.md manage.py /app/
 COPY config /app/config
@@ -29,5 +26,3 @@ RUN pip install --upgrade pip \
     && pip install debugpy==1.8.5
 
 EXPOSE 8000 5678
-
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
