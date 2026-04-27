@@ -1,31 +1,35 @@
 """Testes de autenticação por API Key."""
-import pytest
+
+from django.test import TestCase
 from rest_framework.test import APIClient
 
-
-@pytest.fixture
-def url() -> str:
-    """URL do endpoint de catálogo para uso nos testes de autenticação."""
-    return "/api/v1/componentes-curriculares/"
+_URL = "/api/componentes-curriculares/"
 
 
-def test_sem_api_key_retorna_401(url: str) -> None:
-    """Requisição sem header retorna 401 — authenticate_header() faz DRF emitir WWW-Authenticate."""
-    client = APIClient()
-    resposta = client.get(url)
-    assert resposta.status_code == 401
+class TestApiKeyAuthentication(TestCase):
+    """Valida o comportamento da autenticação por API Key."""
 
+    def test_sem_api_key_retorna_401_e_header_correto(self) -> None:
+        """Sem header retorna 401 com WWW-Authenticate configurado."""
+        client = APIClient()
+        resposta = client.get(_URL)
+        self.assertEqual(resposta.status_code, 401)
+        self.assertEqual(
+            resposta.get("WWW-Authenticate", "").lower(), "x-api-key"
+        )
 
-def test_api_key_invalida_retorna_401(url: str) -> None:
-    """Requisição com API Key incorreta deve retornar 401."""
-    client = APIClient()
-    client.credentials(HTTP_X_API_KEY="chave-errada")
-    resposta = client.get(url)
-    assert resposta.status_code == 401
+    def test_api_key_invalida_retorna_401(self) -> None:
+        """Requisição com API Key incorreta retorna 401."""
+        client = APIClient()
+        client.credentials(HTTP_X_API_KEY="chave-errada")
+        resposta = client.get(_URL)
+        self.assertEqual(resposta.status_code, 401)
 
+    def test_api_key_valida_permite_acesso(self) -> None:
+        """Requisição com API Key válida permite o acesso."""
+        client = APIClient()
 
-@pytest.mark.django_db(databases=["default", "pedagogico"])
-def test_api_key_valida_permite_acesso(api_client: APIClient, url: str) -> None:
-    """Requisição com API Key válida deve retornar 200."""
-    resposta = api_client.get(url)
-    assert resposta.status_code == 200
+        client.credentials(HTTP_X_API_KEY="dev-key-default")
+        resposta = client.get(_URL)
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(str(resposta.wsgi_request.user), "api-user")

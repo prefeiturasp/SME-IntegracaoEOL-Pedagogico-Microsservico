@@ -1,15 +1,17 @@
 """Configurações do microsserviço pedagógico."""
+
 import os
+import sys
 import urllib.parse
 from pathlib import Path
 from typing import Any
 
-from django.core.exceptions import ImproperlyConfigured
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
-DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
+SECRET_KEY = os.environ.get(
+    "DJANGO_SECRET_KEY", "dev-secret-key-not-for-production"
+)
+DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() in ("true", "1")
 ALLOWED_HOSTS = [
     h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",")
 ]
@@ -25,8 +27,9 @@ _POOL_OPTIONS: dict[str, Any] = {
 
 
 def _parse_db_url(url: Any) -> dict[str, Any]:
-    """Faz o parse de uma URL PostgreSQL para dict de configuração Django.
-    Se a URL estiver vazia, retorna SQLite em memória (útil para testes/local).
+    """Faz parse de URL PostgreSQL para dict de configuração Django.
+
+    Retorna SQLite em memória quando URL está vazia (testes/local).
     """
     if not url:
         return {
@@ -46,13 +49,8 @@ def _parse_db_url(url: Any) -> dict[str, Any]:
         "HOST": parsed.hostname or "localhost",
         "PORT": str(parsed.port or 5432),
         "POOL_OPTIONS": _POOL_OPTIONS,
-        "TEST": {"MIGRATE": False}, 
     }
 
-
-SILENCED_SYSTEM_CHECKS = [
-    "models.W035",  # db_table duplicado entre apps (intencional por multi-db)
-]
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
@@ -62,8 +60,8 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "apps.core",
     "apps.componentes_curriculares",
-    "apps.turmas",
 ]
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -87,16 +85,18 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# ---------------------------------------------------------------------------
-# Databases
-# ---------------------------------------------------------------------------
 DATABASES = {
-    "default": {
+    "default": _parse_db_url(os.environ.get("URL_BANCO_PEDAGOGICO", "")),
+}
+
+# Força o uso de SQLite em memória nos testes
+if "test" in sys.argv or os.environ.get(
+    "USE_SQLITE_TEST", "False"
+).lower() in ("true", "1"):
+    DATABASES["default"] = {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": ":memory:",
-    },
-    "pedagogico": _parse_db_url(os.environ.get("URL_BANCO_PEDAGOGICO", "")),
-}
+    }
 
 API_KEY_HEADER = os.environ.get("API_KEY_HEADER", "x-api-key")
 API_KEY = os.environ.get("API_KEY", "dev-key-default")
@@ -128,6 +128,7 @@ SPECTACULAR_SETTINGS = {
     "SECURITY": [{"ApiKey": []}],
 }
 
+TEST_RUNNER = "config.test_runner.PedagogicoTestRunner"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -135,3 +136,5 @@ LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "America/Sao_Paulo"
 USE_TZ = True
 USE_I18N = True
+
+SILENCED_SYSTEM_CHECKS = ["models.W047"]

@@ -54,3 +54,9 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["apps"]
+
+[tool.coverage.report]
+show_missing = true

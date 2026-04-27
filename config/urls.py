@@ -1,4 +1,5 @@
 """URL configuration for the pedagogico microservice."""
+
 from django.urls import include, path
 from drf_spectacular.views import (
     SpectacularAPIView,
@@ -25,10 +26,8 @@ urlpatterns = [
         ),
         name="swagger-ui",
     ),
-
     path(
-        "api/v1/componentes-curriculares/",
+        "api/componentes-curriculares/",
         include("apps.componentes_curriculares.api.urls"),
     ),
-    path("api/", include("apps.turmas.api.urls")),
 ]
