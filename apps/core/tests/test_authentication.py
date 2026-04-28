@@ -3,7 +3,7 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-_URL = "/api/componentes-curriculares/"
+_URL = "/api/v1/componentes-curriculares/"
 
 
 class TestApiKeyAuthentication(TestCase):

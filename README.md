@@ -89,21 +89,21 @@ curl -H "X-API-Key: dev-key-default" http://localhost:8001/api/componentes-curri
 
 | ID | Método | Path | Descrição |
 |----|--------|------|-----------|
-| CC01 | GET | `/api/componentes-curriculares/funcionarios/{login}/` | Listar Componentes Curriculares por Funcionário |
-| CC02 | GET | `/api/componentes-curriculares/anos/{anoTurma}/regencia/` | Listar Componentes de Regência por Ano de Turma |
-| CC03 | GET | `/api/componentes-curriculares/turmas/{codigoTurma}/pap/` | Verificar Componente PAP em Turma |
-| CC04 | GET | `/api/componentes-curriculares/ues/{ueId}/modalidades/{modalidade}/anos/{anoLetivo}/` | Listar Componentes Curriculares por UE, Modalidade e Ano |
-| CC05 | GET | `/api/componentes-curriculares/ues/{ueId}/modalidades/{modalidade}/anos/{anoLetivo}/turmas-programa/` | Listar Componentes de Turmas Programa |
-| CC06 | GET | `/api/componentes-curriculares/ues/{ueId}/turmas/` | Listar Componentes Simplificados por UE e Turmas |
-| CC07 | GET | `/api/componentes-curriculares/turmas/` | Listar Componentes para Planejamento por Lista de Turmas |
-| CC08 | GET | `/api/componentes-curriculares/turmas/brutos/` | Listar Componentes de Turmas sem Pós-processamento |
-| CC09 | GET | `/api/componentes-curriculares/` | Listar Catálogo Completo de Componentes Curriculares |
-| CC10 | GET | `/api/componentes-curriculares/turmas/vigencia/` | Obter Vigência de Componentes por Turma e UE |
-| CC11 | GET | `/api/componentes-curriculares/grade-curricular/{anoLetivo}/` | Listar Grade Curricular por Ano Letivo |
-| CC12 | GET | `/api/componentes-curriculares/turmas/{codigoTurma}/sem-atribuicao/` | Listar Componentes Sem Atribuição em uma Turma |
-| CC13 | GET | `/api/componentes-curriculares/{codigoComponente}/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados por Componente |
-| CC14 | POST | `/api/componentes-curriculares/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados em Lote |
-| CC15 | POST | `/api/componentes-curriculares/territorio-saber/agrupamentos/` | Obter Agrupamentos de Território do Saber por IDs |
+| CC01 | GET | `/api/v1/componentes-curriculares/funcionarios/{login}/` | Listar Componentes Curriculares por Funcionário |
+| CC02 | GET | `/api/v1/componentes-curriculares/anos/{anoTurma}/regencia/` | Listar Componentes de Regência por Ano de Turma |
+| CC03 | GET | `/api/v1/componentes-curriculares/turmas/{codigoTurma}/pap/` | Verificar Componente PAP em Turma |
+| CC04 | GET | `/api/v1/componentes-curriculares/ues/{ueId}/modalidades/{modalidade}/anos/{anoLetivo}/` | Listar Componentes Curriculares por UE, Modalidade e Ano |
+| CC05 | GET | `/api/v1/componentes-curriculares/ues/{ueId}/modalidades/{modalidade}/anos/{anoLetivo}/turmas-programa/` | Listar Componentes de Turmas Programa |
+| CC06 | GET | `/api/v1/componentes-curriculares/ues/{ueId}/turmas/` | Listar Componentes Simplificados por UE e Turmas |
+| CC07 | GET | `/api/v1/componentes-curriculares/turmas/` | Listar Componentes para Planejamento por Lista de Turmas |
+| CC08 | GET | `/api/v1/componentes-curriculares/turmas/brutos/` | Listar Componentes de Turmas sem Pós-processamento |
+| CC09 | GET | `/api/v1/componentes-curriculares/` | Listar Catálogo Completo de Componentes Curriculares |
+| CC10 | GET | `/api/v1/componentes-curriculares/turmas/vigencia/` | Obter Vigência de Componentes por Turma e UE |
+| CC11 | GET | `/api/v1/componentes-curriculares/grade-curricular/{anoLetivo}/` | Listar Grade Curricular por Ano Letivo |
+| CC12 | GET | `/api/v1/componentes-curriculares/turmas/{codigoTurma}/sem-atribuicao/` | Listar Componentes Sem Atribuição em uma Turma |
+| CC13 | GET | `/api/v1/componentes-curriculares/{codigoComponente}/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados por Componente |
+| CC14 | POST | `/api/v1/componentes-curriculares/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados em Lote |
+| CC15 | POST | `/api/v1/componentes-curriculares/territorio-saber/agrupamentos/` | Obter Agrupamentos de Território do Saber por IDs |
 
 ---
 
