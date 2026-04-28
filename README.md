@@ -52,6 +52,16 @@ Acesse em: http://localhost:8001/api/docs/
 
 ---
 
+## Executar Testes com Docker
+
+Para rodar a suíte completa de testes e gerar o relatório de cobertura:
+
+```bash
+./scripts/executar_testes_docker.sh
+```
+
+---
+
 ## Autenticação
 
 Todos os endpoints exigem o header `X-API-Key` com o valor configurado em `API_KEY` (`.env`).
