@@ -55,3 +55,51 @@ Funcionalidade: Listar componentes curriculares
     Quando envio uma requisição POST para listar agrupamentos correlacionados em lote
     Então o status da resposta deve ser 200
     E o retorno deve ser uma lista de agrupamentos correlacionados em lote
+
+  Cenário: Listar componentes curriculares por turma com sucesso
+    Dado que possuo acesso à API de componentes por turma
+    Quando envio uma requisição GET para listar componentes da turma
+    Então o status da resposta deve ser 200
+    E o retorno deve ser uma lista de componentes por turma
+
+  Cenário: Listar componentes PAP por turma com sucesso
+    Dado que possuo acesso à API de componentes PAP
+    Quando envio uma requisição GET para listar componentes PAP da turma
+    Então o status da resposta deve ser 200
+    E o retorno deve ser uma lista de componentes PAP
+
+  Cenário: Listar componentes sem atribuição com sucesso
+    Dado que possuo acesso à API de componentes sem atribuição
+    Quando envio uma requisição GET para listar componentes sem atribuição da turma
+    Então o status da resposta deve ser 200
+    E o retorno deve ser uma lista de componentes sem atribuição
+
+  Cenário: Listar componentes brutos por turma com sucesso
+    Dado que possuo acesso à API de componentes brutos por turma
+    Quando envio uma requisição GET para listar componentes brutos da turma
+    Então o status da resposta deve ser 200
+    E o retorno deve ser uma lista de componentes brutos por turma
+
+  Cenário: Listar vigência de componentes por turma e UE com sucesso
+    Dado que possuo acesso à API de vigência de componentes
+    Quando envio uma requisição GET para listar vigência de componentes
+    Então o status da resposta deve ser 200
+    E o retorno deve ser uma lista de vigência de componentes
+
+  Cenário: Listar componentes por UE, modalidade e ano letivo com sucesso
+    Dado que possuo acesso à API de componentes por UE e modalidade
+    Quando envio uma requisição GET para listar componentes por UE, modalidade e ano letivo
+    Então o status da resposta deve ser 200
+    E o retorno deve ser uma lista de componentes por UE e modalidade
+
+  Cenário: Listar componentes de turmas programa por UE com sucesso
+    Dado que possuo acesso à API de turmas programa
+    Quando envio uma requisição GET para listar componentes de turmas programa
+    Então o status da resposta deve ser 200
+    E o retorno deve ser uma lista de componentes de turmas programa
+
+  Cenário: Listar componentes simplificados por UE e turmas com sucesso
+    Dado que possuo acesso à API de componentes por UE e turmas
+    Quando envio uma requisição GET para listar componentes por UE e turmas
+    Então o status da resposta deve ser 200
+    E o retorno deve ser uma lista de componentes por UE e turmas
