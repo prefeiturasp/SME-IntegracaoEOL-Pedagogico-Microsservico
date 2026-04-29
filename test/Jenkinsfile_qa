@@ -15,7 +15,7 @@ pipeline {
     }
 
     environment {
-        ALLURE_PATH = 'testes/allure-results'
+        ALLURE_PATH = 'tests/allure-results'
         WORKSPACE_DIR = "${env.WORKSPACE}"
     }
 
@@ -30,14 +30,14 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'jenkins_registry', url: 'https://registry.sme.prefeitura.sp.gov.br/repository/sme-registry/') {
-                        withCredentials([file(credentialsId: "cypress_env_cdep", variable: 'env')]){   
+                        withCredentials([file(credentialsId: "cypress_env_pedagogico_ms", variable: 'env')]){   
                             sh '''
-                                touch testes/.env
-                                cp "$env" "testes/.env"
+                                touch tests/.env
+                                cp "$env" "tests/.env"
                                 docker pull registry.sme.prefeitura.sp.gov.br/devops/cypress-agent:14.5.2
                                 docker run \
                                     --rm \
-                                    -v "$WORKSPACE/testes:/app" \
+                                    -v "$WORKSPACE/tests:/app" \
                                     -w /app \
                                     registry.sme.prefeitura.sp.gov.br/devops/cypress-agent:14.5.2 \
                                     sh -c "rm -rf allure-results && \

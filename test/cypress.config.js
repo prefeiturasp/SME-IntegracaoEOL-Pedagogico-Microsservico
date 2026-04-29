@@ -64,9 +64,19 @@ export default defineConfig({
     execTimeout: 60000,
     pageLoadTimeout: 60000,
 
+
+    env: {
+      allure: true,
+    },
+
     async setupNodeEvents(on, config) {
+      
       allureWriter(on, config)
 
+      
+      config.env.allure = true
+
+      
       const webpackConfig = {
         module: {
           rules: [
@@ -87,6 +97,7 @@ export default defineConfig({
       on('file:preprocessor', preprocessor({ webpackOptions: webpackConfig }))
       on('file:preprocessor', cucumber.default())
 
+      // ✅ Banco
       const pool = new pg.Pool(dbConfig)
       const dbTasks = postgreSQL.loadDBPlugin(pool)
 
@@ -96,7 +107,7 @@ export default defineConfig({
         async uploadFile({ method = 'POST', url, headers = {}, filePath }) {
           const form = new FormData()
 
-          if (filePath) {
+          if (filePath && filePath.trim() !== '') {
             form.append('file', fs.createReadStream(filePath))
           }
 
@@ -105,6 +116,7 @@ export default defineConfig({
             url,
             headers: { ...headers, ...form.getHeaders() },
             data: form,
+            maxBodyLength: Infinity,
             validateStatus: () => true,
           })
 
@@ -115,6 +127,7 @@ export default defineConfig({
         },
       })
 
+      
       const customVariable = Object.fromEntries(
         envKeys.map((key) => [key, process.env[key] ?? ''])
       )
