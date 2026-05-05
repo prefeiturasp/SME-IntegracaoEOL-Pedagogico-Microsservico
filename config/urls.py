@@ -26,7 +26,7 @@ urlpatterns = [
         name="swagger-ui",
     ),
     path(
-        "api/v1/componentes-curriculares/",
+        "api/v1/pedagogico/componentes-curriculares/",
         include("apps.componentes_curriculares.api.urls"),
     ),
 ]
