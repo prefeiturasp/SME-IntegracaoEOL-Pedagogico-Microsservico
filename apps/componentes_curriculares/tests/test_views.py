@@ -5,7 +5,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 _SVC = "apps.componentes_curriculares.api.views.ComponentesService"
-_BASE = "/api/v1/componentes-curriculares"
+_BASE = "/api/v1/pedagogico/componentes-curriculares"
 
 
 class TestComponentesViews(TestCase):
