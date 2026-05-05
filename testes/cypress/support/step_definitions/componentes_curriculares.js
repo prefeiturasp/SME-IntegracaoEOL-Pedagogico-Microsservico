@@ -27,7 +27,7 @@ When('envio uma requisição GET para listar componentes curriculares', () => {
 
   return cy.request({
     method: 'GET',
-    url: `${apiUrl}/api/v1/componentes-curriculares/`,
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/`,
     headers: {
       accept: 'application/json',
       'X-API-Key': apiKey,
@@ -65,7 +65,7 @@ When('envio uma requisição GET para listar agrupamentos correlacionados', () =
 
   return cy.request({
     method: 'GET',
-    url: `${apiUrl}/api/v1/componentes-curriculares/800001/territorio-saber/agrupamentos-correlacionados/`,
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/800001/territorio-saber/agrupamentos-correlacionados/`,
     headers: {
       accept: 'application/json',
       'X-API-Key': apiKey,
@@ -116,7 +116,7 @@ When('envio uma requisição GET para listar componentes de regência do ano {in
 
   return cy.request({
     method: 'GET',
-    url: `${apiUrl}/api/v1/componentes-curriculares/anos/${ano}/regencia/`,
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/anos/${ano}/regencia/`,
     headers: {
       accept: 'application/json',
       'X-API-Key': apiKey,
@@ -149,7 +149,7 @@ When('envio uma requisição GET para listar componentes do funcionário', () =>
 
   return cy.request({
     method: 'GET',
-    url: `${apiUrl}/api/v1/componentes-curriculares/funcionarios/${funcionario}/?agrupaComponenteCurricular=false&checaMotivoDisponibilizacao=true&consideraTurmaInfantil=true&planejamento=false`,
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/funcionarios/${funcionario}/?agrupaComponenteCurricular=false&checaMotivoDisponibilizacao=true&consideraTurmaInfantil=true&planejamento=false`,
     headers: {
       accept: 'application/json',
       'X-API-Key': apiKey,
@@ -179,7 +179,7 @@ When('envio uma requisição GET para listar grade curricular do ano {int}', (an
 
   return cy.request({
     method: 'GET',
-    url: `${apiUrl}/api/v1/componentes-curriculares/grade-curricular/${ano}/`,
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/grade-curricular/${ano}/`,
     headers: {
       accept: 'application/json',
       'X-API-Key': apiKey,
@@ -211,7 +211,7 @@ When('envio uma requisição POST para listar agrupamentos por ids', () => {
 
   return cy.request({
     method: 'POST',
-    url: `${apiUrl}/api/v1/componentes-curriculares/territorio-saber/agrupamentos/`,
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/territorio-saber/agrupamentos/`,
     headers: {
       accept: 'application/json',
       'Content-Type': 'application/json',
@@ -254,7 +254,7 @@ When('envio uma requisição POST para listar agrupamentos correlacionados em lo
 
   return cy.request({
     method: 'POST',
-    url: `${apiUrl}/api/v1/componentes-curriculares/territorio-saber/agrupamentos-correlacionados/`,
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/territorio-saber/agrupamentos-correlacionados/`,
     qs: {
       dataBase: '2024-01-01', // opcional, mas ajuda evitar comportamento inesperado
     },
@@ -291,7 +291,7 @@ When('envio uma requisição GET para listar componentes da turma', () => {
 
   return cy.request({
     method: 'GET',
-    url: `${apiUrl}/api/v1/componentes-curriculares/turmas/`,
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/turmas/`,
     qs: {
       adicionarComponentesPlanejamento: true,
       codigoTurmas: turma,
@@ -329,7 +329,7 @@ When('envio uma requisição GET para listar componentes PAP da turma', () => {
 
   return cy.request({
     method: 'GET',
-    url: `${apiUrl}/api/v1/componentes-curriculares/turmas/${turma}/pap/?login=${login}`,
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/turmas/${turma}/pap/?login=${login}`,
     headers: {
       accept: '*/*',
       'X-API-Key': apiKey,
@@ -371,7 +371,7 @@ When('envio uma requisição GET para listar componentes sem atribuição da tur
 
   return cy.request({
     method: 'GET',
-    url: `${apiUrl}/api/v1/componentes-curriculares/turmas/${turma}/sem-atribuicao/?dataBase=${dataBase}`,
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/turmas/${turma}/sem-atribuicao/?dataBase=${dataBase}`,
     headers: {
       accept: 'application/json',
       'X-API-Key': apiKey,
@@ -403,7 +403,7 @@ When('envio uma requisição GET para listar componentes brutos da turma', () =>
 
   return cy.request({
     method: 'GET',
-    url: `${apiUrl}/api/v1/componentes-curriculares/turmas/brutos/`,
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/turmas/brutos/`,
     qs: {
       codigoTurmas: turma,
     },
@@ -442,7 +442,7 @@ When('envio uma requisição GET para listar vigência de componentes', () => {
 
   return cy.request({
     method: 'GET',
-    url: `${apiUrl}/api/v1/componentes-curriculares/turmas/vigencia/`,
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/turmas/vigencia/`,
     qs: {
       anoLetivo,
       componentesCurriculares: componente,
@@ -486,7 +486,7 @@ When('envio uma requisição GET para listar componentes por UE, modalidade e an
 
   return cy.request({
     method: 'GET',
-    url: `${apiUrl}/api/v1/componentes-curriculares/ues/${ue}/modalidades/${modalidade}/anos/${anoLetivo}/`,
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/ues/${ue}/modalidades/${modalidade}/anos/${anoLetivo}/`,
     qs: {
       anosEscolares: anoEscolar,
     },
@@ -525,7 +525,7 @@ When('envio uma requisição GET para listar componentes de turmas programa', ()
 
   return cy.request({
     method: 'GET',
-    url: `${apiUrl}/api/v1/componentes-curriculares/ues/${ue}/modalidades/${modalidade}/anos/${anoLetivo}/turmas-programa/`,
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/ues/${ue}/modalidades/${modalidade}/anos/${anoLetivo}/turmas-programa/`,
     headers: {
       accept: 'application/json',
       'X-API-Key': apiKey,
@@ -559,7 +559,7 @@ When('envio uma requisição GET para listar componentes por UE e turmas', () =>
 
   return cy.request({
     method: 'GET',
-    url: `${apiUrl}/api/v1/componentes-curriculares/ues/${ue}/turmas/`,
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/ues/${ue}/turmas/`,
     qs: {
       turmas: turma,
     },
