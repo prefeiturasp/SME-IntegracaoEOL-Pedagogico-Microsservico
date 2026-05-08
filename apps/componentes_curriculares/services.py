@@ -15,23 +15,26 @@ class ComponentesService:
         login: str,
         codigo_turma: str | None = None,
         planejamento: bool = False,
+        agrupamento: bool = False,
     ) -> list[dict]:
         """Retorna componentes do funcionário com roteamento por params (EP-1).
 
-        - sem codigoTurma: todos os componentes do funcionário
-        - com codigoTurma + planejamento=True: filtra planejamento de regência
-        - com codigoTurma + planejamento=False: componentes da turma
+        exibir_componente_eol = !TemComponenteVigente (via _COMPONENTE_PAI_VIGENCIA).
+        Quando agrupamento=True, sobrescreve exibir_componente_eol para False em todos.
         """
         if codigo_turma is None:
-            return self._repo.listar_por_funcionario(login)
-        if planejamento:
-            return self._repo.listar_planejamento_por_turma_funcionario(
+            dados = self._repo.listar_por_funcionario(login)
+        elif planejamento:
+            dados = self._repo.listar_planejamento_por_turma_funcionario(
                 codigo_turma, login
             )
-        return self._repo.listar_por_turma_funcionario(
-            codigo_turma,
-            login,
-        )
+        else:
+            dados = self._repo.listar_por_turma_funcionario(codigo_turma, login)
+
+        if agrupamento:
+            for c in dados:
+                c["exibir_componente_eol"] = False
+        return dados
 
     def listar_regencia_por_ano_turma(
         self,
@@ -50,23 +53,25 @@ class ComponentesService:
 
     def listar_por_ue_modalidade_ano_e_anos_escolares(
         self,
+        ue_codigo: str,
         modalidade: int,
         ano_letivo: int,
         anos_escolares: list[str],
     ) -> list[dict]:
         """Retorna componentes da grade por UE, modalidade e séries (EP-4)."""
         return self._repo.listar_por_ue_modalidade_ano_e_anos_escolares(
-            modalidade, ano_letivo, anos_escolares
+            ue_codigo, modalidade, ano_letivo, anos_escolares
         )
 
     def listar_turma_programa_por_ue_modalidade_ano(
         self,
+        ue_codigo: str,
         modalidade: int,
         ano_letivo: int,
     ) -> list[dict]:
         """Retorna componentes de turmas programa (EP-5)."""
         return self._repo.listar_turma_programa_por_ue_modalidade_ano(
-            modalidade, ano_letivo
+            ue_codigo, modalidade, ano_letivo
         )
 
     def listar_por_ue_e_turmas(

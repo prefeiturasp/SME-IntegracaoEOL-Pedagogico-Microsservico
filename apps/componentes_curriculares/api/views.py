@@ -40,7 +40,7 @@ class ComponentesPorFuncionarioView(BaseAPIView):
                 "agrupaComponenteCurricular",
                 OpenApiTypes.BOOL,
                 OpenApiParameter.QUERY,
-                default=False,
+                default=True,
                 description="Agrupa componentes por pai",
             ),
             OpenApiParameter(
@@ -74,14 +74,17 @@ class ComponentesPorFuncionarioView(BaseAPIView):
 
         codigo_turma = request.query_params.get("codigoTurma")
         planejamento = (
-            request.query_params.get("planejamento", "false").lower()
-            == "true"
+            request.query_params.get("planejamento", "false").lower() == "true"
+        )
+        agrupamento = (
+            request.query_params.get("agrupaComponenteCurricular", "false").lower() == "true"
         )
         service = ComponentesService()
         dados = service.listar_componentes_por_funcionario(
             login,
             codigo_turma=codigo_turma,
             planejamento=planejamento,
+            agrupamento=agrupamento,
         )
         return Response(dados)
 
@@ -169,7 +172,7 @@ class ComponentesPorUeAnosEscolaresView(BaseAPIView):
         )
         service = ComponentesService()
         dados = service.listar_por_ue_modalidade_ano_e_anos_escolares(
-            modalidade, ano_letivo, anos_escolares
+            ue_id, modalidade, ano_letivo, anos_escolares
         )
         return Response(dados)
 
@@ -193,7 +196,7 @@ class ComponentesTurmaProgramaView(BaseAPIView):
         """Retorna componentes de turmas programa por UE, modalidade e ano."""
         service = ComponentesService()
         dados = service.listar_turma_programa_por_ue_modalidade_ano(
-            modalidade, ano_letivo
+            ue_id, modalidade, ano_letivo
         )
         return Response(dados)
 
@@ -395,7 +398,6 @@ class ComponentesSemAtribuicaoView(BaseAPIView):
         operation_id="EP12_componentes_sem_atribuicao",
     )
     def get(self, request: Request, codigo_turma: str) -> Response:
-
 
         service = ComponentesService()
         dados = service.listar_componentes_sem_atribuicao(

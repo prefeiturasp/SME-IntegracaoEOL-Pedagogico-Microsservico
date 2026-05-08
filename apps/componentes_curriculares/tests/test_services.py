@@ -69,11 +69,11 @@ class TestComponentesService(SimpleTestCase):
         with patch(_REPO) as mock:
             mock.return_value.listar_por_ue_modalidade_ano_e_anos_escolares.return_value = []  # noqa: E501
             res = ComponentesService().listar_por_ue_modalidade_ano_e_anos_escolares(
-                1, 2024, ["A1"]
+                1, 1, 2024, ["A1"]
             )
             self.assertEqual(res, [])
             mock.return_value.listar_por_ue_modalidade_ano_e_anos_escolares.assert_called_once_with(  # noqa: E501
-                1, 2024, ["A1"]
+                1, 1, 2024, ["A1"]
             )
 
     def test_ep5_turma_programa_delega(self) -> None:
@@ -81,11 +81,11 @@ class TestComponentesService(SimpleTestCase):
         with patch(_REPO) as mock:
             mock.return_value.listar_turma_programa_por_ue_modalidade_ano.return_value = []  # noqa: E501
             res = ComponentesService().listar_turma_programa_por_ue_modalidade_ano(
-                1, 2024
+                1, 1, 2024
             )
             self.assertEqual(res, [])
             mock.return_value.listar_turma_programa_por_ue_modalidade_ano.assert_called_once_with(  # noqa: E501
-                1, 2024
+                1, 1, 2024
             )
 
     def test_ep6_ue_turmas_delega(self) -> None:
