@@ -25,33 +25,33 @@ class ComponentesPorFuncionarioView(BaseAPIView):
     @extend_schema(
         parameters=[
             OpenApiParameter(
-                "idPerfil",
+                "id_perfil",
                 OpenApiTypes.STR,
                 OpenApiParameter.QUERY,
                 description="Perfil do usuário (GUID)",
             ),
             OpenApiParameter(
-                "codigoTurma",
+                "codigo_turma",
                 OpenApiTypes.STR,
                 OpenApiParameter.QUERY,
                 description="Filtra componentes pela turma",
             ),
             OpenApiParameter(
-                "agrupaComponenteCurricular",
+                "agrupa_componente_curricular",
                 OpenApiTypes.BOOL,
                 OpenApiParameter.QUERY,
                 default=True,
                 description="Agrupa componentes por pai",
             ),
             OpenApiParameter(
-                "checaMotivoDisponibilizacao",
+                "checa_motivo_disponibilizacao",
                 OpenApiTypes.BOOL,
                 OpenApiParameter.QUERY,
                 default=True,
                 description="Verifica motivo de disponibilização",
             ),
             OpenApiParameter(
-                "consideraTurmaInfantil",
+                "considera_turma_infantil",
                 OpenApiTypes.BOOL,
                 OpenApiParameter.QUERY,
                 default=True,
@@ -72,13 +72,19 @@ class ComponentesPorFuncionarioView(BaseAPIView):
     )
     def get(self, request: Request, login: str) -> Response:
 
-        codigo_turma = request.query_params.get("codigoTurma")
+        codigo_turma = request.query_params.get(
+            "codigo_turma", request.query_params.get("codigoTurma")
+        )
         planejamento = (
             request.query_params.get("planejamento", "false").lower() == "true"
         )
         agrupamento = (
             request.query_params.get(
-                "agrupaComponenteCurricular", "false").lower() == "true"
+                "agrupa_componente_curricular",
+                request.query_params.get(
+                    "agrupaComponenteCurricular", "false"
+                ),
+            ).lower() == "true"
         )
         service = ComponentesService()
         dados = service.listar_componentes_por_funcionario(
@@ -119,7 +125,7 @@ class ValidarPapView(BaseAPIView):
                 description="Login (RF) do funcionário",
             ),
             OpenApiParameter(
-                "idPerfil",
+                "id_perfil",
                 OpenApiTypes.STR,
                 OpenApiParameter.QUERY,
                 description="Identificador do perfil",
@@ -147,7 +153,7 @@ class ComponentesPorUeAnosEscolaresView(BaseAPIView):
     @extend_schema(
         parameters=[
             OpenApiParameter(
-                "anosEscolares",
+                "anos_escolares",
                 OpenApiTypes.STR,
                 OpenApiParameter.QUERY,
                 many=True,
@@ -169,6 +175,8 @@ class ComponentesPorUeAnosEscolaresView(BaseAPIView):
     ) -> Response:
         """Retorna componentes por UE, modalidade, ano letivo e séries."""
         anos_escolares: list[str] = request.query_params.getlist(
+            "anos_escolares"
+        ) or request.query_params.getlist(
             "anosEscolares"
         )
         service = ComponentesService()
@@ -235,7 +243,7 @@ class ComponentesPorListaTurmasView(BaseAPIView):
     @extend_schema(
         parameters=[
             OpenApiParameter(
-                "codigoTurmas",
+                "codigo_turmas",
                 OpenApiTypes.STR,
                 OpenApiParameter.QUERY,
                 many=True,
@@ -243,7 +251,7 @@ class ComponentesPorListaTurmasView(BaseAPIView):
                 description="Lista de códigos de turmas",
             ),
             OpenApiParameter(
-                "adicionarComponentesPlanejamento",
+                "adicionar_componentes_planejamento",
                 OpenApiTypes.BOOL,
                 OpenApiParameter.QUERY,
                 default=True,
@@ -258,13 +266,18 @@ class ComponentesPorListaTurmasView(BaseAPIView):
     def get(self, request: Request) -> Response:
 
         codigos_turmas: list[str] = request.query_params.getlist(
+            "codigo_turmas"
+        ) or request.query_params.getlist(
             "codigoTurmas"
         )
 
         service = ComponentesService()
         adicionar_componentes_planejamento = (
             request.query_params.get(
-                "adicionarComponentesPlanejamento", "true"
+                "adicionar_componentes_planejamento",
+                request.query_params.get(
+                    "adicionarComponentesPlanejamento", "true"
+                ),
             ).lower() == "true"
         )
         dados = service.listar_por_lista_turmas(
@@ -280,7 +293,7 @@ class ComponentesTurmasBrutosView(BaseAPIView):
     @extend_schema(
         parameters=[
             OpenApiParameter(
-                "codigoTurmas",
+                "codigo_turmas",
                 OpenApiTypes.STR,
                 OpenApiParameter.QUERY,
                 many=True,
@@ -295,7 +308,9 @@ class ComponentesTurmasBrutosView(BaseAPIView):
     )
     def get(self, request: Request) -> Response:
 
-        codigos: list[str] = request.query_params.getlist("codigoTurmas")
+        codigos: list[str] = request.query_params.getlist(
+            "codigo_turmas"
+        ) or request.query_params.getlist("codigoTurmas")
         service = ComponentesService()
         dados = service.listar_turmas_brutos(codigos)
         return Response(dados)
@@ -323,21 +338,21 @@ class VigenciaComponentesView(BaseAPIView):
     @extend_schema(
         parameters=[
             OpenApiParameter(
-                "ueCodigo",
+                "ue_codigo",
                 OpenApiTypes.STR,
                 OpenApiParameter.QUERY,
                 required=True,
                 description="Código da Unidade Educacional",
             ),
             OpenApiParameter(
-                "anoLetivo",
+                "ano_letivo",
                 OpenApiTypes.INT,
                 OpenApiParameter.QUERY,
                 required=True,
                 description="Ano letivo",
             ),
             OpenApiParameter(
-                "componentesCurriculares",
+                "componentes_curriculares",
                 OpenApiTypes.STR,
                 OpenApiParameter.QUERY,
                 many=True,
@@ -358,9 +373,17 @@ class VigenciaComponentesView(BaseAPIView):
     )
     def get(self, request: Request) -> Response:
 
-        ue_codigo = request.query_params.get("ueCodigo", "")
-        ano_letivo = int(request.query_params.get("anoLetivo", 0))
+        ue_codigo = request.query_params.get(
+            "ue_codigo", request.query_params.get("ueCodigo", "")
+        )
+        ano_letivo = int(
+            request.query_params.get(
+                "ano_letivo", request.query_params.get("anoLetivo", 0)
+            )
+        )
         componentes: list[str] = request.query_params.getlist(
+            "componentes_curriculares"
+        ) or request.query_params.getlist(
             "componentesCurriculares"
         )
         semestre_raw = request.query_params.get("semestre")
@@ -394,7 +417,7 @@ class ComponentesSemAtribuicaoView(BaseAPIView):
     @extend_schema(
         parameters=[
             OpenApiParameter(
-                "dataBase",
+                "data_base",
                 OpenApiTypes.DATE,
                 OpenApiParameter.QUERY,
                 required=True,
@@ -421,7 +444,7 @@ class AgrupamentosCorrelacionadosView(BaseAPIView):
     @extend_schema(
         parameters=[
             OpenApiParameter(
-                "dataBase",
+                "data_base",
                 OpenApiTypes.DATE,
                 OpenApiParameter.QUERY,
                 description="Data de referência ISO 8601 (yyyy-MM-dd)",
@@ -438,7 +461,9 @@ class AgrupamentosCorrelacionadosView(BaseAPIView):
         codigo_componente: int,
     ) -> Response:
 
-        data_base_raw = request.query_params.get("dataBase")
+        data_base_raw = request.query_params.get(
+            "data_base", request.query_params.get("dataBase")
+        )
         data_base: date | None = None
         if data_base_raw:
             data_base = date.fromisoformat(data_base_raw)
@@ -455,7 +480,7 @@ class AgrupamentosCorrelacionadosLoteView(BaseAPIView):
     @extend_schema(
         parameters=[
             OpenApiParameter(
-                "dataBase",
+                "data_base",
                 OpenApiTypes.DATE,
                 OpenApiParameter.QUERY,
                 description="Data de referência ISO 8601 (yyyy-MM-dd)",
@@ -481,7 +506,9 @@ class AgrupamentosCorrelacionadosLoteView(BaseAPIView):
                 {"detail": "O corpo deve ser uma lista de inteiros."},
                 status=400,
             )
-        data_base_raw = request.query_params.get("dataBase")
+        data_base_raw = request.query_params.get(
+            "data_base", request.query_params.get("dataBase")
+        )
         data_base: date | None = None
         if data_base_raw:
             data_base = date.fromisoformat(data_base_raw)

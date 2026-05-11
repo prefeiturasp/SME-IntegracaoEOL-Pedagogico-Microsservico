@@ -66,7 +66,7 @@ class TestHelpersRepository(TestCase):
         self.assertEqual(resultado["codigo"], 138)
         self.assertEqual(resultado["descricao"], "LP")
         self.assertTrue(resultado["exibir_componente_eol"])
-        self.assertEqual(resultado["codigosTerritoriosAgrupamento"], [])
+        self.assertEqual(resultado["codigos_territorios_agrupamento"], [])
 
     def test_agrupamento_para_dict_com_experiencia(self) -> None:
         """_agrupamento_para_dict concatena território e experiência."""
@@ -82,7 +82,7 @@ class TestHelpersRepository(TestCase):
         self.assertEqual(resultado["codigo"], 9999)
         self.assertEqual(resultado["descricao"], "TS X - EP Y")
         self.assertEqual(resultado["codigo_componente_territorio_saber"], 10)
-        self.assertEqual(resultado["codigosTerritoriosAgrupamento"], [10, 20])
+        self.assertEqual(resultado["codigos_territorios_agrupamento"], [10, 20])
         self.assertTrue(resultado["territorio_saber"])
 
     def test_agrupamento_para_dict_sem_experiencia(self) -> None:
@@ -105,7 +105,7 @@ class TestHelpersRepository(TestCase):
         resultado = _agrupamento_para_dict(agrupamento)
 
         self.assertEqual(resultado["codigo_componente_territorio_saber"], 0)
-        self.assertEqual(resultado["codigosTerritoriosAgrupamento"], [])
+        self.assertEqual(resultado["codigos_territorios_agrupamento"], [])
 
 
 class TestComponentesRepository(TestCase):
@@ -477,7 +477,7 @@ class TestComponentesRepository(TestCase):
         self.assertEqual(len(resultado), 1)
         self.assertEqual(resultado[0]["codigo"], 4001)
         self.assertEqual(
-            resultado[0]["codigosTerritoriosAgrupamento"], [80, 90])
+            resultado[0]["codigos_territorios_agrupamento"], [80, 90])
 
     def test_listar_agrupamentos_territorio_vazio(self) -> None:
         """EP-15 retorna vazio quando lista de IDs está vazia."""
