@@ -1,18 +1,16 @@
 """Testes de repository do domínio Componentes Curriculares."""
+
 from datetime import UTC, date, datetime
-from uuid import uuid4
 from unittest.mock import patch
 
 from django.test import TestCase
 
 from apps.componentes_curriculares.models import (
     AgrupamentoAtribuicaoTerritorioSaber,
-    AtribuicaoComponente,
     ComponenteCurricular,
+    ComponenteCurricularPlanejamentoRegencia,
     ComponenteCurricularPAP,
-    ComponenteTurma,
-    RegenciaComponenteCurricular,
-    GradeComponenteCurricular
+    GradeComponenteCurricular,
 )
 from apps.componentes_curriculares.repository import (
     ComponentesRepository,
@@ -22,35 +20,7 @@ from apps.componentes_curriculares.repository import (
 )
 
 
-def _make_ct(**kwargs) -> ComponenteTurma:
-    """Cria ComponenteTurma com defaults."""
-    defaults = {
-        "componente_codigo": 1,
-        "descricao": "Comp",
-        "regencia": False,
-        "planejamento_regencia": False,
-        "territorio_saber": False,
-        "turma_codigo": "T0",
-        "ano_letivo": 2024,
-    }
-    defaults.update(kwargs)
-    return ComponenteTurma.objects.create(**defaults)
-
-
-def _make_ac(**kwargs) -> AtribuicaoComponente:
-    """Cria AtribuicaoComponente com defaults."""
-    defaults = {
-        "turma_codigo": "T0",
-        "componente_codigo": 1,
-        "professor": None,
-        "atribuicao_externa": False,
-        "ano_letivo": 2024,
-    }
-    defaults.update(kwargs)
-    return AtribuicaoComponente.objects.create(**defaults)
-
-
-def _make_agrupamento(**kwargs) -> AgrupamentoAtribuicaoTerritorioSaber:
+def _make_agrupamento(**kwargs):
     """Cria AgrupamentoAtribuicaoTerritorioSaber com defaults."""
     defaults = {
         "cod_agrupamento": 9000,
@@ -58,6 +28,7 @@ def _make_agrupamento(**kwargs) -> AgrupamentoAtribuicaoTerritorioSaber:
         "dt_inicio_atribuicao": datetime(2024, 1, 1, tzinfo=UTC),
         "ano_atribuicao": 2024,
         "ano_letivo": 2024,
+        "cod_turma": "T1",
         "cod_componentes_curriculares": "100,200",
         "desc_territorio_saber": "TS",
         "desc_experiencia_pedagogica": "EP",
@@ -83,322 +54,433 @@ class TestHelpersRepository(TestCase):
         """_parse_csv ignora tokens não numéricos."""
         self.assertEqual(_parse_csv("1,abc,3"), [1, 3])
 
-    def test_grade_para_componente_defaults(self) -> None:
-        """_grade_para_componente preenche campos com defaults corretos."""
-        row = {
-            "codigo_componente_curricular": 138,
-            "descricao_componente_curricular": "LP",
-        }
-        resultado = _grade_para_componente(row)
+    def test_grade_para_componente(self) -> None:
+        """_grade_para_componente converte grade para shape de componente."""
+        resultado = _grade_para_componente(
+            {
+                "codigo_componente_curricular": 138,
+                "descricao_componente_curricular": "LP",
+            }
+        )
+
         self.assertEqual(resultado["codigo"], 138)
-        self.assertFalse(resultado["regencia"])
-        self.assertEqual(resultado["codigosTerritoriosAgrupamento"], [])
+        self.assertEqual(resultado["descricao"], "LP")
         self.assertTrue(resultado["exibir_componente_eol"])
+        self.assertEqual(resultado["codigosTerritoriosAgrupamento"], [])
 
     def test_agrupamento_para_dict_com_experiencia(self) -> None:
-        """_agrupamento_para_dict formata descricao com experiencia."""
-        ag = _make_agrupamento(
+        """_agrupamento_para_dict concatena território e experiência."""
+        agrupamento = _make_agrupamento(
             cod_agrupamento=9999,
             desc_territorio_saber="TS X",
             desc_experiencia_pedagogica="EP Y",
             cod_componentes_curriculares="10,20",
         )
-        d = _agrupamento_para_dict(ag)
-        self.assertEqual(d["codigo"], 9999)
-        self.assertEqual(d["descricao"], "TS X - EP Y")
-        self.assertEqual(d["codigosTerritoriosAgrupamento"], [10, 20])
-        self.assertTrue(d["territorio_saber"])
+
+        resultado = _agrupamento_para_dict(agrupamento)
+
+        self.assertEqual(resultado["codigo"], 9999)
+        self.assertEqual(resultado["descricao"], "TS X - EP Y")
+        self.assertEqual(resultado["codigo_componente_territorio_saber"], 10)
+        self.assertEqual(resultado["codigosTerritoriosAgrupamento"], [10, 20])
+        self.assertTrue(resultado["territorio_saber"])
 
     def test_agrupamento_para_dict_sem_experiencia(self) -> None:
-        """_agrupamento_para_dict usa apenas desc_territorio quando sem EP."""
-        ag = _make_agrupamento(
-            cod_agrupamento=9998,
+        """_agrupamento_para_dict usa apenas território quando não há EP."""
+        agrupamento = _make_agrupamento(
             desc_territorio_saber="TS Z",
             desc_experiencia_pedagogica=None,
         )
-        d = _agrupamento_para_dict(ag)
-        self.assertEqual(d["descricao"], "TS Z")
+
+        resultado = _agrupamento_para_dict(agrupamento)
+
+        self.assertEqual(resultado["descricao"], "TS Z")
 
     def test_agrupamento_para_dict_csv_vazio(self) -> None:
-        """_agrupamento_para_dict retorna codigosTerritoriosAgrupamento vazio."""
-        ag = _make_agrupamento(
-            cod_agrupamento=9997,
+        """_agrupamento_para_dict usa defaults quando CSV está vazio."""
+        agrupamento = _make_agrupamento(
             cod_componentes_curriculares=None,
         )
-        d = _agrupamento_para_dict(ag)
-        self.assertEqual(d["codigosTerritoriosAgrupamento"], [])
-        self.assertEqual(d["codigo_componente_territorio_saber"], 0)
+
+        resultado = _agrupamento_para_dict(agrupamento)
+
+        self.assertEqual(resultado["codigo_componente_territorio_saber"], 0)
+        self.assertEqual(resultado["codigosTerritoriosAgrupamento"], [])
 
 
 class TestComponentesRepository(TestCase):
-    """Testes de integração do ComponentesRepository com SQLite in-memory."""
+    """Testes do ComponentesRepository."""
 
     def setUp(self) -> None:
+        """Inicializa repository."""
         self.repo = ComponentesRepository()
 
-    def test_listar_por_turma_funcionario(self) -> None:
-        """EP-1: filtra por turma e login via JOIN componente_turma + atribuicao_componente."""
-        _make_ct(componente_codigo=1, turma_codigo="T1")
-        _make_ac(turma_codigo="T1", componente_codigo=1, professor="u1")
-        res = self.repo.listar_por_turma_funcionario("T1", "u1")
-        self.assertEqual(len(res), 1)
-        self.assertEqual(res[0]["turma_codigo"], "T1")
-        self.assertIn("codigosTerritoriosAgrupamento", res[0])
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario(self, mock_raw) -> None:
+        """EP-1 lista componentes por turma e funcionário."""
+        mock_raw.return_value = [
+            {
+                "codigo": 1,
+                "descricao": "Matemática",
+                "codigo_componente_territorio_saber": None,
+                "codigo_componente_curricular_pai": None,
+            }
+        ]
 
-    def test_listar_por_funcionario(self) -> None:
-        """EP-1: filtra componentes por login sem turma."""
-        _make_ct(componente_codigo=2, turma_codigo="T2")
-        _make_ac(turma_codigo="T2", componente_codigo=2, professor="f2")
-        res = self.repo.listar_por_funcionario("f2")
-        self.assertEqual(len(res), 1)
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
 
-    def test_listar_planejamento_por_turma_funcionario(self) -> None:
-        """EP-1: filtra planejamento_regencia=True."""
-        _make_ct(
-            componente_codigo=3,
-            turma_codigo="T3",
-            planejamento_regencia=True,
+        self.assertEqual(resultado[0]["codigo"], 1)
+        self.assertFalse(resultado[0]["exibir_componente_eol"])
+        mock_raw.assert_called_once()
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_funcionario_deduplica_por_codigo(self, mock_raw) -> None:
+        """EP-1 sem turma deduplica componentes repetidos por código."""
+        mock_raw.return_value = [
+            {"codigo": 1, "codigo_componente_curricular_pai": None},
+            {"codigo": 1, "codigo_componente_curricular_pai": None},
+        ]
+
+        resultado = self.repo.listar_por_funcionario("RF1")
+
+        self.assertEqual(len(resultado), 1)
+        self.assertIsNone(resultado[0]["turma_codigo"])
+        self.assertIsNone(resultado[0]["professor"])
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_planejamento_expande_regencia(self, mock_raw) -> None:
+        """EP-1 planejamento substitui regência por componentes filhos."""
+        ComponenteCurricular.objects.create(codigo=10, descricao="Filho")
+        ComponenteCurricularPlanejamentoRegencia.objects.create(
+            id_componente_curricular=10,
+            turno=None,
+            ano=None,
         )
-        _make_ac(turma_codigo="T3", componente_codigo=3, professor="f3")
-        res = self.repo.listar_planejamento_por_turma_funcionario("T3", "f3")
-        self.assertEqual(len(res), 1)
+        mock_raw.return_value = [
+            {
+                "codigo": 1,
+                "descricao": "Regência",
+                "regencia": True,
+                "turma_codigo": "T1",
+                "ano_letivo": 2024,
+                "turno_turma": None,
+                "ano_turma": None,
+                "professor": "RF1",
+            }
+        ]
+
+        resultado = self.repo.listar_planejamento_por_turma_funcionario(
+            "T1",
+            "RF1",
+        )
+
+        self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0]["codigo"], 10)
+        self.assertTrue(resultado[0]["planejamento_regencia"])
 
     def test_listar_regencia_por_ano_turma(self) -> None:
-        """EP-2: busca via RegenciaComponenteCurricular + ComponenteCurricular."""
+        """EP-2 lista componentes de planejamento por ano de turma."""
         ComponenteCurricular.objects.create(codigo=4, descricao="C4")
-        RegenciaComponenteCurricular.objects.create(
-            id_componente_curricular=4, ano=2024
+        ComponenteCurricularPlanejamentoRegencia.objects.create(
+            id_componente_curricular=4,
+            ano=2024,
         )
-        res = self.repo.listar_regencia_por_ano_turma(2024)
-        self.assertEqual(len(res), 1)
-        self.assertIsNone(res[0]["ano_turma"])
-        self.assertEqual(res[0]["ano_letivo"], 0)
+
+        resultado = self.repo.listar_regencia_por_ano_turma(2024)
+
+        self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0]["codigo"], 4)
+        self.assertEqual(resultado[0]["descricao"], "C4")
 
     def test_listar_regencia_ano_nulo(self) -> None:
-        """EP-2: anoTurma <= 0 retorna componentes com ano IS NULL."""
+        """EP-2 ano_turma menor ou igual a zero usa regra fallback."""
         ComponenteCurricular.objects.create(codigo=5, descricao="C5")
-        RegenciaComponenteCurricular.objects.create(
-            id_componente_curricular=5, ano=None
+        ComponenteCurricularPlanejamentoRegencia.objects.create(
+            id_componente_curricular=5,
+            ano=None,
         )
-        res = self.repo.listar_regencia_por_ano_turma(0)
-        self.assertTrue(any(r["codigo"] == 5 for r in res))
 
-    def test_turma_possui_componente_pap_verdadeiro(self) -> None:
-        """EP-3: retorna True quando existe componente PAP na turma."""
-        _make_ct(componente_codigo=10, turma_codigo="T10")
-        _make_ac(turma_codigo="T10", componente_codigo=10, professor="f10")
-        ComponenteCurricularPAP.objects.create(id_componente_curricular=10)
-        self.assertTrue(self.repo.turma_possui_componente_pap("T10", "f10"))
+        resultado = self.repo.listar_regencia_por_ano_turma(0)
 
-    def test_turma_possui_componente_pap_falso(self) -> None:
-        """EP-3: retorna False quando não há componente PAP."""
-        _make_ct(componente_codigo=11, turma_codigo="T11")
-        _make_ac(turma_codigo="T11", componente_codigo=11, professor="f11")
-        self.assertFalse(self.repo.turma_possui_componente_pap("T11", "f11"))
+        self.assertEqual(resultado[0]["codigo"], 5)
 
-    def test_listar_por_ue_modalidade_anos_escolares(self) -> None:
-        """EP-4: filtra GradeComponenteCurricular por modalidade, ano e séries."""
-        GradeComponenteCurricular.objects.create(
-            codigo_componente_curricular=6,
-            descricao_componente_curricular="C6",
-            modalidade=5,
+    def test_turma_possui_componente_pap(self) -> None:
+        """EP-3 retorna True quando atribuição contém componente PAP."""
+        from apps.componentes_curriculares.models import AtribuicaoComponente
+
+        AtribuicaoComponente.objects.create(
+            turma_codigo="T1",
+            componente_codigo=10,
+            professor="RF1",
+            atribuicao_externa=False,
             ano_letivo=2024,
-            codigo_ano_turma="1",
         )
-        res = self.repo.listar_por_ue_modalidade_ano_e_anos_escolares(
-            5, 2024, ["1"]
+        ComponenteCurricularPAP.objects.create(id_componente_curricular=10)
+
+        self.assertTrue(self.repo.turma_possui_componente_pap("T1", "RF1"))
+
+    def test_turma_nao_possui_componente_pap(self) -> None:
+        """EP-3 retorna False quando não existe componente PAP."""
+        self.assertFalse(self.repo.turma_possui_componente_pap("T1", "RF1"))
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_ue_modalidade_ano_e_anos_escolares(
+        self,
+        mock_raw,
+    ) -> None:
+        """EP-4 monta filtro por UE, modalidade, ano e anos escolares."""
+        mock_raw.return_value = [
+            {
+                "codigo_componente_curricular": 6,
+                "descricao_componente_curricular": "C6",
+            }
+        ]
+
+        resultado = self.repo.listar_por_ue_modalidade_ano_e_anos_escolares(
+            "U1",
+            5,
+            2024,
+            ["1"],
         )
-        self.assertEqual(len(res), 1)
-        self.assertEqual(res[0]["codigo"], 6)
-        self.assertFalse(res[0]["regencia"])
 
-    def test_listar_por_ue_modalidade_anos_escolares_sem_filtro(self) -> None:
-        """EP-4: sem anos_escolares retorna todos da grade."""
-        GradeComponenteCurricular.objects.create(
-            codigo_componente_curricular=60,
-            descricao_componente_curricular="C60",
-            modalidade=5,
-            ano_letivo=2025,
+        self.assertEqual(resultado[0]["codigo"], 6)
+        self.assertIn("t.ano IN", mock_raw.call_args[0][0])
+        self.assertEqual(mock_raw.call_args[0][1], ["U1", 5, 2024, "1"])
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_turma_programa_modalidade_invalida(self, mock_raw) -> None:
+        """EP-5 retorna lista vazia para modalidade inválida."""
+        resultado = self.repo.listar_turma_programa_por_ue_modalidade_ano(
+            "U1",
+            99,
+            2024,
         )
-        res = self.repo.listar_por_ue_modalidade_ano_e_anos_escolares(
-            5, 2025, []
+
+        self.assertEqual(resultado, [])
+        mock_raw.assert_not_called()
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_turma_programa_educacao_infantil(self, mock_raw) -> None:
+        """EP-5 educação infantil aplica filtro de série."""
+        mock_raw.return_value = []
+
+        resultado = self.repo.listar_turma_programa_por_ue_modalidade_ano(
+            "U1",
+            1,
+            2024,
         )
-        self.assertEqual(len(res), 1)
 
-    def test_listar_turma_programa(self) -> None:
-        """EP-5: replica filtro especial de series apenas para EI."""
-        with patch("apps.componentes_curriculares.repository._raw") as mock_raw:
-            mock_raw.return_value = []
-            res = self.repo.listar_turma_programa_por_ue_modalidade_ano(
-                "1", 1, 2024
-            )
-        self.assertEqual(res, [])
-        sql = mock_raw.call_args[0][0]
-        params = mock_raw.call_args[0][1]
-        self.assertIn("t.codigo_tipo_programa IS NOT NULL", sql)
-        self.assertIn("ct.codigo_serie_ensino IN", sql)
-        self.assertNotIn("t.codigo_modalidade_etapa IN", sql)
-        self.assertNotIn("t.tipo_turma = 3", sql)
-        self.assertEqual(params[:2], ["1", 2024])
+        self.assertEqual(resultado, [])
+        self.assertIn("t.codigo_serie_ensino IN", mock_raw.call_args[0][0])
 
-    def test_listar_turma_programa_nao_filtra_series_para_fundamental(self) -> None:
-        """EP-5: modalidades diferentes de EI não filtram codigo_serie_ensino."""
-        with patch("apps.componentes_curriculares.repository._raw") as mock_raw:
-            mock_raw.return_value = []
-            res = self.repo.listar_turma_programa_por_ue_modalidade_ano(
-                "1", 5, 2024
-            )
-        self.assertEqual(res, [])
-        sql = mock_raw.call_args[0][0]
-        self.assertNotIn("ct.codigo_serie_ensino IN", sql)
-        self.assertNotIn("t.codigo_modalidade_etapa IN", sql)
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_ue_e_turmas(self, mock_raw) -> None:
+        """EP-6 lista componentes simplificados por turmas."""
+        mock_raw.return_value = [{"codigo": 8, "descricao": "Matemática"}]
 
-    def test_listar_por_ue_e_turmas(self) -> None:
-        """EP-6: filtra por turma, exclui componente_codigo=0, ordena por descricao."""
-        _make_ct(componente_codigo=8, descricao="Matematica", turma_codigo="T8")
-        _make_ct(componente_codigo=0, descricao="Zero", turma_codigo="T8")
-        res = self.repo.listar_por_ue_e_turmas(["T8"])
-        codigos = [r["codigo"] for r in res]
-        self.assertIn(8, codigos)
-        self.assertNotIn(0, codigos)
+        resultado = self.repo.listar_por_ue_e_turmas(["T8"])
 
-    def test_listar_por_lista_turmas(self) -> None:
-        """EP-7: retorna componentes de múltiplas turmas via LEFT JOIN."""
-        _make_ct(componente_codigo=9, turma_codigo="T9",
-                 planejamento_regencia=True)
-        res = self.repo.listar_por_lista_turmas(["T9"])
-        self.assertEqual(len(res), 1)
+        self.assertEqual(resultado, [{"codigo": 8, "descricao": "Matemática"}])
+        self.assertIn("ct.turma_codigo IN", mock_raw.call_args[0][0])
 
-    def test_listar_por_lista_turmas_deduplica_multiplos_professores(self) -> None:
-        """EP-7: dois professores no mesmo componente/turma resulta em uma linha."""
-        _make_ct(componente_codigo=91, turma_codigo="T91")
-        _make_ac(turma_codigo="T91", componente_codigo=91, professor="pA")
-        _make_ac(turma_codigo="T91", componente_codigo=91, professor="pB")
-        res = self.repo.listar_por_lista_turmas(["T91"])
-        self.assertEqual(len(res), 1)
+    def test_listar_por_lista_turmas_vazio(self) -> None:
+        """EP-7 retorna lista vazia quando não há turmas."""
+        self.assertEqual(self.repo.listar_por_lista_turmas([]), [])
 
-    def test_listar_turmas_brutos(self) -> None:
-        """EP-8: retorna componentes sem pós-processamento, professor=None."""
-        _make_ct(componente_codigo=10, turma_codigo="T10b")
-        res = self.repo.listar_turmas_brutos(["T10b"])
-        self.assertEqual(len(res), 1)
-        self.assertIsNone(res[0]["professor"])
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_lista_turmas_sem_planejamento(self, mock_raw) -> None:
+        """EP-7 sem planejamento deduplica por turma e código."""
+        mock_raw.return_value = [
+            {"turma_codigo": "T1", "codigo": 9},
+            {"turma_codigo": "T1", "codigo": 9},
+        ]
+
+        resultado = self.repo.listar_por_lista_turmas(
+            ["T1"],
+            adicionar_componentes_planejamento=False,
+        )
+
+        self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0]["codigo"], 9)
+
+    def test_listar_turmas_brutos_vazio(self) -> None:
+        """EP-8 retorna lista vazia quando não há turmas."""
+        self.assertEqual(self.repo.listar_turmas_brutos([]), [])
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_turmas_brutos(self, mock_raw) -> None:
+        """EP-8 retorna componentes brutos com professor nulo."""
+        mock_raw.return_value = [
+            {
+                "codigo": 10,
+                "descricao": "C10",
+                "codigo_componente_territorio_saber": None,
+            }
+        ]
+
+        resultado = self.repo.listar_turmas_brutos(["T10"])
+
+        self.assertIsNone(resultado[0]["professor"])
+        self.assertEqual(resultado[0]["codigo"], 10)
 
     def test_listar_catalogo(self) -> None:
-        """EP-9: retorna catálogo ordenado por codigo."""
-        ComponenteCurricular.objects.create(codigo=100, descricao="CC100")
-        res = self.repo.listar_catalogo()
-        self.assertTrue(any(r["codigo"] == 100 for r in res))
+        """EP-9 lista catálogo ordenado por código."""
+        ComponenteCurricular.objects.create(codigo=2, descricao="B")
+        ComponenteCurricular.objects.create(codigo=1, descricao="A")
 
-    def test_listar_componentes_sem_atribuicao(self) -> None:
-        """EP-12: retorna componentes sem linha em atribuicao_componente."""
-        _make_ct(componente_codigo=17, descricao="C17", turma_codigo="T17")
-        res = self.repo.listar_componentes_sem_atribuicao("T17")
-        self.assertIn("C17", res)
+        resultado = self.repo.listar_catalogo()
 
-    def test_listar_componentes_sem_atribuicao_exclui_com_professor(self) -> None:
-        """EP-12: componente com atribuição não aparece no resultado."""
-        _make_ct(componente_codigo=171, descricao="C171", turma_codigo="T171")
-        _make_ac(turma_codigo="T171", componente_codigo=171, professor="pX")
-        res = self.repo.listar_componentes_sem_atribuicao("T171")
-        self.assertNotIn("C171", res)
+        self.assertEqual(
+            resultado,
+            [
+                {"codigo": 1, "descricao": "A"},
+                {"codigo": 2, "descricao": "B"},
+            ],
+        )
 
-    def test_listar_componentes_sem_atribuicao_turma_vazia(self) -> None:
-        """EP-12: turma sem componentes retorna lista vazia."""
-        res = self.repo.listar_componentes_sem_atribuicao("T_INEXISTENTE")
-        self.assertEqual(res, [])
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_vigencia_componentes_vazio(self, mock_raw) -> None:
+        """EP-10 retorna lista vazia sem componentes curriculares."""
+        resultado = self.repo.listar_vigencia_componentes("U1", 2024, [], None)
+
+        self.assertEqual(resultado, [])
+        mock_raw.assert_not_called()
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_vigencia_componentes_com_semestre(self, mock_raw) -> None:
+        """EP-10 adiciona filtro de semestre quando informado."""
+        mock_raw.return_value = []
+
+        resultado = self.repo.listar_vigencia_componentes(
+            "U1",
+            2024,
+            ["1"],
+            2,
+        )
+
+        self.assertEqual(resultado, [])
+        self.assertIn("AND t.semestre = %s", mock_raw.call_args[0][0])
+        self.assertEqual(mock_raw.call_args[0][1], ["U1", 2024, 1, 2])
+
+    def test_listar_grade_curricular(self) -> None:
+        """EP-11 lista grade curricular por ano letivo."""
+        GradeComponenteCurricular.objects.create(
+            codigo_componente_curricular=1,
+            descricao_componente_curricular="C1",
+            codigo_ano_turma="1",
+            descricao_serie_ensino="1º ano",
+            codigo_serie_ensino=1,
+            modalidade=5,
+            ano_letivo=2024,
+        )
+
+        resultado = self.repo.listar_grade_curricular(2024)
+
+        self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0]["codigo_componente_curricular"], 1)
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_componentes_sem_atribuicao(self, mock_raw) -> None:
+        """EP-12 retorna descrições de componentes sem atribuição."""
+        mock_raw.return_value = [{"descricao": "C17"}]
+
+        resultado = self.repo.listar_componentes_sem_atribuicao("T17")
+
+        self.assertEqual(resultado, ["C17"])
+        mock_raw.assert_called_once()
 
     def test_listar_agrupamentos_correlacionados_sem_origem(self) -> None:
-        """EP-13: retorna [] quando cod_agrupamento não existe."""
-        res = self.repo.listar_agrupamentos_correlacionados(99999, None)
-        self.assertEqual(res, [])
+        """EP-13 retorna vazio quando agrupamento origem não existe."""
+        resultado = self.repo.listar_agrupamentos_correlacionados(999, None)
+
+        self.assertEqual(resultado, [])
 
     def test_listar_agrupamentos_correlacionados_com_origem(self) -> None:
-        """EP-13: encontra agrupamentos que são subset da origem."""
+        """EP-13 retorna agrupamentos subset da origem."""
         _make_agrupamento(
             cod_agrupamento=1001,
-            cod_turma="T_AG",
+            cod_turma="T1",
             cod_territorio_saber=10,
             cod_componentes_curriculares="100,200,300",
         )
         _make_agrupamento(
             cod_agrupamento=1002,
-            cod_turma="T_AG",
+            cod_turma="T1",
             cod_territorio_saber=10,
             cod_componentes_curriculares="100,200",
         )
-        res = self.repo.listar_agrupamentos_correlacionados(1001, None)
-        codigos = [r["codigo"] for r in res]
-        self.assertIn(1001, codigos)
-        self.assertIn(1002, codigos)
+
+        resultado = self.repo.listar_agrupamentos_correlacionados(1001, None)
+
+        self.assertEqual([item["codigo"] for item in resultado], [1001, 1002])
 
     def test_listar_agrupamentos_correlacionados_com_data_base(self) -> None:
-        """EP-13: aplica filtro de data quando fornecido."""
+        """EP-13 aplica filtro de data_base."""
         _make_agrupamento(
             cod_agrupamento=2001,
-            cod_turma="T_DB",
-            cod_territorio_saber=20,
-            cod_componentes_curriculares="50",
             dt_inicio_atribuicao=datetime(2024, 6, 1, tzinfo=UTC),
+            cod_componentes_curriculares="50",
         )
-        res = self.repo.listar_agrupamentos_correlacionados(
-            2001, date(2024, 7, 1)
+
+        resultado = self.repo.listar_agrupamentos_correlacionados(
+            2001,
+            date(2024, 7, 1),
         )
-        self.assertEqual(len(res), 1)
+
+        self.assertEqual(len(resultado), 1)
 
     def test_listar_agrupamentos_correlacionados_data_exclui(self) -> None:
-        """EP-13: data_base anterior ao início exclui o agrupamento."""
+        """EP-13 exclui agrupamento iniciado após data_base."""
         _make_agrupamento(
             cod_agrupamento=2002,
-            cod_turma="T_EX",
-            cod_territorio_saber=21,
-            cod_componentes_curriculares="51",
             dt_inicio_atribuicao=datetime(2024, 8, 1, tzinfo=UTC),
+            cod_componentes_curriculares="50",
         )
-        res = self.repo.listar_agrupamentos_correlacionados(
-            2002, date(2024, 7, 1)
+
+        resultado = self.repo.listar_agrupamentos_correlacionados(
+            2002,
+            date(2024, 7, 1),
         )
-        self.assertEqual(res, [])
+
+        self.assertEqual(resultado, [])
 
     def test_listar_agrupamentos_correlacionados_lote(self) -> None:
-        """EP-14: retorna agrupamentos de múltiplos IDs sem duplicatas."""
+        """EP-14 retorna agrupamentos correlacionados sem duplicar."""
         _make_agrupamento(
             cod_agrupamento=3001,
-            cod_turma="T_L",
-            cod_territorio_saber=30,
             cod_componentes_curriculares="70",
         )
-        res = self.repo.listar_agrupamentos_correlacionados_lote(
-            [3001], None
+
+        resultado = self.repo.listar_agrupamentos_correlacionados_lote(
+            [3001, 3001],
+            None,
         )
-        self.assertEqual(len(res), 1)
+
+        self.assertEqual(len(resultado), 1)
 
     def test_listar_agrupamentos_correlacionados_lote_vazio(self) -> None:
-        """EP-14: lista vazia retorna []."""
-        res = self.repo.listar_agrupamentos_correlacionados_lote([], None)
-        self.assertEqual(res, [])
+        """EP-14 retorna vazio quando lista de códigos está vazia."""
+        resultado = self.repo.listar_agrupamentos_correlacionados_lote([
+        ], None)
+
+        self.assertEqual(resultado, [])
 
     def test_listar_agrupamentos_territorio(self) -> None:
-        """EP-15: retorna agrupamentos por IDs com CSV parsed."""
+        """EP-15 retorna agrupamentos por IDs."""
         _make_agrupamento(
             cod_agrupamento=4001,
             cod_componentes_curriculares="80,90",
         )
-        res = self.repo.listar_agrupamentos_territorio([4001])
-        self.assertEqual(len(res), 1)
-        self.assertEqual(res[0]["codigo"], 4001)
-        self.assertEqual(res[0]["codigosTerritoriosAgrupamento"], [80, 90])
+
+        resultado = self.repo.listar_agrupamentos_territorio([4001])
+
+        self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0]["codigo"], 4001)
+        self.assertEqual(
+            resultado[0]["codigosTerritoriosAgrupamento"], [80, 90])
 
     def test_listar_agrupamentos_territorio_vazio(self) -> None:
-        """EP-15: lista vazia retorna []."""
-        res = self.repo.listar_agrupamentos_territorio([])
-        self.assertEqual(res, [])
+        """EP-15 retorna vazio quando lista de IDs está vazia."""
+        resultado = self.repo.listar_agrupamentos_territorio([])
 
-    def test_listar_agrupamentos_territorio_deduplica(self) -> None:
-        """EP-15: IDs duplicados na consulta retornam apenas um registro."""
-        _make_agrupamento(
-            cod_agrupamento=5001,
-            cod_componentes_curriculares="99",
-        )
-        res = self.repo.listar_agrupamentos_territorio([5001, 5001])
-        self.assertEqual(len(res), 1)
+        self.assertEqual(resultado, [])

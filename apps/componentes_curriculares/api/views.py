@@ -20,7 +20,7 @@ _TAG = ["ComponentesCurriculares"]
 
 
 class ComponentesPorFuncionarioView(BaseAPIView):
-    """EP-1: Listar Componentes Curriculares por Funcionário."""
+    """Listar Componentes Curriculares por Funcionário."""
 
     @extend_schema(
         parameters=[
@@ -68,7 +68,7 @@ class ComponentesPorFuncionarioView(BaseAPIView):
         responses={200: ComponenteCurricularSerializer(many=True)},
         description="Lista componentes curriculares do funcionário.",
         tags=_TAG,
-        operation_id="EP1_componentes_funcionario",
+        operation_id="componentes_funcionario",
     )
     def get(self, request: Request, login: str) -> Response:
 
@@ -77,7 +77,8 @@ class ComponentesPorFuncionarioView(BaseAPIView):
             request.query_params.get("planejamento", "false").lower() == "true"
         )
         agrupamento = (
-            request.query_params.get("agrupaComponenteCurricular", "false").lower() == "true"
+            request.query_params.get(
+                "agrupaComponenteCurricular", "false").lower() == "true"
         )
         service = ComponentesService()
         dados = service.listar_componentes_por_funcionario(
@@ -90,13 +91,13 @@ class ComponentesPorFuncionarioView(BaseAPIView):
 
 
 class ComponentesRegenciaView(BaseAPIView):
-    """EP-2: Listar Componentes Curriculares de Regência por Ano de Turma."""
+    """Listar Componentes Curriculares de Regência por Ano de Turma."""
 
     @extend_schema(
         responses={200: ComponenteRegenciaSerializer(many=True)},
         description="Lista componentes de regência por ano de turma.",
         tags=_TAG,
-        operation_id="EP2_componentes_regencia",
+        operation_id="componentes_regencia",
     )
     def get(self, _request: Request, ano_turma: int) -> Response:
         """Retorna componentes de regência por ano de turma."""
@@ -106,7 +107,7 @@ class ComponentesRegenciaView(BaseAPIView):
 
 
 class ValidarPapView(BaseAPIView):
-    """EP-3: Verificar Componente Curricular PAP em Turma."""
+    """Verificar Componente Curricular PAP em Turma."""
 
     @extend_schema(
         parameters=[
@@ -127,7 +128,7 @@ class ValidarPapView(BaseAPIView):
         responses={200: None},
         description="Verifica se a turma possui componente PAP.",
         tags=_TAG,
-        operation_id="EP3_validar_pap",
+        operation_id="validar_pap",
     )
     def get(self, request: Request, codigo_turma: str) -> Response:
         """Verifica presença do componente PAP na turma."""
@@ -141,7 +142,7 @@ class ValidarPapView(BaseAPIView):
 
 
 class ComponentesPorUeAnosEscolaresView(BaseAPIView):
-    """EP-4: Listar Componentes Curriculares por UE, Modalidade e Ano."""
+    """Listar Componentes Curriculares por UE, Modalidade e Ano."""
 
     @extend_schema(
         parameters=[
@@ -157,7 +158,7 @@ class ComponentesPorUeAnosEscolaresView(BaseAPIView):
         responses={200: ComponenteCurricularSerializer(many=True)},
         description="Lista componentes da grade por UE, modalidade e séries.",
         tags=_TAG,
-        operation_id="EP4_componentes_ue_anos_escolares",
+        operation_id="componentes_ue_anos_escolares",
     )
     def get(
         self,
@@ -178,13 +179,13 @@ class ComponentesPorUeAnosEscolaresView(BaseAPIView):
 
 
 class ComponentesTurmaProgramaView(BaseAPIView):
-    """EP-5: Listar Componentes de Turmas Programa."""
+    """Listar Componentes de Turmas Programa."""
 
     @extend_schema(
         responses={200: ComponenteCurricularSerializer(many=True)},
         description="Lista componentes de turmas programa.",
         tags=_TAG,
-        operation_id="EP5_componentes_turma_programa",
+        operation_id="componentes_turma_programa",
     )
     def get(
         self,
@@ -202,7 +203,7 @@ class ComponentesTurmaProgramaView(BaseAPIView):
 
 
 class ComponentesPorUeTurmasView(BaseAPIView):
-    """EP-6: Listar Componentes por Lista de Turmas e UE."""
+    """Listar Componentes por Lista de Turmas e UE."""
 
     @extend_schema(
         parameters=[
@@ -218,7 +219,7 @@ class ComponentesPorUeTurmasView(BaseAPIView):
         responses={200: ComponenteSimplificadoSerializer(many=True)},
         description="Lista componentes simplificados por UE e turmas.",
         tags=_TAG,
-        operation_id="EP6_componentes_ue_turmas",
+        operation_id="componentes_ue_turmas",
     )
     def get(self, request: Request, ue_id: str) -> Response:
 
@@ -229,7 +230,7 @@ class ComponentesPorUeTurmasView(BaseAPIView):
 
 
 class ComponentesPorListaTurmasView(BaseAPIView):
-    """EP-7: Listar Componentes para Planejamento por Lista de Turmas."""
+    """Listar Componentes para Planejamento por Lista de Turmas."""
 
     @extend_schema(
         parameters=[
@@ -252,7 +253,7 @@ class ComponentesPorListaTurmasView(BaseAPIView):
         responses={200: ComponenteCurricularSerializer(many=True)},
         description="Lista componentes de múltiplas turmas para planejamento.",
         tags=_TAG,
-        operation_id="EP7_componentes_lista_turmas",
+        operation_id="componentes_lista_turmas",
     )
     def get(self, request: Request) -> Response:
 
@@ -261,12 +262,20 @@ class ComponentesPorListaTurmasView(BaseAPIView):
         )
 
         service = ComponentesService()
-        dados = service.listar_por_lista_turmas(codigos_turmas)
+        adicionar_componentes_planejamento = (
+            request.query_params.get(
+                "adicionarComponentesPlanejamento", "true"
+            ).lower() == "true"
+        )
+        dados = service.listar_por_lista_turmas(
+            codigos_turmas,
+            adicionar_componentes_planejamento=adicionar_componentes_planejamento,
+        )
         return Response(dados)
 
 
 class ComponentesTurmasBrutosView(BaseAPIView):
-    """EP-8: Listar Componentes de Turmas sem Pós-processamento."""
+    """Listar Componentes de Turmas sem Pós-processamento."""
 
     @extend_schema(
         parameters=[
@@ -282,7 +291,7 @@ class ComponentesTurmasBrutosView(BaseAPIView):
         responses={200: ComponenteCurricularSerializer(many=True)},
         description="Lista componentes de turmas sem pós-processamento.",
         tags=_TAG,
-        operation_id="EP8_componentes_turmas_brutos",
+        operation_id="componentes_turmas_brutos",
     )
     def get(self, request: Request) -> Response:
 
@@ -293,13 +302,13 @@ class ComponentesTurmasBrutosView(BaseAPIView):
 
 
 class ComponentesCatalogoView(BaseAPIView):
-    """EP-9: Listar Catálogo de Componentes Curriculares."""
+    """Listar Catálogo de Componentes Curriculares."""
 
     @extend_schema(
         responses={200: ComponenteSimplificadoSerializer(many=True)},
         description="Lista todos os componentes curriculares.",
         tags=_TAG,
-        operation_id="EP9_catalogo_componentes",
+        operation_id="catalogo_componentes",
     )
     def get(self, _request: Request) -> Response:
 
@@ -309,7 +318,7 @@ class ComponentesCatalogoView(BaseAPIView):
 
 
 class VigenciaComponentesView(BaseAPIView):
-    """EP-10: Obter Vigência de Componentes por Turma e UE."""
+    """Obter Vigência de Componentes por Turma e UE."""
 
     @extend_schema(
         parameters=[
@@ -345,7 +354,7 @@ class VigenciaComponentesView(BaseAPIView):
         responses={200: VigenciaComponenteSerializer(many=True)},
         description="Retorna vigência de componentes por turma e UE.",
         tags=_TAG,
-        operation_id="EP10_vigencia_componentes",
+        operation_id="vigencia_componentes",
     )
     def get(self, request: Request) -> Response:
 
@@ -364,13 +373,13 @@ class VigenciaComponentesView(BaseAPIView):
 
 
 class GradeCurricularView(BaseAPIView):
-    """EP-11: Listar Grade Curricular por Ano Letivo."""
+    """Listar Grade Curricular por Ano Letivo."""
 
     @extend_schema(
         responses={200: GradeCurricularSerializer(many=True)},
         description="Lista grade curricular completa por ano letivo.",
         tags=_TAG,
-        operation_id="EP11_grade_curricular",
+        operation_id="grade_curricular",
     )
     def get(self, _request: Request, ano_letivo: int) -> Response:
 
@@ -380,7 +389,7 @@ class GradeCurricularView(BaseAPIView):
 
 
 class ComponentesSemAtribuicaoView(BaseAPIView):
-    """EP-12: Listar Componentes Sem Atribuição em uma Turma."""
+    """Listar Componentes Sem Atribuição em uma Turma."""
 
     @extend_schema(
         parameters=[
@@ -395,7 +404,7 @@ class ComponentesSemAtribuicaoView(BaseAPIView):
         responses={200: ComponenteSimplificadoSerializer(many=True)},
         description="Lista componentes sem professor atribuído.",
         tags=_TAG,
-        operation_id="EP12_componentes_sem_atribuicao",
+        operation_id="componentes_sem_atribuicao",
     )
     def get(self, request: Request, codigo_turma: str) -> Response:
 
@@ -407,7 +416,7 @@ class ComponentesSemAtribuicaoView(BaseAPIView):
 
 
 class AgrupamentosCorrelacionadosView(BaseAPIView):
-    """EP-13: Obter Agrupamentos Correlacionados por Componente."""
+    """Obter Agrupamentos Correlacionados por Componente."""
 
     @extend_schema(
         parameters=[
@@ -421,7 +430,7 @@ class AgrupamentosCorrelacionadosView(BaseAPIView):
         responses={200: ComponenteCurricularSerializer(many=True)},
         description="Retorna agrupamentos correlacionados por componente.",
         tags=_TAG,
-        operation_id="EP13_agrupamentos_correlacionados",
+        operation_id="agrupamentos_correlacionados",
     )
     def get(
         self,
@@ -441,7 +450,7 @@ class AgrupamentosCorrelacionadosView(BaseAPIView):
 
 
 class AgrupamentosCorrelacionadosLoteView(BaseAPIView):
-    """EP-14: Obter Agrupamentos Correlacionados em Lote."""
+    """Obter Agrupamentos Correlacionados em Lote."""
 
     @extend_schema(
         parameters=[
@@ -462,7 +471,7 @@ class AgrupamentosCorrelacionadosLoteView(BaseAPIView):
 
         description="Retorna agrupamentos correlacionados em lote.",
         tags=_TAG,
-        operation_id="EP14_agrupamentos_correlacionados_lote",
+        operation_id="agrupamentos_correlacionados_lote",
     )
     def post(self, request: Request) -> Response:
 
@@ -484,7 +493,7 @@ class AgrupamentosCorrelacionadosLoteView(BaseAPIView):
 
 
 class AgrupamentosTerritorioLoteView(BaseAPIView):
-    """EP-15: Obter Agrupamentos de Território do Saber por IDs."""
+    """Obter Agrupamentos de Território do Saber por IDs."""
 
     @extend_schema(
         request={
@@ -497,7 +506,7 @@ class AgrupamentosTerritorioLoteView(BaseAPIView):
 
         description="Retorna agrupamentos de Território do Saber por IDs.",
         tags=_TAG,
-        operation_id="EP15_agrupamentos_territorio",
+        operation_id="agrupamentos_territorio",
     )
     def post(self, request: Request) -> Response:
 

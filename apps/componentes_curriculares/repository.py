@@ -8,22 +8,39 @@ from apps.componentes_curriculares.models import (
     AgrupamentoAtribuicaoTerritorioSaber,
     AtribuicaoComponente,
     ComponenteCurricular,
+    ComponenteCurricularPlanejamentoRegencia,
     ComponenteCurricularPAP,
     ComponenteTurma,
     GradeComponenteCurricular,
-    RegenciaComponenteCurricular,
 )
 
 _CT_FIELDS = """\
     ct.componente_codigo AS codigo,
     ct.codigo_componente_territorio_saber,
-    ct.codigo_componente_curricular_pai,
-    ct.descricao, ct.regencia, ct.planejamento_regencia,
-    ct.territorio_saber, ct.turma_codigo, ct.ano_letivo"""
+    cch.idcomponentecurricularpai AS codigo_componente_curricular_pai,
+    cc.descricao,
+    COALESCE(cc.regencia, false) AS regencia,
+    false AS planejamento_regencia,
+    (ct.codigo_componente_territorio_saber IS NOT NULL) AS territorio_saber,
+    ct.turma_codigo,
+    t.ano_letivo,
+    t.duracao_turno AS turno_turma,
+    t.ano AS ano_turma"""
 
 _SQL_CT_JOIN_AC = f"""\
 SELECT {_CT_FIELDS}, ac.professor
   FROM componente_turma ct
+  LEFT JOIN componente_curricular cc
+    ON cc.codigo = ct.componente_codigo
+  LEFT JOIN LATERAL (
+    SELECT h.idcomponentecurricularpai
+      FROM componente_curricular_hierarquia h
+     WHERE h.idcomponentecurricular = ct.componente_codigo
+     ORDER BY h.vigencia DESC NULLS LAST
+     LIMIT 1
+  ) cch ON true
+  JOIN turma t
+    ON t.codigo::varchar = ct.turma_codigo
   JOIN atribuicao_componente ac
     ON ac.turma_codigo = ct.turma_codigo
    AND ac.componente_codigo = ct.componente_codigo"""
@@ -31,6 +48,17 @@ SELECT {_CT_FIELDS}, ac.professor
 _SQL_CT_LEFT_JOIN_AC = f"""\
 SELECT {_CT_FIELDS}, ac.professor
   FROM componente_turma ct
+  LEFT JOIN componente_curricular cc
+    ON cc.codigo = ct.componente_codigo
+  LEFT JOIN LATERAL (
+    SELECT h.idcomponentecurricularpai
+      FROM componente_curricular_hierarquia h
+     WHERE h.idcomponentecurricular = ct.componente_codigo
+     ORDER BY h.vigencia DESC NULLS LAST
+     LIMIT 1
+  ) cch ON true
+  JOIN turma t
+    ON t.codigo::varchar = ct.turma_codigo
   LEFT JOIN atribuicao_componente ac
          ON ac.turma_codigo = ct.turma_codigo
         AND ac.componente_codigo = ct.componente_codigo"""
@@ -111,6 +139,100 @@ def _parse_csv(csv_str: str | None) -> list[int]:
     ]
 
 
+def _int_or_none(value: object) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _componentes_planejamento_regencia(
+    row: dict,
+    using: str,
+) -> list[ComponenteCurricular]:
+    turno = _int_or_none(row.get("turno_turma"))
+    ano = _int_or_none(row.get("ano_turma"))
+
+    qs = ComponenteCurricularPlanejamentoRegencia.objects.using(using)
+    regras = list(qs.filter(turno=turno, ano=ano))
+    if not regras:
+        regras = list(qs.filter(turno__isnull=True, ano__isnull=True))
+
+    codigos = [r.id_componente_curricular for r in regras]
+    if not codigos:
+        return []
+
+    componentes = (
+        ComponenteCurricular.objects.using(using)
+        .filter(codigo__in=codigos)
+        .in_bulk(field_name="codigo")
+    )
+    return [componentes[codigo] for codigo in codigos if codigo in componentes]
+
+
+def _expandir_planejamento_regencia(
+    rows: list[dict],
+    using: str,
+) -> list[dict]:
+    """
+    Aplica a regra de negócio de planejamento de regência no consumo.
+
+    Componentes com ``regencia=True`` são componentes pais. Quando o endpoint
+    solicita planejamento, eles não devem ser retornados diretamente; devem ser
+    substituídos pelos componentes filhos cadastrados em
+    ``ComponenteCurricularPlanejamentoRegencia``. A busca prioriza regra
+    específica por ``turno_turma`` e ``ano_turma`` da turma e, se não houver
+    correspondência, usa o fallback com ``turno`` e ``ano`` nulos. Os filhos
+    entram com ``planejamento_regencia=True`` e herdam ``turma_codigo``,
+    ``professor`` e ``ano_letivo`` do componente pai.
+    """
+    resultado: list[dict] = []
+    vistos: set[tuple] = set()
+
+    for row in rows:
+        if not row.get("regencia"):
+            item = _componente_para_dict(row)
+            key = (
+                item.get("turma_codigo"),
+                item.get("codigo"),
+                item.get("professor"),
+            )
+            if key not in vistos:
+                vistos.add(key)
+                resultado.append(item)
+            continue
+
+        for componente in _componentes_planejamento_regencia(row, using):
+            item = _componente_para_dict(
+                {
+                    "codigo": componente.codigo,
+                    "codigo_componente_territorio_saber": 0,
+                    "codigo_componente_curricular_pai": None,
+                    "descricao": componente.descricao,
+                    "regencia": False,
+                    "planejamento_regencia": True,
+                    "territorio_saber": False,
+                    "turma_codigo": row.get("turma_codigo"),
+                    "ano_letivo": row.get("ano_letivo"),
+                    "turno_turma": row.get("turno_turma"),
+                    "ano_turma": row.get("ano_turma"),
+                    "professor": row.get("professor"),
+                }
+            )
+            key = (
+                item.get("turma_codigo"),
+                item.get("codigo"),
+                item.get("professor"),
+            )
+            if key not in vistos:
+                vistos.add(key)
+                resultado.append(item)
+
+    return resultado
+
+
 class ComponentesRepository:
     """Queries ORM para componentes curriculares."""
 
@@ -121,7 +243,7 @@ class ComponentesRepository:
         codigo_turma: str,
         login: str,
     ) -> list[dict]:
-        """Lista componentes por turma e funcionário (EP-1 com codigoTurma)."""
+        """Lista componentes por turma e funcionário."""
         sql = (
             f"{_SQL_CT_JOIN_AC}"
             " WHERE ac.professor = %s AND ct.turma_codigo = %s"
@@ -133,7 +255,7 @@ class ComponentesRepository:
         self,
         login: str,
     ) -> list[dict]:
-        """Lista todos os componentes do funcionário sem filtro de turma (EP-1).
+        """Lista todos os componentes do funcionário sem filtro de turma.
 
         Replica o legado: deduplica por codigo e, em seguida, por
         codigo_componente_curricular_pai (colapsando filhos sob o pai).
@@ -169,29 +291,28 @@ class ComponentesRepository:
         codigo_turma: str,
         login: str,
     ) -> list[dict]:
-        """Lista componentes de planejamento de regência por turma (EP-1 planejamento)."""
+        """Lista componentes da turma aplicando planejamento de regência."""
         sql = (
             f"{_SQL_CT_JOIN_AC}"
             " WHERE ac.professor = %s AND ct.turma_codigo = %s"
-            " AND ct.planejamento_regencia = %s"
         )
-        rows = _raw(sql, [login, codigo_turma, True], self._DB)
-        return [_componente_para_dict(r) for r in rows]
+        rows = _raw(sql, [login, codigo_turma], self._DB)
+        return _expandir_planejamento_regencia(rows, self._DB)
 
     def listar_regencia_por_ano_turma(
         self,
         ano_turma: int,
     ) -> list[dict]:
-        """Lista componentes de regência por ano de turma (EP-2)."""
+        """Lista componentes de regência por ano de turma."""
         if ano_turma <= 0:
             codigos = list(
-                RegenciaComponenteCurricular.objects.using(self._DB)
+                ComponenteCurricularPlanejamentoRegencia.objects.using(self._DB)
                 .filter(ano__isnull=True)
                 .values_list("id_componente_curricular", flat=True)
             )
         else:
             codigos = list(
-                RegenciaComponenteCurricular.objects.using(self._DB)
+                ComponenteCurricularPlanejamentoRegencia.objects.using(self._DB)
                 .filter(ano=ano_turma)
                 .values_list("id_componente_curricular", flat=True)
             )
@@ -222,7 +343,7 @@ class ComponentesRepository:
         codigo_turma: str,
         login: str,
     ) -> bool:
-        """Verifica se a turma possui componente PAP para o funcionário (EP-3)."""
+        """Verifica se a turma possui componente PAP para o funcionário."""
         codigos = list(
             AtribuicaoComponente.objects.using(self._DB)
             .filter(turma_codigo=codigo_turma, professor=login)
@@ -239,21 +360,23 @@ class ComponentesRepository:
         ano_letivo: int,
         anos_escolares: list[str],
     ) -> list[dict]:
-        """Lista componentes da grade por UE, modalidade, ano e séries (EP-4)."""
+        """Lista componentes da grade por UE, modalidade, ano e séries."""
         sql = """
             SELECT DISTINCT
                 ct.componente_codigo AS codigo_componente_curricular,
-                ct.descricao         AS descricao_componente_curricular
+                cc.descricao         AS descricao_componente_curricular
             FROM componente_turma ct
+            INNER JOIN componente_curricular cc
+                    ON cc.codigo = ct.componente_codigo
             INNER JOIN turma t ON t.codigo::text = ct.turma_codigo
             WHERE t.ue_codigo = %s
               AND t.codigo_modalidade = %s
-              AND ct.ano_letivo = %s
+              AND t.ano_letivo = %s
         """
         params: list = [ue_codigo, modalidade, ano_letivo]
         if anos_escolares:
             placeholders = ",".join(["%s"] * len(anos_escolares))
-            sql += f" AND ct.ano_turma IN ({placeholders})"
+            sql += f" AND t.ano IN ({placeholders})"
             params.extend(anos_escolares)
         rows = _raw(sql, params, self._DB)
         return [_grade_para_componente(r) for r in rows]
@@ -264,7 +387,7 @@ class ComponentesRepository:
         modalidade: int,
         ano_letivo: int,
     ) -> list[dict]:
-        """Lista componentes de turmas programa por UE, modalidade e ano (EP-5)."""
+        """Lista componentes de turmas programa por UE, modalidade e ano."""
         modalidades_validas = {1, 3, 4, 5, 6}
         if modalidade not in modalidades_validas:
             return []
@@ -272,11 +395,13 @@ class ComponentesRepository:
         sql = """
             SELECT DISTINCT
                 ct.componente_codigo AS codigo_componente_curricular,
-                ct.descricao         AS descricao_componente_curricular
+                cc.descricao         AS descricao_componente_curricular
             FROM componente_turma ct
+            INNER JOIN componente_curricular cc
+                    ON cc.codigo = ct.componente_codigo
             INNER JOIN turma t ON t.codigo::text = ct.turma_codigo
             WHERE t.ue_codigo = %s
-              AND ct.ano_letivo = %s
+              AND t.ano_letivo = %s
               AND t.codigo_tipo_programa IS NOT NULL
         """
         params: list = [ue_codigo, ano_letivo]
@@ -284,7 +409,7 @@ class ComponentesRepository:
         if modalidade == 1:
             series = (23, 24, 25, 26, 116, 117, 118, 119, 225, 297)
             placeholders = ",".join(["%s"] * len(series))
-            sql += f" AND ct.codigo_serie_ensino IN ({placeholders})"
+            sql += f" AND t.codigo_serie_ensino IN ({placeholders})"
             params.extend(series)
 
         rows = _raw(sql, params, self._DB)
@@ -294,34 +419,53 @@ class ComponentesRepository:
         self,
         turmas: list[str],
     ) -> list[dict]:
-        """Lista componentes simplificados por lista de turmas (EP-6)."""
-        qs = ComponenteTurma.objects.using(self._DB).exclude(componente_codigo=0)
+        """Lista componentes simplificados por lista de turmas."""
+        sql = """\
+SELECT DISTINCT
+    ct.componente_codigo AS codigo,
+    cc.descricao
+  FROM componente_turma ct
+  JOIN componente_curricular cc
+    ON cc.codigo = ct.componente_codigo
+ WHERE ct.componente_codigo <> 0"""
+        params: list = []
         if turmas:
-            qs = qs.filter(turma_codigo__in=turmas)
-        return list(
-            qs.annotate(codigo=F("componente_codigo"))
-            .values("codigo", "descricao")
-            .distinct()
-            .order_by("descricao")
-        )
+            placeholders = ",".join(["%s"] * len(turmas))
+            sql += f" AND ct.turma_codigo IN ({placeholders})"
+            params.extend(turmas)
+        sql += " ORDER BY cc.descricao"
+        return _raw(sql, params, self._DB)
 
     def listar_por_lista_turmas(
         self,
         codigos_turmas: list[str],
+        adicionar_componentes_planejamento: bool = True,
     ) -> list[dict]:
-        """Lista componentes de múltiplas turmas para planejamento (EP-7)."""
+        """Lista componentes de múltiplas turmas para planejamento."""
         if not codigos_turmas:
             return []
         placeholders = ",".join(["%s"] * len(codigos_turmas))
         sql = f"""\
 SELECT {_CT_FIELDS}, ac.professor
   FROM componente_turma ct
+  LEFT JOIN componente_curricular cc
+    ON cc.codigo = ct.componente_codigo
+  LEFT JOIN LATERAL (
+    SELECT h.idcomponentecurricularpai
+      FROM componente_curricular_hierarquia h
+     WHERE h.idcomponentecurricular = ct.componente_codigo
+     ORDER BY h.vigencia DESC NULLS LAST
+     LIMIT 1
+  ) cch ON true
   JOIN turma t ON t.codigo::varchar = ct.turma_codigo AND t.extinta = false
   LEFT JOIN atribuicao_componente ac
          ON ac.turma_codigo = ct.turma_codigo
         AND ac.componente_codigo = ct.componente_codigo
  WHERE ct.turma_codigo IN ({placeholders})"""
         rows = _raw(sql, list(codigos_turmas), self._DB)
+        if adicionar_componentes_planejamento:
+            return _expandir_planejamento_regencia(rows, self._DB)
+
         seen: set[tuple] = set()
         result: list[dict] = []
         for r in rows:
@@ -335,7 +479,7 @@ SELECT {_CT_FIELDS}, ac.professor
         self,
         codigos_turmas: list[str],
     ) -> list[dict]:
-        """Lista componentes sem pós-processamento (EP-8)."""
+        """Lista componentes sem pós-processamento."""
         if not codigos_turmas:
             return []
         placeholders = ",".join(["%s"] * len(codigos_turmas))
@@ -343,10 +487,25 @@ SELECT {_CT_FIELDS}, ac.professor
 SELECT DISTINCT
     ct.componente_codigo AS codigo,
     ct.codigo_componente_territorio_saber,
-    ct.codigo_componente_curricular_pai,
-    ct.descricao, ct.regencia, ct.planejamento_regencia,
-    ct.territorio_saber, ct.turma_codigo, ct.ano_letivo
+    cch.idcomponentecurricularpai AS codigo_componente_curricular_pai,
+    cc.descricao,
+    COALESCE(cc.regencia, false) AS regencia,
+    false AS planejamento_regencia,
+    (ct.codigo_componente_territorio_saber IS NOT NULL) AS territorio_saber,
+    ct.turma_codigo,
+    t.ano_letivo,
+    t.duracao_turno AS turno_turma,
+    t.ano AS ano_turma
   FROM componente_turma ct
+  LEFT JOIN componente_curricular cc
+    ON cc.codigo = ct.componente_codigo
+  LEFT JOIN LATERAL (
+    SELECT h.idcomponentecurricularpai
+      FROM componente_curricular_hierarquia h
+     WHERE h.idcomponentecurricular = ct.componente_codigo
+     ORDER BY h.vigencia DESC NULLS LAST
+     LIMIT 1
+  ) cch ON true
   JOIN turma t ON t.codigo::varchar = ct.turma_codigo AND t.extinta = false
  WHERE ct.turma_codigo IN ({placeholders})"""
         rows = _raw(sql, list(codigos_turmas), self._DB)
@@ -355,7 +514,7 @@ SELECT DISTINCT
         return [_componente_para_dict(r) for r in rows]
 
     def listar_catalogo(self) -> list[dict]:
-        """Lista o catálogo completo de componentes (EP-9)."""
+        """Lista o catálogo completo de componentes."""
         return list(
             ComponenteCurricular.objects.using(self._DB)
             .values("codigo", "descricao")
@@ -369,7 +528,7 @@ SELECT DISTINCT
         componentes_curriculares: list[str],
         semestre: int | None,
     ) -> list[dict]:
-        """Lista vigência de componentes por turma e UE (EP-10).
+        """Lista vigência de componentes por turma e UE.
 
         JOIN entre componente_turma, turma e atribuicao_componente.
         Exclui turmas programa (tipo_turma=3) e atribuições externas.
@@ -388,10 +547,12 @@ SELECT DISTINCT
         sql = f"""
 SELECT DISTINCT
     ct.componente_codigo::varchar AS componente_codigo,
-    ct.descricao                  AS componente_descricao,
+    cc.descricao                  AS componente_descricao,
     ct.turma_codigo,
     t.data_inicio_turma
 FROM componente_turma ct
+JOIN componente_curricular cc
+  ON cc.codigo = ct.componente_codigo
 JOIN turma t
   ON t.codigo::varchar = ct.turma_codigo
 JOIN atribuicao_componente ac
@@ -410,7 +571,7 @@ WHERE t.ue_codigo = %s
         self,
         ano_letivo: int,
     ) -> list[dict]:
-        """Lista grade curricular completa por ano letivo (EP-11)."""
+        """Lista grade curricular completa por ano letivo."""
         return list(
             GradeComponenteCurricular.objects.using(self._DB)
             .filter(ano_letivo=ano_letivo)
@@ -429,10 +590,12 @@ WHERE t.ue_codigo = %s
         self,
         codigo_turma: str,
     ) -> list[str]:
-        """Lista componentes sem professor atribuído na turma (EP-12)."""
+        """Lista componentes sem professor atribuído na turma."""
         sql = """\
-SELECT ct.descricao
+SELECT cc.descricao
   FROM componente_turma ct
+  JOIN componente_curricular cc
+    ON cc.codigo = ct.componente_codigo
   JOIN turma t ON t.codigo::varchar = ct.turma_codigo AND t.extinta = false
   LEFT JOIN atribuicao_componente ac
          ON ac.turma_codigo = ct.turma_codigo
@@ -447,7 +610,7 @@ SELECT ct.descricao
         codigo_componente: int,
         data_base: date | None,
     ) -> list[dict]:
-        """Retorna agrupamentos correlacionados de território do saber (EP-13)."""
+        """Retorna agrupamentos correlacionados de território do saber."""
         origem = (
             AgrupamentoAtribuicaoTerritorioSaber.objects.using(self._DB)
             .filter(cod_agrupamento=codigo_componente)
@@ -482,7 +645,7 @@ SELECT ct.descricao
         codigos_agrupamentos: list[int],
         data_base: date | None,
     ) -> list[dict]:
-        """Retorna agrupamentos correlacionados em lote (EP-14)."""
+        """Retorna agrupamentos correlacionados em lote."""
         resultado: list[dict] = []
         vistos: set[int] = set()
         for cod in codigos_agrupamentos:
@@ -499,7 +662,7 @@ SELECT ct.descricao
         self,
         codigos_agrupamentos: list[int],
     ) -> list[dict]:
-        """Retorna agrupamentos de território do saber por IDs (EP-15)."""
+        """Retorna agrupamentos de território do saber por IDs."""
         agrupamentos = (
             AgrupamentoAtribuicaoTerritorioSaber.objects.using(self._DB)
             .filter(cod_agrupamento__in=codigos_agrupamentos)

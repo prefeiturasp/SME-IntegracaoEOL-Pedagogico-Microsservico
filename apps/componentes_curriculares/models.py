@@ -9,10 +9,14 @@ class ComponenteCurricular(ModeloBase):
 
     É a fonte de verdade para código e descrição de cada componente.
     Todas as outras tabelas do domínio referenciam o código daqui.
+    O campo ``regencia`` identifica os componentes pais de regência; os
+    componentes filhos usados no planejamento ficam em
+    ``ComponenteCurricularPlanejamentoRegencia``.
     """
 
     codigo = models.IntegerField(unique=True)
     descricao = models.CharField(max_length=300)
+    regencia = models.BooleanField(default=False)
 
     class Meta:
         db_table = "componente_curricular"
@@ -28,17 +32,7 @@ class ComponenteTurma(ModeloBase):
 
     componente_codigo = models.IntegerField()
     codigo_componente_territorio_saber = models.IntegerField(null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
-    codigo_componente_curricular_pai = models.IntegerField(null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
-    descricao = models.CharField(max_length=300)
-    regencia = models.BooleanField()
-    planejamento_regencia = models.BooleanField()
-    territorio_saber = models.BooleanField()
     turma_codigo = models.CharField(max_length=20)
-    tipo_escola = models.CharField(max_length=10, null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
-    turno_turma = models.IntegerField(null=True, blank=True)
-    ano_turma = models.CharField(max_length=10, null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
-    codigo_serie_ensino = models.IntegerField(null=True, blank=True)
-    ano_letivo = models.IntegerField()
 
     class Meta:
         db_table = "componente_turma"
@@ -54,7 +48,6 @@ class ComponenteTurma(ModeloBase):
             models.Index(fields=["turma_codigo"], name="idx_ct_turma_codigo"),
             models.Index(fields=["componente_codigo"],
                          name="idx_ct_componente_codigo"),
-            models.Index(fields=["ano_letivo"], name="idx_ct_ano_letivo"),
         ]
 
     def __str__(self) -> str:
@@ -223,15 +216,40 @@ class AgrupamentoAtribuicaoTerritorioSaber(ModeloBase):
         )
 
 
-class RegenciaComponenteCurricular(models.Model):
-    """Alimenta: GET anos/{anoTurma}/regencia."""
+class ComponenteCurricularPlanejamentoRegencia(models.Model):
+    """
+    Define os componentes curriculares que substituem um componente pai de
+    regência quando o consumidor solicita o fluxo de planejamento.
+
+    A tabela não identifica quais componentes são regência. Essa marca fica em
+    ``ComponenteCurricular.regencia``. Aqui ficam apenas os componentes filhos
+    que devem entrar no retorno com ``planejamento_regencia=True``. Quando há
+    linhas específicas para ``turno`` e ``ano`` da turma elas têm prioridade;
+    se não houver correspondência, são usadas as linhas fallback com ambos
+    nulos.
+    """
 
     id_componente_curricular = models.IntegerField()
     turno = models.IntegerField(null=True, blank=True)
     ano = models.IntegerField(null=True, blank=True)
 
     class Meta:
-        db_table = "regencia_componente_curricular"
+        db_table = "componente_curricular_planejamento_regencia"
+
+
+class ComponenteCurricularHierarquia(models.Model):
+    """Mapeia componentes filhos para seus componentes curriculares pais."""
+
+    id_componente_curricular_pai = models.IntegerField(
+        db_column="idcomponentecurricularpai"
+    )
+    id_componente_curricular = models.IntegerField(
+        db_column="idcomponentecurricular"
+    )
+    vigencia = models.DateTimeField()
+
+    class Meta:
+        db_table = "componente_curricular_hierarquia"
 
 
 class ComponenteCurricularPAP(models.Model):
