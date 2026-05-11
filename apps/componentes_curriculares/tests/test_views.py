@@ -116,3 +116,37 @@ class TestComponentesViews(TestCase):
                 response.status_code,
                 status.HTTP_200_OK,
             )
+
+    @patch(_SVC)
+    def test_grade_curricular_retorna_resposta_snake_case(
+        self,
+        mock_service,
+    ):
+        """Grade curricular deve retornar chaves snake_case."""
+        mock_service.return_value.listar_grade_curricular.return_value = [
+            {
+                "codigo_componente_curricular": 1,
+                "descricao_componente_curricular": "C1",
+                "codigo_ano_turma": "1",
+                "descricao_serie_ensino": "1 ano",
+                "codigo_serie_ensino": 1,
+                "modalidade": 5,
+            }
+        ]
+
+        response = self.get("/grade-curricular/2024/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data,
+            [
+                {
+                    "codigo_componente_curricular": 1,
+                    "descricao_componente_curricular": "C1",
+                    "codigo_ano_turma": "1",
+                    "descricao_serie_ensino": "1 ano",
+                    "codigo_serie_ensino": 1,
+                    "modalidade": 5,
+                }
+            ],
+        )

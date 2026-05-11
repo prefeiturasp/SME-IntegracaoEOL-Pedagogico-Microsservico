@@ -45,7 +45,7 @@ def _componente_para_dict(row: dict) -> dict:
             row.get("codigo_componente_territorio_saber") or 0
         ),
         "exibir_componente_eol": False,
-        "codigosTerritoriosAgrupamento": [],
+        "codigos_territorios_agrupamento": [],
     }
 
 
@@ -62,7 +62,7 @@ def _grade_para_componente(row: dict) -> dict:
         "turma_codigo": None,
         "exibir_componente_eol": True,
         "professor": None,
-        "codigosTerritoriosAgrupamento": [],
+        "codigos_territorios_agrupamento": [],
     }
 
 
@@ -86,7 +86,7 @@ def _agrupamento_para_dict(
         "turma_codigo": agrupamento.cod_turma,
         "exibir_componente_eol": True,
         "professor": agrupamento.rf_professor,
-        "codigosTerritoriosAgrupamento": codigos,
+        "codigos_territorios_agrupamento": codigos,
     }
 
 
