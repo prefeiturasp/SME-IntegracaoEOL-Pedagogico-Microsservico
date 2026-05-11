@@ -1,0 +1,98 @@
+from django.urls import path
+
+from apps.componentes_curriculares.api.views import (
+    AgrupamentosCorrelacionadosLoteView,
+    AgrupamentosCorrelacionadosView,
+    AgrupamentosTerritorioLoteView,
+    ComponentesCatalogoView,
+    ComponentesPorFuncionarioView,
+    ComponentesPorListaTurmasView,
+    ComponentesPorUeAnosEscolaresView,
+    ComponentesPorUeTurmasView,
+    ComponentesRegenciaView,
+    ComponentesSemAtribuicaoView,
+    ComponentesTurmaProgramaView,
+    ComponentesTurmasBrutosView,
+    GradeCurricularView,
+    ValidarPapView,
+    VigenciaComponentesView,
+)
+
+urlpatterns = [
+    # Rotas estáticas de /turmas antes das dinâmicas
+    path(
+        "turmas/brutos/",
+        ComponentesTurmasBrutosView.as_view(),
+        name="turmas-brutos",
+    ),
+    path(
+        "turmas/vigencia/",
+        VigenciaComponentesView.as_view(),
+        name="vigencia",
+    ),
+    path(
+        "turmas/",
+        ComponentesPorListaTurmasView.as_view(),
+        name="lista-turmas",
+    ),
+    # Rotas dinâmicas de /turmas
+    path(
+        "turmas/<str:codigo_turma>/pap/",
+        ValidarPapView.as_view(),
+        name="pap",
+    ),
+    path(
+        "turmas/<str:codigo_turma>/sem-atribuicao/",
+        ComponentesSemAtribuicaoView.as_view(),
+        name="sem-atribuicao",
+    ),
+    path(
+        "anos/<int:ano_turma>/regencia/",
+        ComponentesRegenciaView.as_view(),
+        name="regencia",
+    ),
+    path(
+        "funcionarios/<str:login>/",
+        ComponentesPorFuncionarioView.as_view(),
+        name="componentes-funcionario",
+    ),
+    path(
+        "ues/<str:ue_id>/modalidades/<int:modalidade>/anos/<int:ano_letivo>"
+        "/turmas-programa/",
+        ComponentesTurmaProgramaView.as_view(),
+        name="turma-programa",
+    ),
+    path(
+        "ues/<str:ue_id>/modalidades/<int:modalidade>/anos/<int:ano_letivo>/",
+        ComponentesPorUeAnosEscolaresView.as_view(),
+        name="ue-anos-escolares",
+    ),
+    path(
+        "ues/<str:ue_id>/turmas/",
+        ComponentesPorUeTurmasView.as_view(),
+        name="ue-turmas",
+    ),
+    path(
+        "grade-curricular/<int:ano_letivo>/",
+        GradeCurricularView.as_view(),
+        name="grade-curricular",
+    ),
+    path(
+        "<int:codigo_componente>/territorio-saber"
+        "/agrupamentos-correlacionados/",
+        AgrupamentosCorrelacionadosView.as_view(),
+        name="agrupamentos-correlacionados",
+    ),
+
+    path(
+        "territorio-saber/agrupamentos-correlacionados/",
+        AgrupamentosCorrelacionadosLoteView.as_view(),
+        name="agrupamentos-lote",
+    ),
+    path(
+        "territorio-saber/agrupamentos/",
+        AgrupamentosTerritorioLoteView.as_view(),
+        name="agrupamentos-territorio",
+    ),
+    path("", ComponentesCatalogoView.as_view(), name="catalogo"),
+]
