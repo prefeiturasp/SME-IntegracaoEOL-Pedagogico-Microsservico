@@ -65,7 +65,7 @@ class TestHelpersRepository(TestCase):
 
         self.assertEqual(resultado["codigo"], 138)
         self.assertEqual(resultado["descricao"], "LP")
-        self.assertTrue(resultado["exibir_componente_eol"])
+        self.assertFalse(resultado["exibir_componente_eol"])
         self.assertEqual(resultado["codigos_territorios_agrupamento"], [])
 
     def test_agrupamento_para_dict_com_experiencia(self) -> None:
@@ -244,6 +244,7 @@ class TestComponentesRepository(TestCase):
         )
 
         self.assertEqual(resultado[0]["codigo"], 6)
+        self.assertFalse(resultado[0]["exibir_componente_eol"])
         self.assertIn("t.ano IN", mock_raw.call_args[0][0])
         self.assertEqual(mock_raw.call_args[0][1], ["U1", 5, 2024, "1"])
 
