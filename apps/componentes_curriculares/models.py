@@ -9,12 +9,14 @@ class ComponenteCurricular(ModeloBase):
 
     É a fonte de verdade para código e descrição de cada componente.
     Todas as outras tabelas do domínio referenciam o código daqui.
-
-    Alimenta: GET /componentes-curriculares
+    O campo ``regencia`` identifica os componentes pais de regência; os
+    componentes filhos usados no planejamento ficam em
+    ``ComponenteCurricularPlanejamentoRegencia``.
     """
 
     codigo = models.IntegerField(unique=True)
     descricao = models.CharField(max_length=300)
+    regencia = models.BooleanField(default=False)
 
     class Meta:
         db_table = "componente_curricular"
@@ -25,50 +27,63 @@ class ComponenteCurricular(ModeloBase):
         return f"{self.codigo} - {self.descricao}"
 
 
-class ComponenteCurricularPorTurma(ModeloBase):
-    """Atribuição real de componente a uma turma e professor."""
+class ComponenteTurma(ModeloBase):
+    """Estrutura de componente curricular vinculado a uma turma (sem professor)."""
 
-    codigo = models.IntegerField()
+    componente_codigo = models.IntegerField()
     codigo_componente_territorio_saber = models.IntegerField(null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
-    codigo_componente_curricular_pai = models.IntegerField(null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
-    descricao = models.CharField(max_length=300)
-    regencia = models.BooleanField()
-    planejamento_regencia = models.BooleanField()
-    territorio_saber = models.BooleanField()
-    turma_codigo = models.CharField(
-        max_length=20, null=True, blank=True
-    )  # NOSONAR
-    exibir_componente_eol = models.BooleanField()
-    professor = models.CharField(
-        max_length=20, null=True, blank=True
-    )  # NOSONAR
+    turma_codigo = models.CharField(max_length=20)
+
+    class Meta:
+        db_table = "componente_turma"
+        verbose_name = "componente turma"
+        verbose_name_plural = "componentes turma"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["turma_codigo", "componente_codigo"],
+                name="uq_componente_turma",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["turma_codigo"], name="idx_ct_turma_codigo"),
+            models.Index(fields=["componente_codigo"],
+                         name="idx_ct_componente_codigo"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.componente_codigo} turma={self.turma_codigo}"
+
+
+class AtribuicaoComponente(ModeloBase):
+    """Atribuição de professor a turma/componente."""
+
+    turma_codigo = models.CharField(max_length=20)
+    componente_codigo = models.IntegerField()
+    professor = models.CharField(max_length=20, null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
+    atribuicao_externa = models.BooleanField()
     ano_letivo = models.IntegerField()
 
     class Meta:
-        db_table = "componente_curricular_por_turma"
-        verbose_name = "componente curricular por turma"
-        verbose_name_plural = "componentes curriculares por turma"
+        db_table = "atribuicao_componente"
+        verbose_name = "atribuição de componente"
+        verbose_name_plural = "atribuições de componente"
         constraints = [
             models.UniqueConstraint(
-                fields=["codigo", "turma_codigo", "professor"],
-                name="uq_componente_por_turma",
+                fields=["turma_codigo", "componente_codigo", "professor"],
+                name="uq_atribuicao_componente",
                 nulls_distinct=False,
             ),
         ]
         indexes = [
+            models.Index(fields=["turma_codigo"], name="idx_ac_turma_codigo"),
             models.Index(
-                fields=["turma_codigo"], name="idx_ccpt_turma_codigo"
-            ),
-            models.Index(fields=["codigo"], name="idx_ccpt_codigo"),
-            models.Index(fields=["ano_letivo"], name="idx_ccpt_ano_letivo"),
-            models.Index(
-                fields=["professor", "ano_letivo"], name="idx_ccpt_prof_ano"
+                fields=["professor", "ano_letivo"], name="idx_ac_prof_ano"
             ),
         ]
 
     def __str__(self) -> str:
         return (
-            f"{self.codigo} turma={self.turma_codigo}"
+            f"{self.componente_codigo} turma={self.turma_codigo}"
             f" professor={self.professor}"
         )
 
@@ -113,42 +128,7 @@ class ComponenteCurricularAgrupamento(ModeloBase):
         )
 
 
-class ComponenteInicioTurma(ModeloBase):
-    """Vigência de cada componente curricular numa turma concreta."""
-
-    componente_codigo = models.CharField(max_length=20)
-    componente_descricao = models.CharField(max_length=300)
-    turma_codigo = models.CharField(max_length=20)
-    data_inicio_turma = models.DateTimeField(null=True, blank=True)
-    ue_codigo = models.CharField(
-        max_length=10, null=True, blank=True
-    )  # NOSONAR
-    ano_letivo = models.IntegerField(null=True, blank=True)
-    tipo_periodicidade = models.IntegerField(null=True, blank=True)
-
-    class Meta:
-        db_table = "componente_inicio_turma"
-        verbose_name = "componente início turma"
-        verbose_name_plural = "componentes início turma"
-        constraints = [
-            models.UniqueConstraint(
-                fields=["componente_codigo", "turma_codigo"],
-                name="uq_componente_inicio_turma",
-            ),
-        ]
-        indexes = [
-            models.Index(
-                fields=["ue_codigo", "ano_letivo"],
-                name="idx_dat_ue_ano_letivo",
-            ),
-            models.Index(fields=["turma_codigo"], name="idx_dat_turma_codigo"),
-        ]
-
-    def __str__(self) -> str:
-        return f"{self.componente_codigo} turma={self.turma_codigo}"
-
-
-class GradeCurricularSerie(ModeloBase):
+class GradeComponenteCurricular(ModeloBase):
     """Catálogo de componentes previstos na grade por série e modalidade."""
 
     codigo_componente_curricular = models.IntegerField()
@@ -160,15 +140,16 @@ class GradeCurricularSerie(ModeloBase):
     ano_letivo = models.IntegerField()
 
     class Meta:
-        db_table = "grade_curricular_serie"
-        verbose_name = "grade curricular série"
-        verbose_name_plural = "grades curriculares série"
+        db_table = "grade_componente_curricular"
+        verbose_name = "grade componente curricular"
+        verbose_name_plural = "grades componente curricular"
         constraints = [
             models.UniqueConstraint(
                 fields=[
                     "codigo_componente_curricular",
                     "ano_letivo",
                     "modalidade",
+                    "codigo_ano_turma",
                 ],
                 name="uq_grade_curricular_serie",
                 nulls_distinct=False,
@@ -235,15 +216,40 @@ class AgrupamentoAtribuicaoTerritorioSaber(ModeloBase):
         )
 
 
-class RegenciaComponenteCurricular(models.Model):
-    """Alimenta: GET anos/{anoTurma}/regencia."""
+class ComponenteCurricularPlanejamentoRegencia(models.Model):
+    """
+    Define os componentes curriculares que substituem um componente pai de
+    regência quando o consumidor solicita o fluxo de planejamento.
+
+    A tabela não identifica quais componentes são regência. Essa marca fica em
+    ``ComponenteCurricular.regencia``. Aqui ficam apenas os componentes filhos
+    que devem entrar no retorno com ``planejamento_regencia=True``. Quando há
+    linhas específicas para ``turno`` e ``ano`` da turma elas têm prioridade;
+    se não houver correspondência, são usadas as linhas fallback com ambos
+    nulos.
+    """
 
     id_componente_curricular = models.IntegerField()
     turno = models.IntegerField(null=True, blank=True)
     ano = models.IntegerField(null=True, blank=True)
 
     class Meta:
-        db_table = "regenciacomponentecurricular"
+        db_table = "componente_curricular_planejamento_regencia"
+
+
+class ComponenteCurricularHierarquia(models.Model):
+    """Mapeia componentes filhos para seus componentes curriculares pais."""
+
+    id_componente_curricular_pai = models.IntegerField(
+        db_column="idcomponentecurricularpai"
+    )
+    id_componente_curricular = models.IntegerField(
+        db_column="idcomponentecurricular"
+    )
+    vigencia = models.DateTimeField()
+
+    class Meta:
+        db_table = "componente_curricular_hierarquia"
 
 
 class ComponenteCurricularPAP(models.Model):
@@ -252,4 +258,4 @@ class ComponenteCurricularPAP(models.Model):
     id_componente_curricular = models.IntegerField(unique=True)
 
     class Meta:
-        db_table = "componentecurricularpap"
+        db_table = "componente_curricular_pap"

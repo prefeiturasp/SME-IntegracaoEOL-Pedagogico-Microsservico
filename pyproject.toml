@@ -36,6 +36,7 @@ ignore = ["D203", "D212", "D104", "D105", "D106", "D107", "D102"]
 "**/apps.py" = ["D101"]
 "**/tests.py" = ["D100"]
 "**/tests/**/*.py" = ["D100", "D101"]
+"**/testes/**/*.py" = ["D100", "D101"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "pep257"
