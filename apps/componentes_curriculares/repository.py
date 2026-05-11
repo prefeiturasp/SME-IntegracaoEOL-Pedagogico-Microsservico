@@ -60,7 +60,7 @@ def _grade_para_componente(row: dict) -> dict:
         "planejamento_regencia": False,
         "territorio_saber": False,
         "turma_codigo": None,
-        "exibir_componente_eol": True,
+        "exibir_componente_eol": False,
         "professor": None,
         "codigos_territorios_agrupamento": [],
     }
