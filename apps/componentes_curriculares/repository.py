@@ -10,58 +10,18 @@ from apps.componentes_curriculares.models import (
     ComponenteCurricular,
     ComponenteCurricularPlanejamentoRegencia,
     ComponenteCurricularPAP,
-    ComponenteTurma,
     GradeComponenteCurricular,
 )
-
-_CT_FIELDS = """\
-    ct.componente_codigo AS codigo,
-    ct.codigo_componente_territorio_saber,
-    cch.idcomponentecurricularpai AS codigo_componente_curricular_pai,
-    cc.descricao,
-    COALESCE(cc.regencia, false) AS regencia,
-    false AS planejamento_regencia,
-    (ct.codigo_componente_territorio_saber IS NOT NULL) AS territorio_saber,
-    ct.turma_codigo,
-    t.ano_letivo,
-    t.duracao_turno AS turno_turma,
-    t.ano AS ano_turma"""
-
-_SQL_CT_JOIN_AC = f"""\
-SELECT {_CT_FIELDS}, ac.professor
-  FROM componente_turma ct
-  LEFT JOIN componente_curricular cc
-    ON cc.codigo = ct.componente_codigo
-  LEFT JOIN LATERAL (
-    SELECT h.idcomponentecurricularpai
-      FROM componente_curricular_hierarquia h
-     WHERE h.idcomponentecurricular = ct.componente_codigo
-     ORDER BY h.vigencia DESC NULLS LAST
-     LIMIT 1
-  ) cch ON true
-  JOIN turma t
-    ON t.codigo::varchar = ct.turma_codigo
-  JOIN atribuicao_componente ac
-    ON ac.turma_codigo = ct.turma_codigo
-   AND ac.componente_codigo = ct.componente_codigo"""
-
-_SQL_CT_LEFT_JOIN_AC = f"""\
-SELECT {_CT_FIELDS}, ac.professor
-  FROM componente_turma ct
-  LEFT JOIN componente_curricular cc
-    ON cc.codigo = ct.componente_codigo
-  LEFT JOIN LATERAL (
-    SELECT h.idcomponentecurricularpai
-      FROM componente_curricular_hierarquia h
-     WHERE h.idcomponentecurricular = ct.componente_codigo
-     ORDER BY h.vigencia DESC NULLS LAST
-     LIMIT 1
-  ) cch ON true
-  JOIN turma t
-    ON t.codigo::varchar = ct.turma_codigo
-  LEFT JOIN atribuicao_componente ac
-         ON ac.turma_codigo = ct.turma_codigo
-        AND ac.componente_codigo = ct.componente_codigo"""
+from apps.componentes_curriculares.queries import (
+    SQL_COMPONENTES_GRADE_POR_UE_MODALIDADE_ANO,
+    SQL_COMPONENTES_POR_LISTA_TURMAS,
+    SQL_COMPONENTES_SEM_ATRIBUICAO,
+    SQL_COMPONENTES_SIMPLIFICADOS_POR_TURMAS,
+    SQL_COMPONENTES_TURMA_COM_ATRIBUICAO,
+    SQL_COMPONENTES_TURMA_PROGRAMA,
+    SQL_COMPONENTES_TURMAS_BRUTOS,
+    SQL_VIGENCIA_COMPONENTES,
+)
 
 
 def _raw(sql: str, params: list, using: str = "default") -> list[dict]:
@@ -81,14 +41,16 @@ def _componente_para_dict(row: dict) -> dict:
     """
     return {
         **row,
-        "codigo_componente_territorio_saber": row.get("codigo_componente_territorio_saber") or 0,
+        "codigo_componente_territorio_saber": (
+            row.get("codigo_componente_territorio_saber") or 0
+        ),
         "exibir_componente_eol": False,
         "codigosTerritoriosAgrupamento": [],
     }
 
 
 def _grade_para_componente(row: dict) -> dict:
-    """Converte linha de GradeComponenteCurricular para shape de ComponenteCurricular."""
+    """Converte linha de GradeComponenteCurricular para shape de componente."""
     return {
         "codigo": row["codigo_componente_curricular"],
         "codigo_componente_territorio_saber": 0,
@@ -245,7 +207,7 @@ class ComponentesRepository:
     ) -> list[dict]:
         """Lista componentes por turma e funcionário."""
         sql = (
-            f"{_SQL_CT_JOIN_AC}"
+            f"{SQL_COMPONENTES_TURMA_COM_ATRIBUICAO}"
             " WHERE ac.professor = %s AND ct.turma_codigo = %s"
         )
         rows = _raw(sql, [login, codigo_turma], self._DB)
@@ -261,7 +223,7 @@ class ComponentesRepository:
         codigo_componente_curricular_pai (colapsando filhos sob o pai).
         turma_codigo é nulo porque não há filtro de turma.
         """
-        sql = f"{_SQL_CT_JOIN_AC} WHERE ac.professor = %s"
+        sql = f"{SQL_COMPONENTES_TURMA_COM_ATRIBUICAO} WHERE ac.professor = %s"
         rows = _raw(sql, [login], self._DB)
 
         # 1ª passagem: dedup por codigo (mesmo componente em turmas diferentes)
@@ -293,7 +255,7 @@ class ComponentesRepository:
     ) -> list[dict]:
         """Lista componentes da turma aplicando planejamento de regência."""
         sql = (
-            f"{_SQL_CT_JOIN_AC}"
+            f"{SQL_COMPONENTES_TURMA_COM_ATRIBUICAO}"
             " WHERE ac.professor = %s AND ct.turma_codigo = %s"
         )
         rows = _raw(sql, [login, codigo_turma], self._DB)
@@ -306,13 +268,15 @@ class ComponentesRepository:
         """Lista componentes de regência por ano de turma."""
         if ano_turma <= 0:
             codigos = list(
-                ComponenteCurricularPlanejamentoRegencia.objects.using(self._DB)
+                ComponenteCurricularPlanejamentoRegencia.objects.using(
+                    self._DB)
                 .filter(ano__isnull=True)
                 .values_list("id_componente_curricular", flat=True)
             )
         else:
             codigos = list(
-                ComponenteCurricularPlanejamentoRegencia.objects.using(self._DB)
+                ComponenteCurricularPlanejamentoRegencia.objects.using(
+                    self._DB)
                 .filter(ano=ano_turma)
                 .values_list("id_componente_curricular", flat=True)
             )
@@ -361,18 +325,7 @@ class ComponentesRepository:
         anos_escolares: list[str],
     ) -> list[dict]:
         """Lista componentes da grade por UE, modalidade, ano e séries."""
-        sql = """
-            SELECT DISTINCT
-                ct.componente_codigo AS codigo_componente_curricular,
-                cc.descricao         AS descricao_componente_curricular
-            FROM componente_turma ct
-            INNER JOIN componente_curricular cc
-                    ON cc.codigo = ct.componente_codigo
-            INNER JOIN turma t ON t.codigo::text = ct.turma_codigo
-            WHERE t.ue_codigo = %s
-              AND t.codigo_modalidade = %s
-              AND t.ano_letivo = %s
-        """
+        sql = SQL_COMPONENTES_GRADE_POR_UE_MODALIDADE_ANO
         params: list = [ue_codigo, modalidade, ano_letivo]
         if anos_escolares:
             placeholders = ",".join(["%s"] * len(anos_escolares))
@@ -392,18 +345,7 @@ class ComponentesRepository:
         if modalidade not in modalidades_validas:
             return []
 
-        sql = """
-            SELECT DISTINCT
-                ct.componente_codigo AS codigo_componente_curricular,
-                cc.descricao         AS descricao_componente_curricular
-            FROM componente_turma ct
-            INNER JOIN componente_curricular cc
-                    ON cc.codigo = ct.componente_codigo
-            INNER JOIN turma t ON t.codigo::text = ct.turma_codigo
-            WHERE t.ue_codigo = %s
-              AND t.ano_letivo = %s
-              AND t.codigo_tipo_programa IS NOT NULL
-        """
+        sql = SQL_COMPONENTES_TURMA_PROGRAMA
         params: list = [ue_codigo, ano_letivo]
 
         if modalidade == 1:
@@ -420,14 +362,7 @@ class ComponentesRepository:
         turmas: list[str],
     ) -> list[dict]:
         """Lista componentes simplificados por lista de turmas."""
-        sql = """\
-SELECT DISTINCT
-    ct.componente_codigo AS codigo,
-    cc.descricao
-  FROM componente_turma ct
-  JOIN componente_curricular cc
-    ON cc.codigo = ct.componente_codigo
- WHERE ct.componente_codigo <> 0"""
+        sql = SQL_COMPONENTES_SIMPLIFICADOS_POR_TURMAS
         params: list = []
         if turmas:
             placeholders = ",".join(["%s"] * len(turmas))
@@ -445,23 +380,9 @@ SELECT DISTINCT
         if not codigos_turmas:
             return []
         placeholders = ",".join(["%s"] * len(codigos_turmas))
-        sql = f"""\
-SELECT {_CT_FIELDS}, ac.professor
-  FROM componente_turma ct
-  LEFT JOIN componente_curricular cc
-    ON cc.codigo = ct.componente_codigo
-  LEFT JOIN LATERAL (
-    SELECT h.idcomponentecurricularpai
-      FROM componente_curricular_hierarquia h
-     WHERE h.idcomponentecurricular = ct.componente_codigo
-     ORDER BY h.vigencia DESC NULLS LAST
-     LIMIT 1
-  ) cch ON true
-  JOIN turma t ON t.codigo::varchar = ct.turma_codigo AND t.extinta = false
-  LEFT JOIN atribuicao_componente ac
-         ON ac.turma_codigo = ct.turma_codigo
-        AND ac.componente_codigo = ct.componente_codigo
- WHERE ct.turma_codigo IN ({placeholders})"""
+        sql = SQL_COMPONENTES_POR_LISTA_TURMAS.format(
+            placeholders=placeholders
+        )
         rows = _raw(sql, list(codigos_turmas), self._DB)
         if adicionar_componentes_planejamento:
             return _expandir_planejamento_regencia(rows, self._DB)
@@ -483,31 +404,7 @@ SELECT {_CT_FIELDS}, ac.professor
         if not codigos_turmas:
             return []
         placeholders = ",".join(["%s"] * len(codigos_turmas))
-        sql = f"""\
-SELECT DISTINCT
-    ct.componente_codigo AS codigo,
-    ct.codigo_componente_territorio_saber,
-    cch.idcomponentecurricularpai AS codigo_componente_curricular_pai,
-    cc.descricao,
-    COALESCE(cc.regencia, false) AS regencia,
-    false AS planejamento_regencia,
-    (ct.codigo_componente_territorio_saber IS NOT NULL) AS territorio_saber,
-    ct.turma_codigo,
-    t.ano_letivo,
-    t.duracao_turno AS turno_turma,
-    t.ano AS ano_turma
-  FROM componente_turma ct
-  LEFT JOIN componente_curricular cc
-    ON cc.codigo = ct.componente_codigo
-  LEFT JOIN LATERAL (
-    SELECT h.idcomponentecurricularpai
-      FROM componente_curricular_hierarquia h
-     WHERE h.idcomponentecurricular = ct.componente_codigo
-     ORDER BY h.vigencia DESC NULLS LAST
-     LIMIT 1
-  ) cch ON true
-  JOIN turma t ON t.codigo::varchar = ct.turma_codigo AND t.extinta = false
- WHERE ct.turma_codigo IN ({placeholders})"""
+        sql = SQL_COMPONENTES_TURMAS_BRUTOS.format(placeholders=placeholders)
         rows = _raw(sql, list(codigos_turmas), self._DB)
         for r in rows:
             r["professor"] = None
@@ -544,27 +441,10 @@ SELECT DISTINCT
         if semestre is not None:
             semestre_clause = "AND t.semestre = %s"
             params.append(semestre)
-        sql = f"""
-SELECT DISTINCT
-    ct.componente_codigo::varchar AS componente_codigo,
-    cc.descricao                  AS componente_descricao,
-    ct.turma_codigo,
-    t.data_inicio_turma
-FROM componente_turma ct
-JOIN componente_curricular cc
-  ON cc.codigo = ct.componente_codigo
-JOIN turma t
-  ON t.codigo::varchar = ct.turma_codigo
-JOIN atribuicao_componente ac
-  ON ac.turma_codigo = ct.turma_codigo
- AND ac.componente_codigo = ct.componente_codigo
- AND ac.atribuicao_externa = false
-WHERE t.ue_codigo = %s
-  AND t.ano_letivo = %s
-  AND ct.componente_codigo IN ({placeholders})
-  AND t.tipo_turma != 3
-  {semestre_clause}
-"""
+        sql = SQL_VIGENCIA_COMPONENTES.format(
+            placeholders=placeholders,
+            semestre_clause=semestre_clause,
+        )
         return _raw(sql, params, self._DB)
 
     def listar_grade_curricular(
@@ -591,18 +471,7 @@ WHERE t.ue_codigo = %s
         codigo_turma: str,
     ) -> list[str]:
         """Lista componentes sem professor atribuído na turma."""
-        sql = """\
-SELECT cc.descricao
-  FROM componente_turma ct
-  JOIN componente_curricular cc
-    ON cc.codigo = ct.componente_codigo
-  JOIN turma t ON t.codigo::varchar = ct.turma_codigo AND t.extinta = false
-  LEFT JOIN atribuicao_componente ac
-         ON ac.turma_codigo = ct.turma_codigo
-        AND ac.componente_codigo = ct.componente_codigo
- WHERE ct.turma_codigo = %s
-   AND ac.turma_codigo IS NULL"""
-        rows = _raw(sql, [codigo_turma], self._DB)
+        rows = _raw(SQL_COMPONENTES_SEM_ATRIBUICAO, [codigo_turma], self._DB)
         return [r["descricao"] for r in rows]
 
     def listar_agrupamentos_correlacionados(
