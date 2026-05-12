@@ -245,6 +245,8 @@ class TestComponentesRepository(TestCase):
 
         self.assertEqual(resultado[0]["codigo"], 6)
         self.assertFalse(resultado[0]["exibir_componente_eol"])
+        self.assertIn("t.codigo_modalidade_etapa = %s", mock_raw.call_args[0][0])
+        self.assertNotIn("t.tipo_turma != 4", mock_raw.call_args[0][0])
         self.assertIn("t.ano IN", mock_raw.call_args[0][0])
         self.assertEqual(mock_raw.call_args[0][1], ["U1", 5, 2024, "1"])
 

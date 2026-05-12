@@ -45,7 +45,7 @@ SQL_COMPONENTES_GRADE_POR_UE_MODALIDADE_ANO = """
             ON cc.codigo = ct.componente_codigo
     INNER JOIN turma t ON t.codigo::text = ct.turma_codigo
     WHERE t.ue_codigo = %s
-      AND t.codigo_modalidade = %s
+      AND t.codigo_modalidade_etapa = %s
       AND t.ano_letivo = %s
 """
 
