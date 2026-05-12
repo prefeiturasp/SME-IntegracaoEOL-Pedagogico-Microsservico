@@ -4,6 +4,10 @@ from datetime import date
 from django.db import connections
 from django.db.models import F
 
+from apps.componentes_curriculares.constants import (
+    CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL,
+    DESCRICAO_COMPONENTE_REGENCIA_CLASSE_INFANTIL,
+)
 from apps.componentes_curriculares.models import (
     AgrupamentoAtribuicaoTerritorioSaber,
     AtribuicaoComponente,
@@ -57,7 +61,7 @@ def _grade_para_componente(row: dict) -> dict:
     preservando ``codigo_componente_curricular_pai`` como referência da
     hierarquia usada na normalização.
     """
-    return {
+    item = {
         "codigo": row["codigo_componente_curricular"],
         "codigo_componente_territorio_saber": 0,
         "codigo_componente_curricular_pai": row.get(
@@ -72,6 +76,24 @@ def _grade_para_componente(row: dict) -> dict:
         "professor": None,
         "codigos_territorios_agrupamento": [],
     }
+    return _aplicar_regra_regencia_classe_infantil(item)
+
+
+def _aplicar_regra_regencia_classe_infantil(item: dict) -> dict:
+    """Replica regra legado para o pai de regência da educação infantil.
+
+    O EOL sincronizado pelo ETL mantém o componente 512 como
+    ``ED.INF. EMEI 4 HS`` e ``regencia=False``. No contrato pedagógico legado,
+    quando esse componente aparece como pai de grade/turma-programa, ele é
+    exposto como ``Regência de classe infantil`` e ``regencia=True``.
+    """
+    if item["codigo"] == CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL:
+        item["codigo_componente_curricular_pai"] = (
+            CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL
+        )
+        item["descricao"] = DESCRICAO_COMPONENTE_REGENCIA_CLASSE_INFANTIL
+        item["regencia"] = True
+    return item
 
 
 def _agrupamento_para_dict(

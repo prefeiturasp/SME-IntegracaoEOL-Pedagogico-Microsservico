@@ -70,6 +70,22 @@ class TestHelpersRepository(TestCase):
         self.assertFalse(resultado["exibir_componente_eol"])
         self.assertEqual(resultado["codigos_territorios_agrupamento"], [])
 
+    def test_grade_para_componente_aplica_regencia_classe_infantil(self) -> None:
+        """_grade_para_componente replica descrição/regência legado do 512."""
+        resultado = _grade_para_componente(
+            {
+                "codigo_componente_curricular": 512,
+                "codigo_componente_curricular_pai": 512,
+                "descricao_componente_curricular": "ED.INF. EMEI 4 HS",
+                "regencia": False,
+            }
+        )
+
+        self.assertEqual(resultado["codigo"], 512)
+        self.assertEqual(resultado["codigo_componente_curricular_pai"], 512)
+        self.assertEqual(resultado["descricao"], "Regência de classe infantil")
+        self.assertTrue(resultado["regencia"])
+
     def test_agrupamento_para_dict_com_experiencia(self) -> None:
         """_agrupamento_para_dict concatena território e experiência."""
         agrupamento = _make_agrupamento(
