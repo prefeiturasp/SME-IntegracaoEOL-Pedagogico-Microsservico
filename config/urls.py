@@ -29,4 +29,8 @@ urlpatterns = [
         "api/v1/pedagogico/componentes-curriculares/",
         include("apps.componentes_curriculares.api.urls"),
     ),
+    path(
+        "api/v1/pedagogico/",
+        include("apps.turmas.api.urls"),
+    ),
 ]
