@@ -60,11 +60,13 @@ class TestHelpersRepository(TestCase):
             {
                 "codigo_componente_curricular": 138,
                 "descricao_componente_curricular": "LP",
+                "regencia": True,
             }
         )
 
         self.assertEqual(resultado["codigo"], 138)
         self.assertEqual(resultado["descricao"], "LP")
+        self.assertTrue(resultado["regencia"])
         self.assertFalse(resultado["exibir_componente_eol"])
         self.assertEqual(resultado["codigos_territorios_agrupamento"], [])
 
@@ -232,7 +234,9 @@ class TestComponentesRepository(TestCase):
         mock_raw.return_value = [
             {
                 "codigo_componente_curricular": 6,
-                "descricao_componente_curricular": "C6",
+                "codigo_componente_curricular_pai": 1,
+                "descricao_componente_curricular": "Pai C1",
+                "regencia": True,
             }
         ]
 
@@ -244,7 +248,14 @@ class TestComponentesRepository(TestCase):
         )
 
         self.assertEqual(resultado[0]["codigo"], 6)
+        self.assertEqual(resultado[0]["codigo_componente_curricular_pai"], 1)
+        self.assertEqual(resultado[0]["descricao"], "Pai C1")
+        self.assertTrue(resultado[0]["regencia"])
         self.assertFalse(resultado[0]["exibir_componente_eol"])
+        self.assertIn("COALESCE(", mock_raw.call_args[0][0])
+        self.assertIn("ccp.descricao", mock_raw.call_args[0][0])
+        self.assertIn("ccp.regencia", mock_raw.call_args[0][0])
+        self.assertIn("cch.idcomponentecurricularpai", mock_raw.call_args[0][0])
         self.assertIn("t.codigo_modalidade_etapa = %s", mock_raw.call_args[0][0])
         self.assertNotIn("t.tipo_turma != 4", mock_raw.call_args[0][0])
         self.assertIn("t.ano IN", mock_raw.call_args[0][0])
@@ -265,7 +276,14 @@ class TestComponentesRepository(TestCase):
     @patch("apps.componentes_curriculares.repository._raw")
     def test_listar_turma_programa_educacao_infantil(self, mock_raw) -> None:
         """EP-5 educação infantil aplica filtro de série."""
-        mock_raw.return_value = []
+        mock_raw.return_value = [
+            {
+                "codigo_componente_curricular": 6,
+                "codigo_componente_curricular_pai": 1,
+                "descricao_componente_curricular": "Pai C1",
+                "regencia": True,
+            }
+        ]
 
         resultado = self.repo.listar_turma_programa_por_ue_modalidade_ano(
             "U1",
@@ -273,7 +291,11 @@ class TestComponentesRepository(TestCase):
             2024,
         )
 
-        self.assertEqual(resultado, [])
+        self.assertEqual(resultado[0]["codigo_componente_curricular_pai"], 1)
+        self.assertEqual(resultado[0]["descricao"], "Pai C1")
+        self.assertTrue(resultado[0]["regencia"])
+        self.assertIn("ccp.descricao", mock_raw.call_args[0][0])
+        self.assertIn("cch.idcomponentecurricularpai", mock_raw.call_args[0][0])
         self.assertIn("t.tipo_turma != 4", mock_raw.call_args[0][0])
         self.assertIn("t.codigo_serie_ensino IN", mock_raw.call_args[0][0])
 

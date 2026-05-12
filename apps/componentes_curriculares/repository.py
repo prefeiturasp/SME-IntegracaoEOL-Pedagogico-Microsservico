@@ -50,13 +50,21 @@ def _componente_para_dict(row: dict) -> dict:
 
 
 def _grade_para_componente(row: dict) -> dict:
-    """Converte linha de GradeComponenteCurricular para shape de componente."""
+    """Converte linha de grade/turma-programa para shape de componente.
+
+    Esses endpoints seguem a regra: quando a query já normalizou um filho para
+    o componente pai, o DTO deve expor o código, descrição e regência do pai,
+    preservando ``codigo_componente_curricular_pai`` como referência da
+    hierarquia usada na normalização.
+    """
     return {
         "codigo": row["codigo_componente_curricular"],
         "codigo_componente_territorio_saber": 0,
-        "codigo_componente_curricular_pai": None,
+        "codigo_componente_curricular_pai": row.get(
+            "codigo_componente_curricular_pai"
+        ),
         "descricao": row["descricao_componente_curricular"],
-        "regencia": False,
+        "regencia": row.get("regencia", False),
         "planejamento_regencia": False,
         "territorio_saber": False,
         "turma_codigo": None,

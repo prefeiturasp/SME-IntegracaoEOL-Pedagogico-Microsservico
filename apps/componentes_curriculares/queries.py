@@ -36,26 +36,74 @@ SELECT {COMPONENTE_TURMA_CAMPOS_RESPOSTA}, ac.professor
     ON ac.turma_codigo = ct.turma_codigo
    AND ac.componente_codigo = ct.componente_codigo"""
 
+# Regra:
+# quando um componente da turma possui hierarquia, o endpoint retorna o
+# componente pai como item da grade. Ex.: 512/513 colapsam em 512
+# "Regência de classe infantil"; o DISTINCT remove os filhos duplicados.
 SQL_COMPONENTES_GRADE_POR_UE_MODALIDADE_ANO = """
     SELECT DISTINCT
-        ct.componente_codigo AS codigo_componente_curricular,
-        cc.descricao         AS descricao_componente_curricular
+        COALESCE(
+            ccp.codigo,
+            ct.componente_codigo
+        ) AS codigo_componente_curricular,
+        cch.idcomponentecurricularpai AS codigo_componente_curricular_pai,
+        COALESCE(
+            ccp.descricao,
+            cc.descricao
+        ) AS descricao_componente_curricular,
+        COALESCE(
+            ccp.regencia,
+            cc.regencia,
+            false
+        ) AS regencia
     FROM componente_turma ct
     INNER JOIN componente_curricular cc
             ON cc.codigo = ct.componente_codigo
+    LEFT JOIN LATERAL (
+        SELECT h.idcomponentecurricularpai
+          FROM componente_curricular_hierarquia h
+         WHERE h.idcomponentecurricular = ct.componente_codigo
+         ORDER BY h.vigencia DESC NULLS LAST
+         LIMIT 1
+    ) cch ON true
+    LEFT JOIN componente_curricular ccp
+           ON ccp.codigo = cch.idcomponentecurricularpai
     INNER JOIN turma t ON t.codigo::text = ct.turma_codigo
     WHERE t.ue_codigo = %s
       AND t.codigo_modalidade_etapa = %s
       AND t.ano_letivo = %s
 """
 
+# Turmas programa seguem a mesma normalização de componente pai da grade,
+# mantendo o filtro que remove turmas de evento para atribuição.
 SQL_COMPONENTES_TURMA_PROGRAMA = f"""
     SELECT DISTINCT
-        ct.componente_codigo AS codigo_componente_curricular,
-        cc.descricao         AS descricao_componente_curricular
+        COALESCE(
+            ccp.codigo,
+            ct.componente_codigo
+        ) AS codigo_componente_curricular,
+        cch.idcomponentecurricularpai AS codigo_componente_curricular_pai,
+        COALESCE(
+            ccp.descricao,
+            cc.descricao
+        ) AS descricao_componente_curricular,
+        COALESCE(
+            ccp.regencia,
+            cc.regencia,
+            false
+        ) AS regencia
     FROM componente_turma ct
     INNER JOIN componente_curricular cc
             ON cc.codigo = ct.componente_codigo
+    LEFT JOIN LATERAL (
+        SELECT h.idcomponentecurricularpai
+          FROM componente_curricular_hierarquia h
+         WHERE h.idcomponentecurricular = ct.componente_codigo
+         ORDER BY h.vigencia DESC NULLS LAST
+         LIMIT 1
+    ) cch ON true
+    LEFT JOIN componente_curricular ccp
+           ON ccp.codigo = cch.idcomponentecurricularpai
     INNER JOIN turma t ON t.codigo::text = ct.turma_codigo
     WHERE t.ue_codigo = %s
       AND t.ano_letivo = %s
