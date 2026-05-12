@@ -359,11 +359,15 @@ class ComponentesRepository:
 
     def listar_por_ue_e_turmas(
         self,
+        ue_id: str,
         turmas: list[str],
     ) -> list[dict]:
         """Lista componentes simplificados por lista de turmas."""
         sql = SQL_COMPONENTES_SIMPLIFICADOS_POR_TURMAS
         params: list = []
+        if ue_id and ue_id != "-99":
+            sql += " AND t.ue_codigo = %s"
+            params.append(ue_id)
         if turmas:
             placeholders = ",".join(["%s"] * len(turmas))
             sql += f" AND ct.turma_codigo IN ({placeholders})"

@@ -77,10 +77,11 @@ class ComponentesService:
 
     def listar_por_ue_e_turmas(
         self,
+        ue_id: str,
         turmas: list[str],
     ) -> list[dict]:
         """Retorna componentes simplificados por lista de turmas."""
-        return self._repo.listar_por_ue_e_turmas(turmas)
+        return self._repo.listar_por_ue_e_turmas(ue_id, turmas)
 
     def listar_por_lista_turmas(
         self,

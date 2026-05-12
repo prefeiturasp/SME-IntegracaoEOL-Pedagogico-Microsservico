@@ -64,6 +64,8 @@ SELECT DISTINCT
   FROM componente_turma ct
   JOIN componente_curricular cc
     ON cc.codigo = ct.componente_codigo
+  JOIN turma t
+    ON t.codigo::varchar = ct.turma_codigo
  WHERE ct.componente_codigo <> 0"""
 
 SQL_COMPONENTES_POR_LISTA_TURMAS = f"""\

@@ -150,3 +150,16 @@ class TestComponentesViews(TestCase):
                 }
             ],
         )
+
+    @patch(_SVC)
+    def test_ue_turmas_repassa_ue_id_para_service(self, mock_service):
+        """Endpoint de UE/turmas deve filtrar pela UE do path."""
+        mock_service.return_value.listar_por_ue_e_turmas.return_value = []
+
+        response = self.get("/ues/100013/turmas/?turmas=T1")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mock_service.return_value.listar_por_ue_e_turmas.assert_called_once_with(
+            "100013",
+            ["T1"],
+        )
