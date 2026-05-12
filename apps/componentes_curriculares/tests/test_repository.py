@@ -279,10 +279,23 @@ class TestComponentesRepository(TestCase):
         """EP-6 lista componentes simplificados por turmas."""
         mock_raw.return_value = [{"codigo": 8, "descricao": "Matemática"}]
 
-        resultado = self.repo.listar_por_ue_e_turmas(["T8"])
+        resultado = self.repo.listar_por_ue_e_turmas("U1", ["T8"])
 
         self.assertEqual(resultado, [{"codigo": 8, "descricao": "Matemática"}])
+        self.assertIn("t.ue_codigo = %s", mock_raw.call_args[0][0])
         self.assertIn("ct.turma_codigo IN", mock_raw.call_args[0][0])
+        self.assertEqual(mock_raw.call_args[0][1], ["U1", "T8"])
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_ue_e_turmas_wildcard_ue(self, mock_raw) -> None:
+        """EP-6 preserva -99 como wildcard de UE, conforme legado."""
+        mock_raw.return_value = []
+
+        resultado = self.repo.listar_por_ue_e_turmas("-99", [])
+
+        self.assertEqual(resultado, [])
+        self.assertNotIn("t.ue_codigo = %s", mock_raw.call_args[0][0])
+        self.assertEqual(mock_raw.call_args[0][1], [])
 
     def test_listar_por_lista_turmas_vazio(self) -> None:
         """EP-7 retorna lista vazia quando não há turmas."""

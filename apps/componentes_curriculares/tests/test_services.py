@@ -148,6 +148,7 @@ class TestComponentesService(SimpleTestCase):
         self.assert_delega(
             "listar_por_ue_e_turmas",
             "listar_por_ue_e_turmas",
+            "U1",
             ["T1"],
         )
 

@@ -233,7 +233,7 @@ class ComponentesPorUeTurmasView(BaseAPIView):
 
         turmas: list[str] = request.query_params.getlist("turmas")
         service = ComponentesService()
-        dados = service.listar_por_ue_e_turmas(turmas)
+        dados = service.listar_por_ue_e_turmas(ue_id, turmas)
         return Response(dados)
 
 
