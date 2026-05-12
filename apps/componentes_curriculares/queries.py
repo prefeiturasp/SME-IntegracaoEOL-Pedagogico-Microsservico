@@ -1,5 +1,10 @@
 """Queries SQL do domínio Componentes Curriculares."""
 
+from apps.componentes_curriculares.constants import (
+    TIPO_TURMA_EVENTO_PARA_ATRIBUICAO,
+    TIPO_TURMA_PROGRAMA,
+)
+
 COMPONENTE_TURMA_CAMPOS_RESPOSTA = """\
     ct.componente_codigo AS codigo,
     ct.codigo_componente_territorio_saber,
@@ -44,7 +49,7 @@ SQL_COMPONENTES_GRADE_POR_UE_MODALIDADE_ANO = """
       AND t.ano_letivo = %s
 """
 
-SQL_COMPONENTES_TURMA_PROGRAMA = """
+SQL_COMPONENTES_TURMA_PROGRAMA = f"""
     SELECT DISTINCT
         ct.componente_codigo AS codigo_componente_curricular,
         cc.descricao         AS descricao_componente_curricular
@@ -55,6 +60,7 @@ SQL_COMPONENTES_TURMA_PROGRAMA = """
     WHERE t.ue_codigo = %s
       AND t.ano_letivo = %s
       AND t.codigo_tipo_programa IS NOT NULL
+      AND t.tipo_turma != {TIPO_TURMA_EVENTO_PARA_ATRIBUICAO}
 """
 
 SQL_COMPONENTES_SIMPLIFICADOS_POR_TURMAS = """\
@@ -112,7 +118,7 @@ SELECT DISTINCT
   JOIN turma t ON t.codigo::varchar = ct.turma_codigo AND t.extinta = false
  WHERE ct.turma_codigo IN ({placeholders})"""
 
-SQL_VIGENCIA_COMPONENTES = """
+SQL_VIGENCIA_COMPONENTES = f"""
 SELECT DISTINCT
     ct.componente_codigo::varchar AS componente_codigo,
     cc.descricao                  AS componente_descricao,
@@ -129,9 +135,9 @@ JOIN atribuicao_componente ac
  AND ac.atribuicao_externa = false
 WHERE t.ue_codigo = %s
   AND t.ano_letivo = %s
-  AND ct.componente_codigo IN ({placeholders})
-  AND t.tipo_turma != 3
-  {semestre_clause}
+  AND ct.componente_codigo IN ({{placeholders}})
+  AND t.tipo_turma != {TIPO_TURMA_PROGRAMA}
+  {{semestre_clause}}
 """
 
 SQL_COMPONENTES_SEM_ATRIBUICAO = """\

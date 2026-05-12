@@ -272,6 +272,7 @@ class TestComponentesRepository(TestCase):
         )
 
         self.assertEqual(resultado, [])
+        self.assertIn("t.tipo_turma != 4", mock_raw.call_args[0][0])
         self.assertIn("t.codigo_serie_ensino IN", mock_raw.call_args[0][0])
 
     @patch("apps.componentes_curriculares.repository._raw")
