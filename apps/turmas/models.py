@@ -1,10 +1,7 @@
 """Modelos de leitura do domínio Turmas.
 
-Turma usa managed=False: tabela criada e gerenciada pelo ETL.
+Turma usa managed=False — tabela gerenciada pelo ETL.
 TurmaItinerarioEnsinoMedio é fixture local (managed=True).
-
-AtribuicaoComponente vive em apps.componentes_curriculares.models e deve
-ser importada de lá quando necessário no repository.
 """
 
 from django.db import models
@@ -15,17 +12,8 @@ from apps.core.models import ModeloBase
 class Turma(ModeloBase):
     """Dados cadastrais de uma turma no EOL.
 
-    Fonte de verdade para todos os endpoints de turma. Campos derivados
-    (modalidade, semestre, ensino_especial, extinta) chegam prontos pelo ETL
-    e não devem ser recalculados no MS.
-
-    Alimenta:
-    - POST turmas-regulares       (tipo_turma=1)
-    - POST turmas-programa        (tipo_turma=3 ou codigo_tipo_programa IS NOT NULL)
-    - POST listar-turmas
-    - GET  {codigoTurma}/dados
-    - GET  /api/ues/{ue}/turmas/{cod}/sincronizacoes-institucionais
-    - GET  ue/{ue}/sincronizacoes-institucionais/anosLetivos
+    Campos derivados (modalidade, semestre, ensino_especial, extinta)
+    chegam prontos pelo ETL e não devem ser recalculados no MS.
     """
 
     codigo = models.BigIntegerField(unique=True)
@@ -71,7 +59,6 @@ class TurmaItinerarioEnsinoMedio(models.Model):
     """Fixture local de itinerários do Ensino Médio.
 
     Não sincronizada pelo ETL — populada via fixture Django.
-    Alimenta: GET itinerario/ensino-medio
     """
 
     nome = models.CharField(max_length=100)

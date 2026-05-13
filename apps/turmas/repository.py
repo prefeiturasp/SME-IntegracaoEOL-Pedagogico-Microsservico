@@ -1,7 +1,6 @@
 """Repository do domínio Turmas.
 
-Todas as funções executam SELECTs no banco e retornam dicts em camelCase
-para compatibilidade com o contrato legado EOL/SGP.
+Executa SELECTs no banco e retorna dicts em camelCase para o legado EOL/SGP.
 Sem regras de negócio — apenas consultas ORM.
 """
 
@@ -103,7 +102,7 @@ def _turma_para_historico(t: Turma) -> dict:
 
 
 class TurmasRepository:
-    """Queries ORM para o domínio Turmas."""
+    """Queries ORM para o domínio Turmas"""
 
     _DB = "default"
 
@@ -112,7 +111,7 @@ class TurmasRepository:
     # -------------------------------------------------------------------------
 
     def turmas_regulares(self, codigos: list[int]) -> list[dict]:
-        """Retorna turmas regulares (tipo_turma=1) dentro da lista de códigos."""
+        """Turmas regulares (tipo_turma=1) filtradas por lista de códigos"""
         turmas = Turma.objects.using(self._DB).filter(
             tipo_turma=1,
             codigo__in=codigos,
@@ -124,7 +123,7 @@ class TurmasRepository:
     # -------------------------------------------------------------------------
 
     def turmas_programa(self, codigos: list[int]) -> list[dict]:
-        """Retorna turmas programa (tipo_turma=3) dentro da lista de códigos."""
+        """Turmas programa (tipo_turma=3) filtradas por lista de códigos"""
         turmas = Turma.objects.using(self._DB).filter(
             tipo_turma=3,
             codigo__in=codigos,
@@ -136,7 +135,7 @@ class TurmasRepository:
     # -------------------------------------------------------------------------
 
     def listar_turmas(self, codigos: list[int]) -> list[dict]:
-        """Retorna turmas pelos códigos fornecidos, sem filtro de tipo."""
+        """Turmas pelos códigos fornecidos, sem filtro de tipo"""
         turmas = Turma.objects.using(self._DB).filter(codigo__in=codigos)
         return [_turma_para_lista(t) for t in turmas]
 
@@ -145,7 +144,7 @@ class TurmasRepository:
     # -------------------------------------------------------------------------
 
     def dados_turma(self, codigo: int) -> dict | None:
-        """Retorna todos os dados cadastrais de uma turma. None se não existir."""
+        """Dados cadastrais de uma turma; None se não encontrada"""
         turma = Turma.objects.using(self._DB).filter(codigo=codigo).first()
         if turma is None:
             return None
@@ -160,7 +159,7 @@ class TurmasRepository:
         ue_codigo: str,
         turma_codigo: int,
     ) -> dict | None:
-        """Retorna dados de sincronização institucional de uma turma por UE."""
+        """Sincronização institucional de uma turma por UE; None se não encontrada"""
         turma = (
             Turma.objects.using(self._DB)
             .filter(ue_codigo=ue_codigo, codigo=turma_codigo)
@@ -175,7 +174,7 @@ class TurmasRepository:
     # -------------------------------------------------------------------------
 
     def anos_letivos_por_ue(self, ue_codigo: str) -> list[int]:
-        """Retorna anos letivos distintos com turmas na UE (exclui tipo_turma=4)."""
+        """Anos letivos distintos com turmas na UE, excluindo tipo_turma=4"""
         return list(
             Turma.objects.using(self._DB)
             .filter(ue_codigo=ue_codigo)
@@ -194,10 +193,9 @@ class TurmasRepository:
         ano_letivo: int,
         professor_rf: str,
     ) -> list[dict]:
-        """Retorna turmas históricas do professor via AtribuicaoComponente.
+        """Turmas históricas do professor via AtribuicaoComponente.
 
-        O join entre atribuicao_componente.turma_codigo (varchar) e
-        turma.codigo (bigint) é normalizado em Python antes do filtro ORM.
+        turma_codigo (varchar) é normalizado para int antes do filtro ORM.
         """
         codigos_str = (
             AtribuicaoComponente.objects.using(self._DB)
@@ -218,7 +216,7 @@ class TurmasRepository:
     # -------------------------------------------------------------------------
 
     def itinerarios_ensino_medio(self) -> list[dict]:
-        """Retorna os itinerários do Ensino Médio ordenados por nome."""
+        """Itinerários do Ensino Médio ordenados por nome"""
         return [
             {"nome": i.nome, "serie": i.serie}
             for i in TurmaItinerarioEnsinoMedio.objects.using(self._DB).order_by("nome")
