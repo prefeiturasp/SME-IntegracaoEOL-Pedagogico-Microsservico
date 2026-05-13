@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 
 class TurmaListSerializer(serializers.Serializer):
-    """Contrato de lista de turmas (turmas-regulares, turmas-programa, listar-turmas)."""
+    """Usado em turmas-regulares, turmas-programa e listar-turmas."""
 
     codigo = serializers.IntegerField()
     nome_turma = serializers.CharField()
@@ -70,7 +70,7 @@ class TurmaSincronizacaoSerializer(serializers.Serializer):
 
 
 class TurmaHistoricaSerializer(serializers.Serializer):
-    """Contrato TurmaDTO — GET turmas-historicas-geral."""
+    """TurmaDTO — GET turmas-historicas-geral."""
 
     ano = serializers.CharField(allow_null=True)
     ano_letivo = serializers.IntegerField()

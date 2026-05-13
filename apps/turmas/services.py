@@ -1,14 +1,9 @@
-"""Services do domínio Turmas.
-
-Orquestra o fluxo de negócio de cada endpoint. Não monta SQL — apenas
-decide qual método do repository chamar e aplica decisões de contrato.
-"""
+"""Services do domínio Turmas."""
 
 from apps.turmas.repository import TurmasRepository
 
 
 class TurmasService:
-    """Orquestra as operações do domínio Turmas."""
 
     def __init__(self) -> None:
         self._repo = TurmasRepository()

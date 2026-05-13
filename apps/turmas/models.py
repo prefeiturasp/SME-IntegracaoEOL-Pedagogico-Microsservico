@@ -10,12 +10,6 @@ from apps.core.models import ModeloBase
 
 
 class Turma(ModeloBase):
-    """Dados cadastrais de uma turma no EOL.
-
-    Campos derivados (modalidade, semestre, ensino_especial, extinta)
-    chegam prontos pelo ETL e não devem ser recalculados no MS.
-    """
-
     codigo = models.BigIntegerField(unique=True)
     ano_letivo = models.IntegerField()
     ano = models.CharField(max_length=5, null=True, blank=True)  # NOSONAR

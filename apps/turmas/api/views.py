@@ -20,7 +20,6 @@ _TAG = ["Turmas"]
 
 class TurmasRegularesView(BaseAPIView):
     """Filtra turmas regulares (tipo_turma=1) dentro de uma lista de códigos."""
-
     @extend_schema(
         tags=_TAG,
         summary="Buscar turmas regulares por lista de códigos",
@@ -36,7 +35,6 @@ class TurmasRegularesView(BaseAPIView):
 
 class TurmasProgramaView(BaseAPIView):
     """Filtra turmas programa (tipo_turma=3) dentro de uma lista de códigos."""
-
     @extend_schema(
         tags=_TAG,
         summary="Buscar turmas programa por lista de códigos",
@@ -51,7 +49,6 @@ class TurmasProgramaView(BaseAPIView):
 
 
 class ListarTurmasView(BaseAPIView):
-    """Retorna turmas pelos códigos fornecidos, sem filtro de tipo."""
 
     @extend_schema(
         tags=_TAG,
@@ -68,7 +65,6 @@ class ListarTurmasView(BaseAPIView):
 
 class TurmaDadosView(BaseAPIView):
     """Retorna dados canônicos de uma turma."""
-
     @extend_schema(
         tags=_TAG,
         summary="Dados cadastrais de uma turma",
@@ -86,8 +82,7 @@ class TurmaDadosView(BaseAPIView):
 
 
 class TurmaSincronizacoesInstitucionaisView(BaseAPIView):
-    """Retorna dados de sincronização institucional de uma turma por UE."""
-
+    """Retorna anos letivos distintos com turmas na UE (exclui tipo_turma=4)."""
     @extend_schema(
         tags=_TAG,
         summary="Sincronizações institucionais da turma",
@@ -112,7 +107,6 @@ class TurmaSincronizacoesInstitucionaisView(BaseAPIView):
 
 class AnosLetivosUEView(BaseAPIView):
     """Retorna anos letivos distintos com turmas na UE (exclui tipo_turma=4)."""
-
     @extend_schema(
         tags=_TAG,
         summary="Anos letivos de sincronizações institucionais por UE",
@@ -129,7 +123,6 @@ class AnosLetivosUEView(BaseAPIView):
 
 class TurmasHistoricasProfessorView(BaseAPIView):
     """Retorna turmas históricas do professor via AtribuicaoComponente."""
-
     @extend_schema(
         tags=_TAG,
         summary="Turmas históricas do professor por ano letivo",
@@ -154,7 +147,6 @@ class TurmasHistoricasProfessorView(BaseAPIView):
 
 class ItinerarioEnsinoMedioView(BaseAPIView):
     """Retorna os itinerários do Ensino Médio (fixture local)."""
-
     @extend_schema(
         tags=_TAG,
         summary="Itinerários do Ensino Médio",

@@ -80,7 +80,6 @@ _TURMA_HISTORICA = {
 
 
 class TestTurmasViews(TestCase):
-    """Testes dos endpoints do domínio Turmas."""
 
     def setUp(self):
         self.client = APIClient()
@@ -318,7 +317,6 @@ class TestTurmasViews(TestCase):
         self.assertIn("serie", item)
 
     def test_todos_endpoints_sem_api_key_retornam_401(self):
-        """Verifica proteção de todos os endpoints do domínio Turmas."""
         casos_get = [
             "/2112345/dados/",
             "/ues/000532/turmas/2112345/sincronizacoes-institucionais/",

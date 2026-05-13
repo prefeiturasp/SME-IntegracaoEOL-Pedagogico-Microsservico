@@ -1,8 +1,4 @@
-"""Repository do domínio Turmas.
-
-Executa SELECTs no banco e retorna dicts em snake_case.
-Sem regras de negócio — apenas consultas ORM.
-"""
+"""Repository do domínio Turmas."""
 
 from django.db.models import Q
 
@@ -144,7 +140,7 @@ class TurmasRepository:
         ue_codigo: str,
         turma_codigo: int,
     ) -> dict | None:
-        """Sincronização institucional de uma turma por UE; None se não encontrada"""
+        """None se não encontrada"""
         turma = (
             Turma.objects.using(self._DB)
             .filter(ue_codigo=ue_codigo, codigo=turma_codigo)
@@ -155,7 +151,7 @@ class TurmasRepository:
         return _turma_para_sincronizacao(turma)
 
     def anos_letivos_por_ue(self, ue_codigo: str) -> list[int]:
-        """Anos letivos distintos com turmas na UE, excluindo tipo_turma=4"""
+        """Exclui tipo_turma=4 (evento para atribuição)"""
         return list(
             Turma.objects.using(self._DB)
             .filter(ue_codigo=ue_codigo)
@@ -170,10 +166,7 @@ class TurmasRepository:
         ano_letivo: int,
         professor_rf: str,
     ) -> list[dict]:
-        """Turmas históricas do professor via AtribuicaoComponente.
-
-        turma_codigo (varchar) é normalizado para int antes do filtro ORM.
-        """
+        """turma_codigo (varchar) é normalizado para int antes do filtro ORM"""
         codigos_str = (
             AtribuicaoComponente.objects.using(self._DB)
             .filter(professor=professor_rf, ano_letivo=ano_letivo)
