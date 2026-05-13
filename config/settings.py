@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "apps.core",
     "apps.componentes_curriculares",
+    "apps.turmas",
 ]
 
 

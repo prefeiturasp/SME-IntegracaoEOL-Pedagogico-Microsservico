@@ -1,6 +1,7 @@
 from django.apps import AppConfig
 
 
-class ComponentesCurricularesConfig(AppConfig):
+class TurmasConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "apps.componentes_curriculares"
+    name = "apps.turmas"
+    label = "turmas"
