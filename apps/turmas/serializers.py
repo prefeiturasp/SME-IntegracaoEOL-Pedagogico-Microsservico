@@ -96,5 +96,6 @@ class TurmaHistoricaSerializer(serializers.Serializer):
 class TurmaItinerarioSerializer(serializers.Serializer):
     """Contrato de itinerário do Ensino Médio — GET itinerario/ensino-medio."""
 
+    id = serializers.IntegerField()
     nome = serializers.CharField()
     serie = serializers.CharField()

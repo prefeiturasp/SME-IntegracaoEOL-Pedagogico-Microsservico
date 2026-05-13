@@ -15,7 +15,7 @@ from apps.turmas.serializers import (
 )
 from apps.turmas.services import TurmasService
 
-_TAG = ["Turmas"]
+_TAG = ["Turma"]
 
 
 class TurmasRegularesView(BaseAPIView):
