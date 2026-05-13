@@ -1,8 +1,4 @@
-"""Serializers do domínio Turmas — definem o schema do Swagger.
-
-Todos os campos usam snake_case. A conversão para camelCase do contrato
-legado EOL/SGP é responsabilidade do Transition Gateway.
-"""
+"""Serializers do domínio Turmas."""
 
 from rest_framework import serializers
 

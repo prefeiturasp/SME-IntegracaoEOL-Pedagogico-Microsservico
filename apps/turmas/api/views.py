@@ -18,11 +18,6 @@ from apps.turmas.services import TurmasService
 _TAG = ["Turmas"]
 
 
-# ---------------------------------------------------------------------------
-# POST turmas-regulares
-# ---------------------------------------------------------------------------
-
-
 class TurmasRegularesView(BaseAPIView):
     """Filtra turmas regulares (tipo_turma=1) dentro de uma lista de códigos."""
 
@@ -37,11 +32,6 @@ class TurmasRegularesView(BaseAPIView):
         codigos = request.data if isinstance(request.data, list) else []
         dados = TurmasService().turmas_regulares(codigos)
         return Response(dados)
-
-
-# ---------------------------------------------------------------------------
-# POST turmas-programa
-# ---------------------------------------------------------------------------
 
 
 class TurmasProgramaView(BaseAPIView):
@@ -60,11 +50,6 @@ class TurmasProgramaView(BaseAPIView):
         return Response(dados)
 
 
-# ---------------------------------------------------------------------------
-# POST listar-turmas
-# ---------------------------------------------------------------------------
-
-
 class ListarTurmasView(BaseAPIView):
     """Retorna turmas pelos códigos fornecidos, sem filtro de tipo."""
 
@@ -79,11 +64,6 @@ class ListarTurmasView(BaseAPIView):
         codigos = request.data if isinstance(request.data, list) else []
         dados = TurmasService().listar_turmas(codigos)
         return Response(dados)
-
-
-# ---------------------------------------------------------------------------
-# GET {codigoTurma}/dados
-# ---------------------------------------------------------------------------
 
 
 class TurmaDadosView(BaseAPIView):
@@ -103,11 +83,6 @@ class TurmaDadosView(BaseAPIView):
         if dados is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
         return Response(dados)
-
-
-# ---------------------------------------------------------------------------
-# GET /api/ues/{ueCodigo}/turmas/{turmaCodigo}/sincronizacoes-institucionais
-# ---------------------------------------------------------------------------
 
 
 class TurmaSincronizacoesInstitucionaisView(BaseAPIView):
@@ -135,11 +110,6 @@ class TurmaSincronizacoesInstitucionaisView(BaseAPIView):
         return Response(dados)
 
 
-# ---------------------------------------------------------------------------
-# GET ue/{ueCodigo}/sincronizacoes-institucionais/anosLetivos
-# ---------------------------------------------------------------------------
-
-
 class AnosLetivosUEView(BaseAPIView):
     """Retorna anos letivos distintos com turmas na UE (exclui tipo_turma=4)."""
 
@@ -155,11 +125,6 @@ class AnosLetivosUEView(BaseAPIView):
     def get(self, _request: Request, ue_codigo: str) -> Response:
         anos = TurmasService().anos_letivos_por_ue(ue_codigo)
         return Response(anos)
-
-
-# ---------------------------------------------------------------------------
-# GET anos-letivos/{anoLetivo}/professor/{professorRf}/turmas-historicas-geral
-# ---------------------------------------------------------------------------
 
 
 class TurmasHistoricasProfessorView(BaseAPIView):
@@ -185,11 +150,6 @@ class TurmasHistoricasProfessorView(BaseAPIView):
         if not dados:
             return Response(status=status.HTTP_404_NOT_FOUND)
         return Response(dados)
-
-
-# ---------------------------------------------------------------------------
-# GET itinerario/ensino-medio
-# ---------------------------------------------------------------------------
 
 
 class ItinerarioEnsinoMedioView(BaseAPIView):

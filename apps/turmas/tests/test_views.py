@@ -87,10 +87,6 @@ class TestTurmasViews(TestCase):
         self.client.credentials(HTTP_X_API_KEY="dev-key-default")
         self.anon = APIClient()
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
     def get(self, path):
         return self.client.get(f"{_BASE}{path}")
 
@@ -101,10 +97,6 @@ class TestTurmasViews(TestCase):
         kwargs = {"format": "json"} if payload else {}
         response = getattr(self.anon, method)(f"{_BASE}{path}", payload, **kwargs)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    # ------------------------------------------------------------------
-    # POST turmas-regulares
-    # ------------------------------------------------------------------
 
     @patch(_SVC)
     def test_turmas_regulares_retorna_200(self, mock_svc):
@@ -138,10 +130,6 @@ class TestTurmasViews(TestCase):
         for campo in ("codigo", "nome_turma", "ano_letivo", "tipo_turma", "ue_codigo"):
             self.assertIn(campo, item)
 
-    # ------------------------------------------------------------------
-    # POST turmas-programa
-    # ------------------------------------------------------------------
-
     @patch(_SVC)
     def test_turmas_programa_retorna_200(self, mock_svc):
         mock_svc.return_value.turmas_programa.return_value = [_TURMA]
@@ -158,10 +146,6 @@ class TestTurmasViews(TestCase):
 
     def test_turmas_programa_sem_api_key_retorna_401(self):
         self.assert_401("/turmas-programa/", method="post", payload=[1])
-
-    # ------------------------------------------------------------------
-    # POST listar-turmas
-    # ------------------------------------------------------------------
 
     @patch(_SVC)
     def test_listar_turmas_retorna_200(self, mock_svc):
@@ -186,10 +170,6 @@ class TestTurmasViews(TestCase):
 
     def test_listar_turmas_sem_api_key_retorna_401(self):
         self.assert_401("/listar-turmas/", method="post", payload=[1])
-
-    # ------------------------------------------------------------------
-    # GET {codigoTurma}/dados
-    # ------------------------------------------------------------------
 
     @patch(_SVC)
     def test_turma_dados_retorna_200(self, mock_svc):
@@ -219,10 +199,6 @@ class TestTurmasViews(TestCase):
         )
         for campo in campos:
             self.assertIn(campo, res.data, f"campo ausente: {campo}")
-
-    # ------------------------------------------------------------------
-    # GET sincronizacoes-institucionais
-    # ------------------------------------------------------------------
 
     @patch(_SVC)
     def test_sincronizacoes_retorna_200(self, mock_svc):
@@ -255,10 +231,6 @@ class TestTurmasViews(TestCase):
         for campo in campos:
             self.assertIn(campo, res.data, f"campo ausente: {campo}")
 
-    # ------------------------------------------------------------------
-    # GET anos-letivos por UE
-    # ------------------------------------------------------------------
-
     @patch(_SVC)
     def test_anos_letivos_retorna_200(self, mock_svc):
         mock_svc.return_value.anos_letivos_por_ue.return_value = [2023, 2024]
@@ -276,10 +248,6 @@ class TestTurmasViews(TestCase):
 
     def test_anos_letivos_sem_api_key_retorna_401(self):
         self.assert_401("/ue/000532/sincronizacoes-institucionais/anos-letivos/")
-
-    # ------------------------------------------------------------------
-    # GET turmas-historicas-geral
-    # ------------------------------------------------------------------
 
     @patch(_SVC)
     def test_turmas_historicas_retorna_200(self, mock_svc):
@@ -318,10 +286,6 @@ class TestTurmasViews(TestCase):
         for campo in campos:
             self.assertIn(campo, item, f"campo ausente no TurmaDTO: {campo}")
 
-    # ------------------------------------------------------------------
-    # GET itinerario/ensino-medio
-    # ------------------------------------------------------------------
-
     @patch(_SVC)
     def test_itinerario_ensino_medio_retorna_200(self, mock_svc):
         mock_svc.return_value.itinerarios_ensino_medio.return_value = [
@@ -352,10 +316,6 @@ class TestTurmasViews(TestCase):
         item = res.data[0]
         self.assertIn("nome", item)
         self.assertIn("serie", item)
-
-    # ------------------------------------------------------------------
-    # Todos os endpoints protegidos
-    # ------------------------------------------------------------------
 
     def test_todos_endpoints_sem_api_key_retornam_401(self):
         """Verifica proteção de todos os endpoints do domínio Turmas."""

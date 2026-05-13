@@ -6,6 +6,11 @@ Sem regras de negócio — apenas consultas ORM.
 
 from django.db.models import Q
 
+from apps.componentes_curriculares.constants import (
+    TIPO_TURMA_EVENTO_PARA_ATRIBUICAO,
+    TIPO_TURMA_PROGRAMA,
+    TIPO_TURMA_REGULAR,
+)
 from apps.componentes_curriculares.models import AtribuicaoComponente
 from apps.turmas.models import Turma, TurmaItinerarioEnsinoMedio
 
@@ -106,42 +111,26 @@ class TurmasRepository:
 
     _DB = "default"
 
-    # -------------------------------------------------------------------------
-    # POST turmas-regulares
-    # -------------------------------------------------------------------------
-
     def turmas_regulares(self, codigos: list[int]) -> list[dict]:
         """Turmas regulares (tipo_turma=1) filtradas por lista de códigos"""
         turmas = Turma.objects.using(self._DB).filter(
-            tipo_turma=1,
+            tipo_turma=TIPO_TURMA_REGULAR,
             codigo__in=codigos,
         )
         return [_turma_para_lista(t) for t in turmas]
-
-    # -------------------------------------------------------------------------
-    # POST turmas-programa
-    # -------------------------------------------------------------------------
 
     def turmas_programa(self, codigos: list[int]) -> list[dict]:
         """Turmas programa (tipo_turma=3) filtradas por lista de códigos"""
         turmas = Turma.objects.using(self._DB).filter(
-            tipo_turma=3,
+            tipo_turma=TIPO_TURMA_PROGRAMA,
             codigo__in=codigos,
         )
         return [_turma_para_lista(t) for t in turmas]
-
-    # -------------------------------------------------------------------------
-    # POST listar-turmas
-    # -------------------------------------------------------------------------
 
     def listar_turmas(self, codigos: list[int]) -> list[dict]:
         """Turmas pelos códigos fornecidos, sem filtro de tipo"""
         turmas = Turma.objects.using(self._DB).filter(codigo__in=codigos)
         return [_turma_para_lista(t) for t in turmas]
-
-    # -------------------------------------------------------------------------
-    # GET {codigoTurma}/dados
-    # -------------------------------------------------------------------------
 
     def dados_turma(self, codigo: int) -> dict | None:
         """Dados cadastrais de uma turma; None se não encontrada"""
@@ -149,10 +138,6 @@ class TurmasRepository:
         if turma is None:
             return None
         return _turma_para_dados(turma)
-
-    # -------------------------------------------------------------------------
-    # GET /api/ues/{ueCodigo}/turmas/{turmaCodigo}/sincronizacoes-institucionais
-    # -------------------------------------------------------------------------
 
     def sincronizacoes_institucionais(
         self,
@@ -169,24 +154,16 @@ class TurmasRepository:
             return None
         return _turma_para_sincronizacao(turma)
 
-    # -------------------------------------------------------------------------
-    # GET ue/{ueCodigo}/sincronizacoes-institucionais/anos-letivos
-    # -------------------------------------------------------------------------
-
     def anos_letivos_por_ue(self, ue_codigo: str) -> list[int]:
         """Anos letivos distintos com turmas na UE, excluindo tipo_turma=4"""
         return list(
             Turma.objects.using(self._DB)
             .filter(ue_codigo=ue_codigo)
-            .exclude(tipo_turma=4)
+            .exclude(tipo_turma=TIPO_TURMA_EVENTO_PARA_ATRIBUICAO)
             .values_list("ano_letivo", flat=True)
             .distinct()
             .order_by("ano_letivo")
         )
-
-    # -------------------------------------------------------------------------
-    # GET anos-letivos/{anoLetivo}/professor/{professorRf}/turmas-historicas-geral
-    # -------------------------------------------------------------------------
 
     def turmas_historicas_professor(
         self,
@@ -210,10 +187,6 @@ class TurmasRepository:
             codigo__in=codigos_int,
         ).filter(Q(extinta=True) | Q(situacao__in=["C", "E"]))
         return [_turma_para_historico(t) for t in turmas]
-
-    # -------------------------------------------------------------------------
-    # GET itinerario/ensino-medio
-    # -------------------------------------------------------------------------
 
     def itinerarios_ensino_medio(self) -> list[dict]:
         """Itinerários do Ensino Médio ordenados por nome"""
