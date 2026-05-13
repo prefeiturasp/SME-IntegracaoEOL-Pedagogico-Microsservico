@@ -5,6 +5,8 @@ para compatibilidade com o contrato legado EOL/SGP.
 Sem regras de negócio — apenas consultas ORM.
 """
 
+from django.db.models import Q
+
 from apps.componentes_curriculares.models import AtribuicaoComponente
 from apps.turmas.models import Turma, TurmaItinerarioEnsinoMedio
 
@@ -206,7 +208,9 @@ class TurmasRepository:
         codigos_int = [int(c) for c in codigos_str if c and c.isdigit()]
         if not codigos_int:
             return []
-        turmas = Turma.objects.using(self._DB).filter(codigo__in=codigos_int)
+        turmas = Turma.objects.using(self._DB).filter(
+            codigo__in=codigos_int,
+        ).filter(Q(extinta=True) | Q(situacao__in=["C", "E"]))
         return [_turma_para_historico(t) for t in turmas]
 
     # -------------------------------------------------------------------------

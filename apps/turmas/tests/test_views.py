@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 _SVC = "apps.turmas.api.views.TurmasService"
-_BASE = "/api/v1/pedagogico"
+_BASE = "/api/v1/pedagogico/turmas"
 
 _TURMA = {
     "codigo": 2112345,
