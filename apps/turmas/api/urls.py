@@ -44,7 +44,7 @@ urlpatterns = [
     ),
     # Anos letivos por UE
     path(
-        "ue/<str:ue_codigo>/sincronizacoes-institucionais/anosLetivos/",
+        "ue/<str:ue_codigo>/sincronizacoes-institucionais/anos-letivos/",
         AnosLetivosUEView.as_view(),
         name="anos-letivos-ue",
     ),

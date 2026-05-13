@@ -1,6 +1,6 @@
 """Repository do domínio Turmas.
 
-Executa SELECTs no banco e retorna dicts em camelCase para o legado EOL/SGP.
+Executa SELECTs no banco e retorna dicts em snake_case.
 Sem regras de negócio — apenas consultas ORM.
 """
 
@@ -13,17 +13,17 @@ from apps.turmas.models import Turma, TurmaItinerarioEnsinoMedio
 def _turma_para_lista(t: Turma) -> dict:
     return {
         "codigo": t.codigo,
-        "nomeTurma": t.nome_turma,
-        "anoLetivo": t.ano_letivo,
+        "nome_turma": t.nome_turma,
+        "ano_letivo": t.ano_letivo,
         "ano": t.ano,
-        "tipoTurma": t.tipo_turma,
-        "ueCodigo": t.ue_codigo,
+        "tipo_turma": t.tipo_turma,
+        "ue_codigo": t.ue_codigo,
         "modalidade": t.modalidade,
-        "codigoModalidade": t.codigo_modalidade,
+        "codigo_modalidade": t.codigo_modalidade,
         "semestre": t.semestre or 0,
-        "ensinoEspecial": t.ensino_especial,
-        "serieEnsino": t.serie_ensino,
-        "codigoSerieEnsino": t.codigo_serie_ensino,
+        "ensino_especial": t.ensino_especial,
+        "serie_ensino": t.serie_ensino,
+        "codigo_serie_ensino": t.codigo_serie_ensino,
         "situacao": t.situacao,
         "extinta": t.extinta,
     }
@@ -32,47 +32,47 @@ def _turma_para_lista(t: Turma) -> dict:
 def _turma_para_dados(t: Turma) -> dict:
     return {
         "codigo": t.codigo,
-        "anoLetivo": t.ano_letivo,
+        "ano_letivo": t.ano_letivo,
         "ano": t.ano,
-        "tipoTurma": t.tipo_turma,
-        "nomeTurma": t.nome_turma,
-        "duracaoTurno": t.duracao_turno,
-        "tipoTurno": t.tipo_turno,
-        "dataInicioTurma": t.data_inicio_turma,
-        "dataFim": t.data_fim,
+        "tipo_turma": t.tipo_turma,
+        "nome_turma": t.nome_turma,
+        "duracao_turno": t.duracao_turno,
+        "tipo_turno": t.tipo_turno,
+        "data_inicio_turma": t.data_inicio_turma,
+        "data_fim": t.data_fim,
         "extinta": t.extinta,
         "situacao": t.situacao,
-        "ueCodigo": t.ue_codigo,
-        "serieEnsino": t.serie_ensino,
-        "codigoSerieEnsino": t.codigo_serie_ensino,
+        "ue_codigo": t.ue_codigo,
+        "serie_ensino": t.serie_ensino,
+        "codigo_serie_ensino": t.codigo_serie_ensino,
         "modalidade": t.modalidade,
-        "codigoModalidade": t.codigo_modalidade,
-        "codigoTipoPrograma": t.codigo_tipo_programa,
-        "codigoModalidadeEtapa": t.codigo_modalidade_etapa,
+        "codigo_modalidade": t.codigo_modalidade,
+        "codigo_tipo_programa": t.codigo_tipo_programa,
+        "codigo_modalidade_etapa": t.codigo_modalidade_etapa,
         "semestre": t.semestre or 0,
-        "ensinoEspecial": t.ensino_especial,
-        "dataAtualizacao": t.data_atualizacao,
-        "dataStatusTurmaEscola": t.data_status_turma_escola,
+        "ensino_especial": t.ensino_especial,
+        "data_atualizacao": t.data_atualizacao,
+        "data_status_turma_escola": t.data_status_turma_escola,
     }
 
 
 def _turma_para_sincronizacao(t: Turma) -> dict:
     return {
         "codigo": t.codigo,
-        "ueCodigo": t.ue_codigo,
-        "anoLetivo": t.ano_letivo,
-        "dataInicioTurma": t.data_inicio_turma,
-        "dataFim": t.data_fim,
-        "dataAtualizacao": t.data_atualizacao,
-        "dataStatusTurmaEscola": t.data_status_turma_escola,
+        "ue_codigo": t.ue_codigo,
+        "ano_letivo": t.ano_letivo,
+        "data_inicio_turma": t.data_inicio_turma,
+        "data_fim": t.data_fim,
+        "data_atualizacao": t.data_atualizacao,
+        "data_status_turma_escola": t.data_status_turma_escola,
         "situacao": t.situacao,
         "extinta": t.extinta,
-        "codigoModalidade": t.codigo_modalidade,
+        "codigo_modalidade": t.codigo_modalidade,
         "modalidade": t.modalidade,
         "semestre": t.semestre or 0,
-        "ensinoEspecial": t.ensino_especial,
-        "codigoSerieEnsino": t.codigo_serie_ensino,
-        "serieEnsino": t.serie_ensino,
+        "ensino_especial": t.ensino_especial,
+        "codigo_serie_ensino": t.codigo_serie_ensino,
+        "serie_ensino": t.serie_ensino,
     }
 
 
@@ -80,24 +80,24 @@ def _turma_para_historico(t: Turma) -> dict:
     ehistorico = t.extinta or t.situacao == "C"
     return {
         "ano": t.ano,
-        "anoLetivo": t.ano_letivo,
+        "ano_letivo": t.ano_letivo,
         "codigo": t.codigo,
-        "tipoTurma": t.tipo_turma or 0,
+        "tipo_turma": t.tipo_turma or 0,
         "modalidade": t.modalidade,
-        "codigoModalidade": t.codigo_modalidade,
-        "nomeTurma": t.nome_turma,
+        "codigo_modalidade": t.codigo_modalidade,
+        "nome_turma": t.nome_turma,
         "semestre": t.semestre or 0,
-        "duracaoTurno": t.duracao_turno or 0,
-        "tipoTurno": t.tipo_turno or 0,
-        "dataFim": t.data_fim,
+        "duracao_turno": t.duracao_turno or 0,
+        "tipo_turno": t.tipo_turno or 0,
+        "data_fim": t.data_fim,
         "ehistorico": ehistorico,
-        "ensinoEspecial": t.ensino_especial,
-        "etapaEJA": 0,
-        "serieEnsino": t.serie_ensino,
-        "dataInicioTurma": t.data_inicio_turma,
+        "ensino_especial": t.ensino_especial,
+        "etapa_eja": 0,
+        "serie_ensino": t.serie_ensino,
+        "data_inicio_turma": t.data_inicio_turma,
         "extinta": t.extinta,
         "situacao": t.situacao,
-        "ueCodigo": t.ue_codigo,
+        "ue_codigo": t.ue_codigo,
     }
 
 
@@ -170,7 +170,7 @@ class TurmasRepository:
         return _turma_para_sincronizacao(turma)
 
     # -------------------------------------------------------------------------
-    # GET ue/{ueCodigo}/sincronizacoes-institucionais/anosLetivos
+    # GET ue/{ueCodigo}/sincronizacoes-institucionais/anos-letivos
     # -------------------------------------------------------------------------
 
     def anos_letivos_por_ue(self, ue_codigo: str) -> list[int]:

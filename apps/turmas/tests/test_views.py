@@ -11,71 +11,71 @@ _BASE = "/api/v1/pedagogico/turmas"
 
 _TURMA = {
     "codigo": 2112345,
-    "nomeTurma": "3A EF",
-    "anoLetivo": 2024,
+    "nome_turma": "3A EF",
+    "ano_letivo": 2024,
     "ano": "3",
-    "tipoTurma": 1,
-    "ueCodigo": "000532",
+    "tipo_turma": 1,
+    "ue_codigo": "000532",
     "modalidade": "Ensino Fundamental",
-    "codigoModalidade": 5,
+    "codigo_modalidade": 5,
     "semestre": 0,
-    "ensinoEspecial": False,
-    "serieEnsino": "3º Ano",
-    "codigoSerieEnsino": 3,
+    "ensino_especial": False,
+    "serie_ensino": "3º Ano",
+    "codigo_serie_ensino": 3,
     "situacao": "A",
     "extinta": False,
 }
 
 _TURMA_DADOS = {
     **_TURMA,
-    "duracaoTurno": 2,
-    "tipoTurno": 1,
-    "dataInicioTurma": None,
-    "dataFim": None,
-    "codigoTipoPrograma": None,
-    "codigoModalidadeEtapa": None,
-    "dataAtualizacao": None,
-    "dataStatusTurmaEscola": None,
+    "duracao_turno": 2,
+    "tipo_turno": 1,
+    "data_inicio_turma": None,
+    "data_fim": None,
+    "codigo_tipo_programa": None,
+    "codigo_modalidade_etapa": None,
+    "data_atualizacao": None,
+    "data_status_turma_escola": None,
 }
 
 _TURMA_SINC = {
     "codigo": 2112345,
-    "ueCodigo": "000532",
-    "anoLetivo": 2024,
-    "dataInicioTurma": None,
-    "dataFim": None,
-    "dataAtualizacao": None,
-    "dataStatusTurmaEscola": None,
+    "ue_codigo": "000532",
+    "ano_letivo": 2024,
+    "data_inicio_turma": None,
+    "data_fim": None,
+    "data_atualizacao": None,
+    "data_status_turma_escola": None,
     "situacao": "A",
     "extinta": False,
-    "codigoModalidade": 5,
+    "codigo_modalidade": 5,
     "modalidade": "Ensino Fundamental",
     "semestre": 0,
-    "ensinoEspecial": False,
-    "codigoSerieEnsino": 3,
-    "serieEnsino": "3º Ano",
+    "ensino_especial": False,
+    "codigo_serie_ensino": 3,
+    "serie_ensino": "3º Ano",
 }
 
 _TURMA_HISTORICA = {
     "ano": "3",
-    "anoLetivo": 2024,
+    "ano_letivo": 2024,
     "codigo": 2112345,
-    "tipoTurma": 1,
+    "tipo_turma": 1,
     "modalidade": "Ensino Fundamental",
-    "codigoModalidade": 5,
-    "nomeTurma": "3A EF",
+    "codigo_modalidade": 5,
+    "nome_turma": "3A EF",
     "semestre": 0,
-    "duracaoTurno": 2,
-    "tipoTurno": 1,
-    "dataFim": None,
+    "duracao_turno": 2,
+    "tipo_turno": 1,
+    "data_fim": None,
     "ehistorico": False,
-    "ensinoEspecial": False,
-    "etapaEJA": 0,
-    "serieEnsino": "3º Ano",
-    "dataInicioTurma": None,
+    "ensino_especial": False,
+    "etapa_eja": 0,
+    "serie_ensino": "3º Ano",
+    "data_inicio_turma": None,
     "extinta": False,
     "situacao": "A",
-    "ueCodigo": "000532",
+    "ue_codigo": "000532",
 }
 
 
@@ -131,11 +131,11 @@ class TestTurmasViews(TestCase):
         self.assert_401("/turmas-regulares/", method="post", payload=[1])
 
     @patch(_SVC)
-    def test_turmas_regulares_shape_camel_case(self, mock_svc):
+    def test_turmas_regulares_shape_campos_obrigatorios(self, mock_svc):
         mock_svc.return_value.turmas_regulares.return_value = [_TURMA]
         res = self.post("/turmas-regulares/", [2112345])
         item = res.data[0]
-        for campo in ("codigo", "nomeTurma", "anoLetivo", "tipoTurma", "ueCodigo"):
+        for campo in ("codigo", "nome_turma", "ano_letivo", "tipo_turma", "ue_codigo"):
             self.assertIn(campo, item)
 
     # ------------------------------------------------------------------
@@ -176,9 +176,9 @@ class TestTurmasViews(TestCase):
         res = self.post("/listar-turmas/", [2112345])
         item = res.data[0]
         campos = (
-            "codigo", "nomeTurma", "anoLetivo", "ano", "tipoTurma",
-            "ueCodigo", "modalidade", "codigoModalidade", "semestre",
-            "ensinoEspecial", "serieEnsino", "codigoSerieEnsino",
+            "codigo", "nome_turma", "ano_letivo", "ano", "tipo_turma",
+            "ue_codigo", "modalidade", "codigo_modalidade", "semestre",
+            "ensino_especial", "serie_ensino", "codigo_serie_ensino",
             "situacao", "extinta",
         )
         for campo in campos:
@@ -212,10 +212,10 @@ class TestTurmasViews(TestCase):
         mock_svc.return_value.dados_turma.return_value = _TURMA_DADOS
         res = self.get("/2112345/dados/")
         campos = (
-            "codigo", "anoLetivo", "nomeTurma", "tipoTurma", "ueCodigo",
-            "semestre", "ensinoEspecial", "extinta", "situacao",
-            "codigoTipoPrograma", "codigoModalidadeEtapa",
-            "dataAtualizacao", "dataStatusTurmaEscola",
+            "codigo", "ano_letivo", "nome_turma", "tipo_turma", "ue_codigo",
+            "semestre", "ensino_especial", "extinta", "situacao",
+            "codigo_tipo_programa", "codigo_modalidade_etapa",
+            "data_atualizacao", "data_status_turma_escola",
         )
         for campo in campos:
             self.assertIn(campo, res.data, f"campo ausente: {campo}")
@@ -247,10 +247,10 @@ class TestTurmasViews(TestCase):
         mock_svc.return_value.sincronizacoes_institucionais.return_value = _TURMA_SINC
         res = self.get("/ues/000532/turmas/2112345/sincronizacoes-institucionais/")
         campos = (
-            "codigo", "ueCodigo", "anoLetivo", "dataInicioTurma", "dataFim",
-            "dataAtualizacao", "dataStatusTurmaEscola", "situacao", "extinta",
-            "codigoModalidade", "modalidade", "semestre", "ensinoEspecial",
-            "codigoSerieEnsino", "serieEnsino",
+            "codigo", "ue_codigo", "ano_letivo", "data_inicio_turma", "data_fim",
+            "data_atualizacao", "data_status_turma_escola", "situacao", "extinta",
+            "codigo_modalidade", "modalidade", "semestre", "ensino_especial",
+            "codigo_serie_ensino", "serie_ensino",
         )
         for campo in campos:
             self.assertIn(campo, res.data, f"campo ausente: {campo}")
@@ -262,7 +262,7 @@ class TestTurmasViews(TestCase):
     @patch(_SVC)
     def test_anos_letivos_retorna_200(self, mock_svc):
         mock_svc.return_value.anos_letivos_por_ue.return_value = [2023, 2024]
-        res = self.get("/ue/000532/sincronizacoes-institucionais/anosLetivos/")
+        res = self.get("/ue/000532/sincronizacoes-institucionais/anos-letivos/")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data, [2023, 2024])
         mock_svc.return_value.anos_letivos_por_ue.assert_called_once_with("000532")
@@ -270,12 +270,12 @@ class TestTurmasViews(TestCase):
     @patch(_SVC)
     def test_anos_letivos_sem_turmas_retorna_lista_vazia(self, mock_svc):
         mock_svc.return_value.anos_letivos_por_ue.return_value = []
-        res = self.get("/ue/999999/sincronizacoes-institucionais/anosLetivos/")
+        res = self.get("/ue/999999/sincronizacoes-institucionais/anos-letivos/")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data, [])
 
     def test_anos_letivos_sem_api_key_retorna_401(self):
-        self.assert_401("/ue/000532/sincronizacoes-institucionais/anosLetivos/")
+        self.assert_401("/ue/000532/sincronizacoes-institucionais/anos-letivos/")
 
     # ------------------------------------------------------------------
     # GET turmas-historicas-geral
@@ -309,11 +309,11 @@ class TestTurmasViews(TestCase):
         res = self.get("/anos-letivos/2024/professor/7654321/turmas-historicas-geral/")
         item = res.data[0]
         campos = (
-            "ano", "anoLetivo", "codigo", "tipoTurma", "modalidade",
-            "codigoModalidade", "nomeTurma", "semestre", "duracaoTurno",
-            "tipoTurno", "dataFim", "ehistorico", "ensinoEspecial",
-            "etapaEJA", "serieEnsino", "dataInicioTurma", "extinta",
-            "situacao", "ueCodigo",
+            "ano", "ano_letivo", "codigo", "tipo_turma", "modalidade",
+            "codigo_modalidade", "nome_turma", "semestre", "duracao_turno",
+            "tipo_turno", "data_fim", "ehistorico", "ensino_especial",
+            "etapa_eja", "serie_ensino", "data_inicio_turma", "extinta",
+            "situacao", "ue_codigo",
         )
         for campo in campos:
             self.assertIn(campo, item, f"campo ausente no TurmaDTO: {campo}")
@@ -362,7 +362,7 @@ class TestTurmasViews(TestCase):
         casos_get = [
             "/2112345/dados/",
             "/ues/000532/turmas/2112345/sincronizacoes-institucionais/",
-            "/ue/000532/sincronizacoes-institucionais/anosLetivos/",
+            "/ue/000532/sincronizacoes-institucionais/anos-letivos/",
             "/anos-letivos/2024/professor/7654321/turmas-historicas-geral/",
             "/itinerario/ensino-medio/",
         ]
