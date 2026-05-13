@@ -98,7 +98,7 @@ class TurmaDadosView(BaseAPIView):
         responses={200: TurmaDadosSerializer, 404: dict},
         operation_id="turma_dados",
     )
-    def get(self, request: Request, codigo_turma: int) -> Response:
+    def get(self, _request: Request, codigo_turma: int) -> Response:
         dados = TurmasService().dados_turma(codigo_turma)
         if dados is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
@@ -125,7 +125,7 @@ class TurmaSincronizacoesInstitucionaisView(BaseAPIView):
     )
     def get(
         self,
-        request: Request,
+        _request: Request,
         ue_codigo: str,
         turma_codigo: int,
     ) -> Response:
@@ -152,7 +152,7 @@ class AnosLetivosUEView(BaseAPIView):
         responses={200: {"type": "array", "items": {"type": "integer"}}},
         operation_id="anos_letivos_ue",
     )
-    def get(self, request: Request, ue_codigo: str) -> Response:
+    def get(self, _request: Request, ue_codigo: str) -> Response:
         anos = TurmasService().anos_letivos_por_ue(ue_codigo)
         return Response(anos)
 
@@ -177,7 +177,7 @@ class TurmasHistoricasProfessorView(BaseAPIView):
     )
     def get(
         self,
-        request: Request,
+        _request: Request,
         ano_letivo: int,
         professor_rf: str,
     ) -> Response:
@@ -201,6 +201,6 @@ class ItinerarioEnsinoMedioView(BaseAPIView):
         responses={200: TurmaItinerarioSerializer(many=True)},
         operation_id="itinerario_ensino_medio",
     )
-    def get(self, request: Request) -> Response:
+    def get(self, _request: Request) -> Response:
         dados = TurmasService().itinerarios_ensino_medio()
         return Response(dados)
