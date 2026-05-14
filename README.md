@@ -6,14 +6,16 @@ Microsserviço do domínio Pedagógico (Turmas, Componentes, Território do Sabe
 
 ## Estrutura dos Apps
 
-| App | Responsabilidade | Endpoints | Prefixo API |
-|-----|-----------------|-----------|-------------|
-| `apps.componentes_curriculares` | Componentes Curriculares | — | `/api/componentes-curriculares/` |
-| `apps.core` | Autenticação por API key, dados mock compartilhados | — | — |
+| App | Responsabilidade | Prefixo API |
+|-----|-----------------|-------------|
+| `apps.turmas` | Turmas, sincronizações institucionais, itinerários | `/api/v1/pedagogico/turmas/` |
+| `apps.componentes_curriculares` | Componentes Curriculares, Território do Saber, Atribuições | `/api/v1/pedagogico/componentes-curriculares/` |
+| `apps.core` | Autenticação por API key | — |
 
 ### Modelos ETL Cobertos:
 
-- **componentes_curriculares**: `ComponenteCurricular`, `TerritorioDoSaber`, `Atribuicao`
+- **turmas**: `Turma` (`managed=False`), `TurmaItinerarioEnsinoMedio` (fixture local)
+- **componentes_curriculares**: `ComponenteCurricular`, `ComponenteTurma`, `AtribuicaoComponente`, `GradeComponenteCurricular`, `ComponenteCurricularHierarquia`, `AgrupamentoAtribuicaoTerritorioSaber`
 
 ---
 
@@ -78,12 +80,25 @@ curl -H "X-API-Key: dev-key-default" http://localhost:8001/api/componentes-curri
 
 | URL | Descrição |
 |-----|-----------|
-| `/api/docs/` | Swagger UI interativo |
-| `/api/schema/` | Schema OpenAPI 3 (JSON/YAML) |
+| `/pedagogico/api/v1/docs/` | Swagger UI interativo |
+| `/pedagogico/api/v1/schema/` | Schema OpenAPI 3 (JSON/YAML) |
 
 ---
 
 ## Endpoints Implementados
+
+### Turmas
+
+| ID | Método | Path | Descrição |
+|----|--------|------|-----------|
+| T01 | POST | `/api/v1/pedagogico/turmas/turmas-regulares/` | Filtrar turmas regulares por lista de códigos |
+| T02 | POST | `/api/v1/pedagogico/turmas/turmas-programa/` | Filtrar turmas programa por lista de códigos |
+| T03 | POST | `/api/v1/pedagogico/turmas/listar-turmas/` | Listar turmas por lista de códigos (sem filtro de tipo) |
+| T04 | GET | `/api/v1/pedagogico/turmas/{codigoTurma}/dados/` | Dados cadastrais de uma turma |
+| T05 | GET | `/api/v1/pedagogico/turmas/ues/{ueCodigo}/turmas/{turmaCodigo}/sincronizacoes-institucionais/` | Sincronizações institucionais de uma turma por UE |
+| T06 | GET | `/api/v1/pedagogico/turmas/ue/{ueCodigo}/sincronizacoes-institucionais/anosLetivos/` | Anos letivos com turmas na UE |
+| T07 | GET | `/api/v1/pedagogico/turmas/anos-letivos/{anoLetivo}/professor/{professorRf}/turmas-historicas-geral/` | Turmas históricas do professor por ano letivo |
+| T08 | GET | `/api/v1/pedagogico/turmas/itinerario/ensino-medio/` | Itinerários do Ensino Médio (fixture local) |
 
 ### Componentes Curriculares
 
