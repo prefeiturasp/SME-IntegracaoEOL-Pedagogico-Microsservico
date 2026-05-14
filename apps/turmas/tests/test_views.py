@@ -288,8 +288,8 @@ class TestTurmasViews(TestCase):
     @patch(_SVC)
     def test_itinerario_ensino_medio_retorna_200(self, mock_svc):
         mock_svc.return_value.itinerarios_ensino_medio.return_value = [
-            {"nome": "Itinerário A", "serie": "1"},
-            {"nome": "Itinerário B", "serie": "2"},
+            {"id": 1, "nome": "Itinerário A", "serie": "1"},
+            {"id": 2, "nome": "Itinerário B", "serie": "2"},
         ]
         res = self.get("/itinerario/ensino-medio/")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
@@ -309,10 +309,11 @@ class TestTurmasViews(TestCase):
     @patch(_SVC)
     def test_itinerario_ensino_medio_shape(self, mock_svc):
         mock_svc.return_value.itinerarios_ensino_medio.return_value = [
-            {"nome": "Ciências da Natureza", "serie": "1"}
+            {"id": 1, "nome": "Ciências da Natureza", "serie": "1"}
         ]
         res = self.get("/itinerario/ensino-medio/")
         item = res.data[0]
+        self.assertIn("id", item)
         self.assertIn("nome", item)
         self.assertIn("serie", item)
 

@@ -184,6 +184,6 @@ class TurmasRepository:
     def itinerarios_ensino_medio(self) -> list[dict]:
         """Itinerários do Ensino Médio ordenados por nome"""
         return [
-            {"nome": i.nome, "serie": i.serie}
+            {"id": i.id, "nome": i.nome, "serie": i.serie}
             for i in TurmaItinerarioEnsinoMedio.objects.using(self._DB).order_by("nome")
         ]
