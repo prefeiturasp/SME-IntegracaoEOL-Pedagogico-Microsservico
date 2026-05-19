@@ -174,7 +174,7 @@ class TurmasRepository:
             .distinct()
         )
         # O código de turma sincronizado como texto precisa ser filtrado como
-        # inteiro no modelo de turma
+        # inteiro no modelo de turma.
         codigos_int = [int(c) for c in codigos_str if c and c.isdigit()]
         if not codigos_int:
             return []

@@ -74,7 +74,7 @@ def _aplicar_regra_regencia_classe_infantil(item: dict) -> dict:
     """Normaliza a regência de classe infantil."""
     if item["codigo"] == CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL:
         # Compatibiliza o componente infantil com o retorno esperado pelo
-        # domínio pedagógico
+        # domínio pedagógico.
         item["codigo_componente_curricular_pai"] = (
             CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL
         )
@@ -133,7 +133,7 @@ def _componentes_planejamento_regencia(
     qs = ComponenteCurricularPlanejamentoRegencia.objects.using(using)
     regras = list(qs.filter(turno=turno, ano=ano))
     if not regras:
-        # Usa a regra genérica quando não há configuração específica
+        # Usa a regra genérica quando não há configuração específica.
         regras = list(qs.filter(turno__isnull=True, ano__isnull=True))
 
     codigos = [r.id_componente_curricular for r in regras]
@@ -224,7 +224,7 @@ class ComponentesRepository:
         sql = f"{SQL_COMPONENTES_TURMA_COM_ATRIBUICAO} WHERE ac.professor = %s"
         rows = _raw(sql, [login], self._DB)
 
-        # Remove repetições do mesmo componente em turmas diferentes
+        # Remove repetições do mesmo componente em turmas diferentes.
         seen_codigo: set[int] = set()
         by_codigo: list[dict] = []
         for r in rows:
@@ -234,7 +234,7 @@ class ComponentesRepository:
                 r["professor"] = None
                 by_codigo.append(_componente_para_dict(r))
 
-        # Agrupa componentes filhos sob o respectivo componente pai
+        # Agrupa componentes filhos sob o respectivo componente pai.
         seen_pai: set[int] = set()
         result: list[dict] = []
         for item in by_codigo:

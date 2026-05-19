@@ -87,7 +87,7 @@ DATABASES = {
     "default": _parse_db_url(os.environ.get("URL_BANCO_PEDAGOGICO", "")),
 }
 
-# Usa SQLite em memória durante a execução da suíte de testes
+# Usa SQLite em memória durante a execução da suíte de testes.
 if "test" in sys.argv or os.environ.get(
     "USE_SQLITE_TEST", "False"
 ).lower() in ("true", "1"):

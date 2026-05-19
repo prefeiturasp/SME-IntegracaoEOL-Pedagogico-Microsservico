@@ -31,7 +31,7 @@ class ComponentesService:
             )
 
         if agrupamento:
-            # Componentes agrupados não devem exibir o componente EOL
+            # Componentes agrupados não devem exibir o componente EOL.
             for c in dados:
                 c["exibir_componente_eol"] = False
         return dados

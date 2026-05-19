@@ -37,7 +37,7 @@ SELECT {COMPONENTE_TURMA_CAMPOS_RESPOSTA}, ac.professor
    AND ac.componente_codigo = ct.componente_codigo"""
 
 # Componentes com hierarquia são apresentados pelo componente pai; o DISTINCT
-# remove filhos duplicados após a normalização
+# remove filhos duplicados após a normalização.
 SQL_COMPONENTES_GRADE_POR_UE_MODALIDADE_ANO = """
     SELECT DISTINCT
         COALESCE(
@@ -72,7 +72,7 @@ SQL_COMPONENTES_GRADE_POR_UE_MODALIDADE_ANO = """
       AND t.ano_letivo = %s
 """
 
-# Turmas programa seguem a mesma normalização de componente pai da grade
+# Turmas programa seguem a mesma normalização de componente pai da grade.
 SQL_COMPONENTES_TURMA_PROGRAMA = f"""
     SELECT DISTINCT
         COALESCE(
