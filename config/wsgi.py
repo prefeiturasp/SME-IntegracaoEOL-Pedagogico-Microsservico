@@ -1,4 +1,4 @@
-"""WSGI config for the pedagogico microservice."""
+"""Configuração WSGI do microsserviço pedagógico."""
 
 import os
 

@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 
 class TurmaListSerializer(serializers.Serializer):
-    """Usado em turmas-regulares, turmas-programa e listar-turmas."""
+    """Serializa dados resumidos de turma."""
 
     codigo = serializers.IntegerField()
     nome_turma = serializers.CharField()
@@ -23,7 +23,7 @@ class TurmaListSerializer(serializers.Serializer):
 
 
 class TurmaDadosSerializer(serializers.Serializer):
-    """Contrato canônico de dados da turma — GET {codigoTurma}/dados."""
+    """Serializa dados cadastrais de turma."""
 
     codigo = serializers.IntegerField()
     ano_letivo = serializers.IntegerField()
@@ -50,7 +50,7 @@ class TurmaDadosSerializer(serializers.Serializer):
 
 
 class TurmaSincronizacaoSerializer(serializers.Serializer):
-    """Contrato de sincronizações institucionais da turma."""
+    """Serializa dados de sincronização institucional da turma."""
 
     codigo = serializers.IntegerField()
     ue_codigo = serializers.CharField()
@@ -70,7 +70,7 @@ class TurmaSincronizacaoSerializer(serializers.Serializer):
 
 
 class TurmaHistoricaSerializer(serializers.Serializer):
-    """TurmaDTO — GET turmas-historicas-geral."""
+    """Serializa dados históricos de turma."""
 
     ano = serializers.CharField(allow_null=True)
     ano_letivo = serializers.IntegerField()
@@ -94,7 +94,7 @@ class TurmaHistoricaSerializer(serializers.Serializer):
 
 
 class TurmaItinerarioSerializer(serializers.Serializer):
-    """Contrato de itinerário do Ensino Médio — GET itinerario/ensino-medio."""
+    """Serializa dados de itinerário do Ensino Médio."""
 
     id = serializers.IntegerField()
     nome = serializers.CharField()

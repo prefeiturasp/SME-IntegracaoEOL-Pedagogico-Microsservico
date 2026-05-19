@@ -1,4 +1,4 @@
-"""Repository do domínio Turmas."""
+"""Repositório do domínio Turmas."""
 
 from django.db.models import Q
 
@@ -103,12 +103,12 @@ def _turma_para_historico(t: Turma) -> dict:
 
 
 class TurmasRepository:
-    """Queries ORM para o domínio Turmas"""
+    """Executa consultas ORM do domínio Turmas."""
 
     _DB = "default"
 
     def turmas_regulares(self, codigos: list[int]) -> list[dict]:
-        """Turmas regulares (tipo_turma=1) filtradas por lista de códigos"""
+        """Lista turmas regulares pelos códigos informados."""
         turmas = Turma.objects.using(self._DB).filter(
             tipo_turma=TIPO_TURMA_REGULAR,
             codigo__in=codigos,
@@ -116,7 +116,7 @@ class TurmasRepository:
         return [_turma_para_lista(t) for t in turmas]
 
     def turmas_programa(self, codigos: list[int]) -> list[dict]:
-        """Turmas programa (tipo_turma=3) filtradas por lista de códigos"""
+        """Lista turmas programa pelos códigos informados."""
         turmas = Turma.objects.using(self._DB).filter(
             tipo_turma=TIPO_TURMA_PROGRAMA,
             codigo__in=codigos,
@@ -124,12 +124,12 @@ class TurmasRepository:
         return [_turma_para_lista(t) for t in turmas]
 
     def listar_turmas(self, codigos: list[int]) -> list[dict]:
-        """Turmas pelos códigos fornecidos, sem filtro de tipo"""
+        """Lista turmas pelos códigos informados."""
         turmas = Turma.objects.using(self._DB).filter(codigo__in=codigos)
         return [_turma_para_lista(t) for t in turmas]
 
     def dados_turma(self, codigo: int) -> dict | None:
-        """Dados cadastrais de uma turma; None se não encontrada"""
+        """Retorna dados cadastrais de uma turma."""
         turma = Turma.objects.using(self._DB).filter(codigo=codigo).first()
         if turma is None:
             return None
@@ -140,7 +140,7 @@ class TurmasRepository:
         ue_codigo: str,
         turma_codigo: int,
     ) -> dict | None:
-        """None se não encontrada"""
+        """Retorna dados de sincronização institucional da turma."""
         turma = (
             Turma.objects.using(self._DB)
             .filter(ue_codigo=ue_codigo, codigo=turma_codigo)
@@ -151,7 +151,7 @@ class TurmasRepository:
         return _turma_para_sincronizacao(turma)
 
     def anos_letivos_por_ue(self, ue_codigo: str) -> list[int]:
-        """Exclui tipo_turma=4 (evento para atribuição)"""
+        """Lista anos letivos com turmas na UE."""
         return list(
             Turma.objects.using(self._DB)
             .filter(ue_codigo=ue_codigo)
@@ -166,24 +166,32 @@ class TurmasRepository:
         ano_letivo: int,
         professor_rf: str,
     ) -> list[dict]:
-        """turma_codigo (varchar) é normalizado para int antes do filtro ORM"""
+        """Lista turmas históricas do professor no ano letivo."""
         codigos_str = (
             AtribuicaoComponente.objects.using(self._DB)
             .filter(professor=professor_rf, ano_letivo=ano_letivo)
             .values_list("turma_codigo", flat=True)
             .distinct()
         )
+        # O código de turma sincronizado como texto precisa ser filtrado como
+        # inteiro no modelo de turma
         codigos_int = [int(c) for c in codigos_str if c and c.isdigit()]
         if not codigos_int:
             return []
-        turmas = Turma.objects.using(self._DB).filter(
-            codigo__in=codigos_int,
-        ).filter(Q(extinta=True) | Q(situacao__in=["C", "E"]))
+        turmas = (
+            Turma.objects.using(self._DB)
+            .filter(
+                codigo__in=codigos_int,
+            )
+            .filter(Q(extinta=True) | Q(situacao__in=["C", "E"]))
+        )
         return [_turma_para_historico(t) for t in turmas]
 
     def itinerarios_ensino_medio(self) -> list[dict]:
-        """Itinerários do Ensino Médio ordenados por nome"""
+        """Lista itinerários do Ensino Médio ordenados por nome."""
         return [
             {"id": i.id, "nome": i.nome, "serie": i.serie}
-            for i in TurmaItinerarioEnsinoMedio.objects.using(self._DB).order_by("nome")
+            for i in TurmaItinerarioEnsinoMedio.objects.using(
+                self._DB
+            ).order_by("nome")
         ]

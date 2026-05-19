@@ -27,10 +27,7 @@ _POOL_OPTIONS: dict[str, Any] = {
 
 
 def _parse_db_url(url: Any) -> dict[str, Any]:
-    """Faz parse de URL PostgreSQL para dict de configuração Django.
-
-    Retorna SQLite em memória quando URL está vazia (testes/local).
-    """
+    """Retorna configuração Django a partir de URL de banco."""
     if not url:
         return {
             "ENGINE": "django.db.backends.sqlite3",
@@ -90,7 +87,7 @@ DATABASES = {
     "default": _parse_db_url(os.environ.get("URL_BANCO_PEDAGOGICO", "")),
 }
 
-# Força o uso de SQLite em memória nos testes
+# Usa SQLite em memória durante a execução da suíte de testes
 if "test" in sys.argv or os.environ.get(
     "USE_SQLITE_TEST", "False"
 ).lower() in ("true", "1"):

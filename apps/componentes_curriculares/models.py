@@ -1,18 +1,12 @@
 """Modelos de leitura do domínio Componentes Curriculares."""
+
 from django.db import models
 
 from apps.core.models import ModeloBase
 
 
 class ComponenteCurricular(ModeloBase):
-    """Catálogo de componentes curriculares ativos no EOL.
-
-    É a fonte de verdade para código e descrição de cada componente.
-    Todas as outras tabelas do domínio referenciam o código daqui.
-    O campo ``regencia`` identifica os componentes pais de regência; os
-    componentes filhos usados no planejamento ficam em
-    ``ComponenteCurricularPlanejamentoRegencia``.
-    """
+    """Representa componente curricular ativo do EOL."""
 
     codigo = models.IntegerField(unique=True)
     descricao = models.CharField(max_length=300)
@@ -28,7 +22,7 @@ class ComponenteCurricular(ModeloBase):
 
 
 class ComponenteTurma(ModeloBase):
-    """Estrutura de componente curricular vinculado a uma turma (sem professor)."""
+    """Representa componente curricular vinculado a uma turma."""
 
     componente_codigo = models.IntegerField()
     codigo_componente_territorio_saber = models.IntegerField(null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
@@ -46,8 +40,9 @@ class ComponenteTurma(ModeloBase):
         ]
         indexes = [
             models.Index(fields=["turma_codigo"], name="idx_ct_turma_codigo"),
-            models.Index(fields=["componente_codigo"],
-                         name="idx_ct_componente_codigo"),
+            models.Index(
+                fields=["componente_codigo"], name="idx_ct_componente_codigo"
+            ),
         ]
 
     def __str__(self) -> str:
@@ -55,7 +50,7 @@ class ComponenteTurma(ModeloBase):
 
 
 class AtribuicaoComponente(ModeloBase):
-    """Atribuição de professor a turma/componente."""
+    """Representa atribuição de professor a turma e componente."""
 
     turma_codigo = models.CharField(max_length=20)
     componente_codigo = models.IntegerField()
@@ -89,7 +84,7 @@ class AtribuicaoComponente(ModeloBase):
 
 
 class ComponenteCurricularAgrupamento(ModeloBase):
-    """Itens de um agrupamento de território do saber."""
+    """Representa item de agrupamento de território do saber."""
 
     componente_codigo = models.IntegerField()
     turma_codigo = models.CharField(max_length=20)
@@ -129,7 +124,7 @@ class ComponenteCurricularAgrupamento(ModeloBase):
 
 
 class GradeComponenteCurricular(ModeloBase):
-    """Catálogo de componentes previstos na grade por série e modalidade."""
+    """Representa componente previsto na grade por série e modalidade."""
 
     codigo_componente_curricular = models.IntegerField()
     descricao_componente_curricular = models.CharField(max_length=300)
@@ -175,7 +170,7 @@ class GradeComponenteCurricular(ModeloBase):
 
 
 class AgrupamentoAtribuicaoTerritorioSaber(ModeloBase):
-    """Agrupamento de componentes de território atribuídos a um professor."""
+    """Representa agrupamento de território atribuído a professor."""
 
     cod_agrupamento = models.BigIntegerField(unique=True)
     cod_territorio_saber = models.IntegerField()
@@ -218,17 +213,7 @@ class AgrupamentoAtribuicaoTerritorioSaber(ModeloBase):
 
 
 class ComponenteCurricularPlanejamentoRegencia(models.Model):
-    """
-    Define os componentes curriculares que substituem um componente pai de
-    regência quando o consumidor solicita o fluxo de planejamento.
-
-    A tabela não identifica quais componentes são regência. Essa marca fica em
-    ``ComponenteCurricular.regencia``. Aqui ficam apenas os componentes filhos
-    que devem entrar no retorno com ``planejamento_regencia=True``. Quando há
-    linhas específicas para ``turno`` e ``ano`` da turma elas têm prioridade;
-    se não houver correspondência, são usadas as linhas fallback com ambos
-    nulos.
-    """
+    """Representa componentes de planejamento de regência."""
 
     id_componente_curricular = models.IntegerField()
     turno = models.IntegerField(null=True, blank=True)
@@ -254,7 +239,7 @@ class ComponenteCurricularHierarquia(models.Model):
 
 
 class ComponenteCurricularPAP(models.Model):
-    """Alimenta: turmas/{codigoTurma}/pap."""
+    """Representa componente curricular PAP."""
 
     id_componente_curricular = models.IntegerField(unique=True)
 

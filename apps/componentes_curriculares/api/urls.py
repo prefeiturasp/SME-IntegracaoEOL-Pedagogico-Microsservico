@@ -1,3 +1,5 @@
+"""Rotas da API do domínio Componentes Curriculares."""
+
 from django.urls import path
 
 from apps.componentes_curriculares.api.views import (
@@ -83,7 +85,6 @@ urlpatterns = [
         AgrupamentosCorrelacionadosView.as_view(),
         name="agrupamentos-correlacionados",
     ),
-
     path(
         "territorio-saber/agrupamentos-correlacionados/",
         AgrupamentosCorrelacionadosLoteView.as_view(),

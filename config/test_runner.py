@@ -1,11 +1,12 @@
-"""Test runner customizado para criação de tabelas unmanaged."""
+"""Test runner para criação de tabelas não gerenciadas."""
+
 from django.apps import apps
 from django.db import connections
 from django.test.runner import DiscoverRunner
 
 
 class PedagogicoTestRunner(DiscoverRunner):
-    """Cria tabelas unmanaged antes de executar os testes."""
+    """Cria tabelas não gerenciadas antes de executar os testes."""
 
     def setup_databases(self, **kwargs):  # type: ignore[override]
         result = super().setup_databases(**kwargs)

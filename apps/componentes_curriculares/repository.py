@@ -1,4 +1,5 @@
-"""Repository de Componentes Curriculares."""
+"""Repositório de componentes curriculares."""
+
 from datetime import date
 
 from django.db import connections
@@ -12,8 +13,8 @@ from apps.componentes_curriculares.models import (
     AgrupamentoAtribuicaoTerritorioSaber,
     AtribuicaoComponente,
     ComponenteCurricular,
-    ComponenteCurricularPlanejamentoRegencia,
     ComponenteCurricularPAP,
+    ComponenteCurricularPlanejamentoRegencia,
     GradeComponenteCurricular,
 )
 from apps.componentes_curriculares.queries import (
@@ -32,17 +33,13 @@ def _raw(sql: str, params: list, using: str = "default") -> list[dict]:
     with connections[using].cursor() as cursor:
         cursor.execute(sql, params)
         cols = [c[0] for c in cursor.description]
-        return [dict(zip(cols, row)) for row in cursor.fetchall()]
+        return [
+            dict(zip(cols, row, strict=False)) for row in cursor.fetchall()
+        ]
 
 
 def _componente_para_dict(row: dict) -> dict:
-    """Adiciona campos computados ausentes no ORM.
-
-    ExibirComponenteEOL = !TemComponenteVigente.
-    O ETL sincroniza apenas componentes ativos (dt_cancelamento IS NULL),
-    portanto TemComponenteVigente = True para todos → exibir = False.
-    Quando agrupamento=True o service também garante False.
-    """
+    """Normaliza campos computados de componente curricular."""
     return {
         **row,
         "codigo_componente_territorio_saber": (
@@ -54,13 +51,7 @@ def _componente_para_dict(row: dict) -> dict:
 
 
 def _grade_para_componente(row: dict) -> dict:
-    """Converte linha de grade/turma-programa para shape de componente.
-
-    Esses endpoints seguem a regra: quando a query já normalizou um filho para
-    o componente pai, o DTO deve expor o código, descrição e regência do pai,
-    preservando ``codigo_componente_curricular_pai`` como referência da
-    hierarquia usada na normalização.
-    """
+    """Retorna componente curricular a partir de linha de grade."""
     item = {
         "codigo": row["codigo_componente_curricular"],
         "codigo_componente_territorio_saber": 0,
@@ -80,14 +71,10 @@ def _grade_para_componente(row: dict) -> dict:
 
 
 def _aplicar_regra_regencia_classe_infantil(item: dict) -> dict:
-    """Replica regra legado para o pai de regência da educação infantil.
-
-    O EOL sincronizado pelo ETL mantém o componente 512 como
-    ``ED.INF. EMEI 4 HS`` e ``regencia=False``. No contrato pedagógico legado,
-    quando esse componente aparece como pai de grade/turma-programa, ele é
-    exposto como ``Regência de classe infantil`` e ``regencia=True``.
-    """
+    """Normaliza a regência de classe infantil."""
     if item["codigo"] == CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL:
+        # Compatibiliza o componente infantil com o retorno esperado pelo
+        # domínio pedagógico
         item["codigo_componente_curricular_pai"] = (
             CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL
         )
@@ -99,7 +86,7 @@ def _aplicar_regra_regencia_classe_infantil(item: dict) -> dict:
 def _agrupamento_para_dict(
     agrupamento: AgrupamentoAtribuicaoTerritorioSaber,
 ) -> dict:
-    """Formata AgrupamentoAtribuicaoTerritorioSaber para shape de resposta."""
+    """Formata agrupamento de território para resposta."""
     codigos = _parse_csv(agrupamento.cod_componentes_curriculares)
     primeiro = codigos[0] if codigos else 0
     ts = agrupamento.desc_territorio_saber or ""
@@ -121,14 +108,10 @@ def _agrupamento_para_dict(
 
 
 def _parse_csv(csv_str: str | None) -> list[int]:
-    """Converte CSV de códigos de componentes para lista de inteiros."""
+    """Retorna códigos de componentes extraídos de CSV."""
     if not csv_str:
         return []
-    return [
-        int(c.strip())
-        for c in csv_str.split(",")
-        if c.strip().isdigit()
-    ]
+    return [int(c.strip()) for c in csv_str.split(",") if c.strip().isdigit()]
 
 
 def _int_or_none(value: object) -> int | None:
@@ -150,6 +133,7 @@ def _componentes_planejamento_regencia(
     qs = ComponenteCurricularPlanejamentoRegencia.objects.using(using)
     regras = list(qs.filter(turno=turno, ano=ano))
     if not regras:
+        # Usa a regra genérica quando não há configuração específica
         regras = list(qs.filter(turno__isnull=True, ano__isnull=True))
 
     codigos = [r.id_componente_curricular for r in regras]
@@ -168,18 +152,7 @@ def _expandir_planejamento_regencia(
     rows: list[dict],
     using: str,
 ) -> list[dict]:
-    """
-    Aplica a regra de negócio de planejamento de regência no consumo.
-
-    Componentes com ``regencia=True`` são componentes pais. Quando o endpoint
-    solicita planejamento, eles não devem ser retornados diretamente; devem ser
-    substituídos pelos componentes filhos cadastrados em
-    ``ComponenteCurricularPlanejamentoRegencia``. A busca prioriza regra
-    específica por ``turno_turma`` e ``ano_turma`` da turma e, se não houver
-    correspondência, usa o fallback com ``turno`` e ``ano`` nulos. Os filhos
-    entram com ``planejamento_regencia=True`` e herdam ``turma_codigo``,
-    ``professor`` e ``ano_letivo`` do componente pai.
-    """
+    """Retorna componentes de regência expandidos para planejamento."""
     resultado: list[dict] = []
     vistos: set[tuple] = set()
 
@@ -226,7 +199,7 @@ def _expandir_planejamento_regencia(
 
 
 class ComponentesRepository:
-    """Queries ORM para componentes curriculares."""
+    """Executa consultas ORM para componentes curriculares."""
 
     _DB = "default"
 
@@ -247,16 +220,11 @@ class ComponentesRepository:
         self,
         login: str,
     ) -> list[dict]:
-        """Lista todos os componentes do funcionário sem filtro de turma.
-
-        Replica o legado: deduplica por codigo e, em seguida, por
-        codigo_componente_curricular_pai (colapsando filhos sob o pai).
-        turma_codigo é nulo porque não há filtro de turma.
-        """
+        """Lista todos os componentes do funcionário."""
         sql = f"{SQL_COMPONENTES_TURMA_COM_ATRIBUICAO} WHERE ac.professor = %s"
         rows = _raw(sql, [login], self._DB)
 
-        # 1ª passagem: dedup por codigo (mesmo componente em turmas diferentes)
+        # Remove repetições do mesmo componente em turmas diferentes
         seen_codigo: set[int] = set()
         by_codigo: list[dict] = []
         for r in rows:
@@ -266,7 +234,7 @@ class ComponentesRepository:
                 r["professor"] = None
                 by_codigo.append(_componente_para_dict(r))
 
-        # 2ª passagem: colapsa componentes filhos sob o pai
+        # Agrupa componentes filhos sob o respectivo componente pai
         seen_pai: set[int] = set()
         result: list[dict] = []
         for item in by_codigo:
@@ -299,20 +267,24 @@ class ComponentesRepository:
         if ano_turma <= 0:
             codigos = list(
                 ComponenteCurricularPlanejamentoRegencia.objects.using(
-                    self._DB)
+                    self._DB
+                )
                 .filter(ano__isnull=True)
                 .values_list("id_componente_curricular", flat=True)
             )
         else:
             codigos = list(
                 ComponenteCurricularPlanejamentoRegencia.objects.using(
-                    self._DB)
+                    self._DB
+                )
                 .filter(ano=ano_turma)
                 .values_list("id_componente_curricular", flat=True)
             )
-        componentes = ComponenteCurricular.objects.using(self._DB).filter(
-            codigo__in=codigos
-        ).values("codigo", "descricao")
+        componentes = (
+            ComponenteCurricular.objects.using(self._DB)
+            .filter(codigo__in=codigos)
+            .values("codigo", "descricao")
+        )
         return [
             {
                 "ano_turma": None,
@@ -343,9 +315,11 @@ class ComponentesRepository:
             .filter(turma_codigo=codigo_turma, professor=login)
             .values_list("componente_codigo", flat=True)
         )
-        return ComponenteCurricularPAP.objects.using(self._DB).filter(
-            id_componente_curricular__in=codigos
-        ).exists()
+        return (
+            ComponenteCurricularPAP.objects.using(self._DB)
+            .filter(id_componente_curricular__in=codigos)
+            .exists()
+        )
 
     def listar_por_ue_modalidade_ano_e_anos_escolares(
         self,
@@ -459,12 +433,7 @@ class ComponentesRepository:
         componentes_curriculares: list[str],
         semestre: int | None,
     ) -> list[dict]:
-        """Lista vigência de componentes por turma e UE.
-
-        JOIN entre componente_turma, turma e atribuicao_componente.
-        Exclui turmas programa (tipo_turma=3) e atribuições externas.
-        Filtra por semestre via turma.semestre quando informado.
-        """
+        """Lista vigência de componentes por turma e UE."""
         if not componentes_curriculares:
             return []
         placeholders = ",".join(["%s"] * len(componentes_curriculares))
