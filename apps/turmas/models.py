@@ -21,12 +21,12 @@ class Turma(ModeloBase):
     situacao = models.CharField(max_length=1, null=True, blank=True)  # NOSONAR
     ue_codigo = models.CharField(max_length=20)
     serie_ensino = models.CharField(
-        max_length=200, null=True, blank=True
-    )  # NOSONAR
+        max_length=200, null=True, blank=True  # NOSONAR
+    )
     codigo_serie_ensino = models.IntegerField(null=True, blank=True)
     modalidade = models.CharField(
-        max_length=50, null=True, blank=True
-    )  # NOSONAR
+        max_length=50, null=True, blank=True  # NOSONAR
+    )
     codigo_modalidade = models.IntegerField(null=True, blank=True)
     codigo_tipo_programa = models.IntegerField(null=True, blank=True)
     codigo_modalidade_etapa = models.IntegerField(null=True, blank=True)
