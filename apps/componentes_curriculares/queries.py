@@ -36,10 +36,8 @@ SELECT {COMPONENTE_TURMA_CAMPOS_RESPOSTA}, ac.professor
     ON ac.turma_codigo = ct.turma_codigo
    AND ac.componente_codigo = ct.componente_codigo"""
 
-# Regra:
-# quando um componente da turma possui hierarquia, o endpoint retorna o
-# componente pai como item da grade. Ex.: 512/513 colapsam em 512
-# "Regência de classe infantil"; o DISTINCT remove os filhos duplicados.
+# Componentes com hierarquia são apresentados pelo componente pai; o DISTINCT
+# remove filhos duplicados após a normalização.
 SQL_COMPONENTES_GRADE_POR_UE_MODALIDADE_ANO = """
     SELECT DISTINCT
         COALESCE(
@@ -74,8 +72,7 @@ SQL_COMPONENTES_GRADE_POR_UE_MODALIDADE_ANO = """
       AND t.ano_letivo = %s
 """
 
-# Turmas programa seguem a mesma normalização de componente pai da grade,
-# mantendo o filtro que remove turmas de evento para atribuição.
+# Turmas programa seguem a mesma normalização de componente pai da grade.
 SQL_COMPONENTES_TURMA_PROGRAMA = f"""
     SELECT DISTINCT
         COALESCE(

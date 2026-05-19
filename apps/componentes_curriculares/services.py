@@ -1,4 +1,5 @@
 """Serviços do domínio Componentes Curriculares."""
+
 from datetime import date
 
 from apps.componentes_curriculares.repository import ComponentesRepository
@@ -17,11 +18,7 @@ class ComponentesService:
         planejamento: bool = False,
         agrupamento: bool = False,
     ) -> list[dict]:
-        """Retorna componentes do funcionário com roteamento por params.
-
-        exibir_componente_eol = !TemComponenteVigente (via _COMPONENTE_PAI_VIGENCIA).
-        Quando agrupamento=True, sobrescreve exibir_componente_eol para False em todos.
-        """
+        """Retorna componentes do funcionário."""
         if codigo_turma is None:
             dados = self._repo.listar_por_funcionario(login)
         elif planejamento:
@@ -30,9 +27,11 @@ class ComponentesService:
             )
         else:
             dados = self._repo.listar_por_turma_funcionario(
-                codigo_turma, login)
+                codigo_turma, login
+            )
 
         if agrupamento:
+            # Componentes agrupados não devem exibir o componente EOL.
             for c in dados:
                 c["exibir_componente_eol"] = False
         return dados
@@ -112,7 +111,7 @@ class ComponentesService:
         componentes_curriculares: list[str],
         semestre: int | None,
     ) -> list[dict]:
-        """Retorna vigência de componentes por turma e UE)."""
+        """Retorna vigência de componentes por turma e UE."""
         return self._repo.listar_vigencia_componentes(
             ue_codigo, ano_letivo, componentes_curriculares, semestre
         )
@@ -121,7 +120,7 @@ class ComponentesService:
         self,
         ano_letivo: int,
     ) -> list[dict]:
-        """Retorna grade curricular completa por ano letivo)."""
+        """Retorna grade curricular completa por ano letivo."""
         return self._repo.listar_grade_curricular(ano_letivo)
 
     def listar_componentes_sem_atribuicao(
@@ -129,9 +128,7 @@ class ComponentesService:
         codigo_turma: str,
     ) -> list[str]:
         """Retorna componentes sem professor atribuído."""
-        return self._repo.listar_componentes_sem_atribuicao(
-            codigo_turma
-        )
+        return self._repo.listar_componentes_sem_atribuicao(codigo_turma)
 
     def listar_agrupamentos_correlacionados(
         self,

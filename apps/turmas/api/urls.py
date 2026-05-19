@@ -8,9 +8,9 @@ from apps.turmas.api.views import (
     ListarTurmasView,
     TurmaDadosView,
     TurmasHistoricasProfessorView,
+    TurmaSincronizacoesInstitucionaisView,
     TurmasProgramaView,
     TurmasRegularesView,
-    TurmaSincronizacoesInstitucionaisView,
 )
 
 urlpatterns = [

@@ -1,3 +1,5 @@
+"""Testes das views do domínio Componentes Curriculares."""
+
 from unittest.mock import patch
 
 from django.test import TestCase
@@ -9,24 +11,24 @@ _BASE = "/api/v1/pedagogico/componentes-curriculares"
 
 
 class TestComponentesViews(TestCase):
-    """Testes dos endpoints de Componentes Curriculares."""
+    """Valida views de componentes curriculares."""
 
     def setUp(self):
-        """Configura clientes autenticado e anônimo."""
+        """Configura clientes de teste."""
         self.client = APIClient()
         self.client.credentials(HTTP_X_API_KEY="dev-key-default")
         self.anon = APIClient()
 
     def get(self, path):
-        """Executa requisição GET autenticada."""
+        """Executa consulta autenticada."""
         return self.client.get(f"{_BASE}{path}")
 
     def post(self, path, payload):
-        """Executa requisição POST autenticada."""
+        """Envia payload autenticado."""
         return self.client.post(f"{_BASE}{path}", payload, format="json")
 
     def assert_unauthorized(self, path, method="get", payload=None):
-        """Valida retorno 401 para requisições sem API Key."""
+        """Valida rejeição de requisição sem API Key."""
         response = getattr(self.anon, method)(
             f"{_BASE}{path}",
             payload,
@@ -36,16 +38,15 @@ class TestComponentesViews(TestCase):
 
     @patch(_SVC)
     def test_ep1_lista_componentes(self, mock_service):
-        """deve listar componentes do funcionário."""
-        mock_service.return_value.listar_componentes_por_funcionario.return_value = []
+        """Lista componentes do funcionário."""
+        service = mock_service.return_value
+        service.listar_componentes_por_funcionario.return_value = []
 
-        response = self.get(
-            "/funcionarios/f1/?idPerfil=p1&codigoTurma=T1"
-        )
+        response = self.get("/funcionarios/f1/?idPerfil=p1&codigoTurma=T1")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        mock_service.return_value.listar_componentes_por_funcionario.assert_called_once_with(
+        service.listar_componentes_por_funcionario.assert_called_once_with(
             "f1",
             codigo_turma="T1",
             planejamento=False,
@@ -53,14 +54,12 @@ class TestComponentesViews(TestCase):
         )
 
     def test_ep1_sem_api_key(self):
-        """deve retornar 401 sem API Key."""
-        self.assert_unauthorized(
-            "/funcionarios/f1/?idPerfil=p1"
-        )
+        """Valida rejeição de requisição sem API Key."""
+        self.assert_unauthorized("/funcionarios/f1/?idPerfil=p1")
 
     @patch(_SVC)
     def test_ep14_corpo_invalido(self, _mock_service):
-        """deve retornar 400 quando corpo não for lista."""
+        """Valida corpo inválido para agrupamentos correlacionados."""
         response = self.post(
             "/territorio-saber/agrupamentos-correlacionados/",
             {"not": "list"},
@@ -74,7 +73,7 @@ class TestComponentesViews(TestCase):
         )
 
     def test_endpoints_sem_api_key(self):
-        """Endpoints protegidos devem retornar 401 sem API Key."""
+        """Valida proteção das views autenticadas."""
         casos = [
             "/",
             "/turmas/",
@@ -92,7 +91,7 @@ class TestComponentesViews(TestCase):
 
     @patch(_SVC)
     def test_endpoints_get_sucesso(self, mock_service):
-        """Endpoints GET devem retornar 200 com resposta válida."""
+        """Valida respostas de sucesso das consultas."""
         casos = [
             (
                 "/anos/2024/regencia/",
@@ -122,7 +121,7 @@ class TestComponentesViews(TestCase):
         self,
         mock_service,
     ):
-        """Grade curricular deve retornar chaves snake_case."""
+        """Valida chaves da resposta de grade curricular."""
         mock_service.return_value.listar_grade_curricular.return_value = [
             {
                 "codigo_componente_curricular": 1,
@@ -153,7 +152,7 @@ class TestComponentesViews(TestCase):
 
     @patch(_SVC)
     def test_ue_turmas_repassa_ue_id_para_service(self, mock_service):
-        """Endpoint de UE/turmas deve filtrar pela UE do path."""
+        """Valida repasse da UE para o service."""
         mock_service.return_value.listar_por_ue_e_turmas.return_value = []
 
         response = self.get("/ues/100013/turmas/?turmas=T1")
