@@ -80,6 +80,7 @@ _TURMA_HISTORICA = {
 
 
 class TestTurmasViews(TestCase):
+    """Valida views do domínio Turmas."""
 
     def setUp(self):
         self.client = APIClient()
@@ -94,7 +95,9 @@ class TestTurmasViews(TestCase):
 
     def assert_401(self, path, method="get", payload=None):
         kwargs = {"format": "json"} if payload else {}
-        response = getattr(self.anon, method)(f"{_BASE}{path}", payload, **kwargs)
+        response = getattr(self.anon, method)(
+            f"{_BASE}{path}", payload, **kwargs
+        )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     @patch(_SVC)
@@ -102,7 +105,9 @@ class TestTurmasViews(TestCase):
         mock_svc.return_value.turmas_regulares.return_value = [_TURMA]
         res = self.post("/turmas-regulares/", [2112345])
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        mock_svc.return_value.turmas_regulares.assert_called_once_with([2112345])
+        mock_svc.return_value.turmas_regulares.assert_called_once_with(
+            [2112345]
+        )
 
     @patch(_SVC)
     def test_turmas_regulares_lista_vazia_retorna_200(self, mock_svc):
@@ -126,7 +131,13 @@ class TestTurmasViews(TestCase):
         mock_svc.return_value.turmas_regulares.return_value = [_TURMA]
         res = self.post("/turmas-regulares/", [2112345])
         item = res.data[0]
-        for campo in ("codigo", "nome_turma", "ano_letivo", "tipo_turma", "ue_codigo"):
+        for campo in (
+            "codigo",
+            "nome_turma",
+            "ano_letivo",
+            "tipo_turma",
+            "ue_codigo",
+        ):
             self.assertIn(campo, item)
 
     @patch(_SVC)
@@ -134,7 +145,9 @@ class TestTurmasViews(TestCase):
         mock_svc.return_value.turmas_programa.return_value = [_TURMA]
         res = self.post("/turmas-programa/", [2112345])
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        mock_svc.return_value.turmas_programa.assert_called_once_with([2112345])
+        mock_svc.return_value.turmas_programa.assert_called_once_with(
+            [2112345]
+        )
 
     @patch(_SVC)
     def test_turmas_programa_lista_vazia_retorna_200(self, mock_svc):
@@ -159,10 +172,20 @@ class TestTurmasViews(TestCase):
         res = self.post("/listar-turmas/", [2112345])
         item = res.data[0]
         campos = (
-            "codigo", "nome_turma", "ano_letivo", "ano", "tipo_turma",
-            "ue_codigo", "modalidade", "codigo_modalidade", "semestre",
-            "ensino_especial", "serie_ensino", "codigo_serie_ensino",
-            "situacao", "extinta",
+            "codigo",
+            "nome_turma",
+            "ano_letivo",
+            "ano",
+            "tipo_turma",
+            "ue_codigo",
+            "modalidade",
+            "codigo_modalidade",
+            "semestre",
+            "ensino_especial",
+            "serie_ensino",
+            "codigo_serie_ensino",
+            "situacao",
+            "extinta",
         )
         for campo in campos:
             self.assertIn(campo, item, f"campo ausente: {campo}")
@@ -191,18 +214,31 @@ class TestTurmasViews(TestCase):
         mock_svc.return_value.dados_turma.return_value = _TURMA_DADOS
         res = self.get("/2112345/dados/")
         campos = (
-            "codigo", "ano_letivo", "nome_turma", "tipo_turma", "ue_codigo",
-            "semestre", "ensino_especial", "extinta", "situacao",
-            "codigo_tipo_programa", "codigo_modalidade_etapa",
-            "data_atualizacao", "data_status_turma_escola",
+            "codigo",
+            "ano_letivo",
+            "nome_turma",
+            "tipo_turma",
+            "ue_codigo",
+            "semestre",
+            "ensino_especial",
+            "extinta",
+            "situacao",
+            "codigo_tipo_programa",
+            "codigo_modalidade_etapa",
+            "data_atualizacao",
+            "data_status_turma_escola",
         )
         for campo in campos:
             self.assertIn(campo, res.data, f"campo ausente: {campo}")
 
     @patch(_SVC)
     def test_sincronizacoes_retorna_200(self, mock_svc):
-        mock_svc.return_value.sincronizacoes_institucionais.return_value = _TURMA_SINC
-        res = self.get("/ues/000532/turmas/2112345/sincronizacoes-institucionais/")
+        mock_svc.return_value.sincronizacoes_institucionais.return_value = (
+            _TURMA_SINC
+        )
+        res = self.get(
+            "/ues/000532/turmas/2112345/sincronizacoes-institucionais/"
+        )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         mock_svc.return_value.sincronizacoes_institucionais.assert_called_once_with(
             "000532", 2112345
@@ -211,21 +247,40 @@ class TestTurmasViews(TestCase):
     @patch(_SVC)
     def test_sincronizacoes_nao_encontrada_retorna_404(self, mock_svc):
         mock_svc.return_value.sincronizacoes_institucionais.return_value = None
-        res = self.get("/ues/999999/turmas/9999999/sincronizacoes-institucionais/")
+        res = self.get(
+            "/ues/999999/turmas/9999999/sincronizacoes-institucionais/"
+        )
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_sincronizacoes_sem_api_key_retorna_401(self):
-        self.assert_401("/ues/000532/turmas/2112345/sincronizacoes-institucionais/")
+        self.assert_401(
+            "/ues/000532/turmas/2112345/sincronizacoes-institucionais/"
+        )
 
     @patch(_SVC)
     def test_sincronizacoes_shape_campos_obrigatorios(self, mock_svc):
-        mock_svc.return_value.sincronizacoes_institucionais.return_value = _TURMA_SINC
-        res = self.get("/ues/000532/turmas/2112345/sincronizacoes-institucionais/")
+        mock_svc.return_value.sincronizacoes_institucionais.return_value = (
+            _TURMA_SINC
+        )
+        res = self.get(
+            "/ues/000532/turmas/2112345/sincronizacoes-institucionais/"
+        )
         campos = (
-            "codigo", "ue_codigo", "ano_letivo", "data_inicio_turma", "data_fim",
-            "data_atualizacao", "data_status_turma_escola", "situacao", "extinta",
-            "codigo_modalidade", "modalidade", "semestre", "ensino_especial",
-            "codigo_serie_ensino", "serie_ensino",
+            "codigo",
+            "ue_codigo",
+            "ano_letivo",
+            "data_inicio_turma",
+            "data_fim",
+            "data_atualizacao",
+            "data_status_turma_escola",
+            "situacao",
+            "extinta",
+            "codigo_modalidade",
+            "modalidade",
+            "semestre",
+            "ensino_especial",
+            "codigo_serie_ensino",
+            "serie_ensino",
         )
         for campo in campos:
             self.assertIn(campo, res.data, f"campo ausente: {campo}")
@@ -233,25 +288,37 @@ class TestTurmasViews(TestCase):
     @patch(_SVC)
     def test_anos_letivos_retorna_200(self, mock_svc):
         mock_svc.return_value.anos_letivos_por_ue.return_value = [2023, 2024]
-        res = self.get("/ue/000532/sincronizacoes-institucionais/anos-letivos/")
+        res = self.get(
+            "/ue/000532/sincronizacoes-institucionais/anos-letivos/"
+        )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data, [2023, 2024])
-        mock_svc.return_value.anos_letivos_por_ue.assert_called_once_with("000532")
+        mock_svc.return_value.anos_letivos_por_ue.assert_called_once_with(
+            "000532"
+        )
 
     @patch(_SVC)
     def test_anos_letivos_sem_turmas_retorna_lista_vazia(self, mock_svc):
         mock_svc.return_value.anos_letivos_por_ue.return_value = []
-        res = self.get("/ue/999999/sincronizacoes-institucionais/anos-letivos/")
+        res = self.get(
+            "/ue/999999/sincronizacoes-institucionais/anos-letivos/"
+        )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data, [])
 
     def test_anos_letivos_sem_api_key_retorna_401(self):
-        self.assert_401("/ue/000532/sincronizacoes-institucionais/anos-letivos/")
+        self.assert_401(
+            "/ue/000532/sincronizacoes-institucionais/anos-letivos/"
+        )
 
     @patch(_SVC)
     def test_turmas_historicas_retorna_200(self, mock_svc):
-        mock_svc.return_value.turmas_historicas_professor.return_value = [_TURMA_HISTORICA]
-        res = self.get("/anos-letivos/2024/professor/7654321/turmas-historicas-geral/")
+        mock_svc.return_value.turmas_historicas_professor.return_value = [
+            _TURMA_HISTORICA
+        ]
+        res = self.get(
+            "/anos-letivos/2024/professor/7654321/turmas-historicas-geral/"
+        )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         mock_svc.return_value.turmas_historicas_professor.assert_called_once_with(
             2024, "7654321"
@@ -260,7 +327,9 @@ class TestTurmasViews(TestCase):
     @patch(_SVC)
     def test_turmas_historicas_sem_resultado_retorna_404(self, mock_svc):
         mock_svc.return_value.turmas_historicas_professor.return_value = []
-        res = self.get("/anos-letivos/2099/professor/0000000/turmas-historicas-geral/")
+        res = self.get(
+            "/anos-letivos/2099/professor/0000000/turmas-historicas-geral/"
+        )
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_turmas_historicas_sem_api_key_retorna_401(self):
@@ -273,14 +342,30 @@ class TestTurmasViews(TestCase):
         mock_svc.return_value.turmas_historicas_professor.return_value = [
             _TURMA_HISTORICA
         ]
-        res = self.get("/anos-letivos/2024/professor/7654321/turmas-historicas-geral/")
+        res = self.get(
+            "/anos-letivos/2024/professor/7654321/turmas-historicas-geral/"
+        )
         item = res.data[0]
         campos = (
-            "ano", "ano_letivo", "codigo", "tipo_turma", "modalidade",
-            "codigo_modalidade", "nome_turma", "semestre", "duracao_turno",
-            "tipo_turno", "data_fim", "ehistorico", "ensino_especial",
-            "etapa_eja", "serie_ensino", "data_inicio_turma", "extinta",
-            "situacao", "ue_codigo",
+            "ano",
+            "ano_letivo",
+            "codigo",
+            "tipo_turma",
+            "modalidade",
+            "codigo_modalidade",
+            "nome_turma",
+            "semestre",
+            "duracao_turno",
+            "tipo_turno",
+            "data_fim",
+            "ehistorico",
+            "ensino_especial",
+            "etapa_eja",
+            "serie_ensino",
+            "data_inicio_turma",
+            "extinta",
+            "situacao",
+            "ue_codigo",
         )
         for campo in campos:
             self.assertIn(campo, item, f"campo ausente no TurmaDTO: {campo}")
@@ -333,7 +418,11 @@ class TestTurmasViews(TestCase):
                 f"esperado 401 em GET {path}",
             )
 
-        casos_post = ["/turmas-regulares/", "/turmas-programa/", "/listar-turmas/"]
+        casos_post = [
+            "/turmas-regulares/",
+            "/turmas-programa/",
+            "/listar-turmas/",
+        ]
         for path in casos_post:
             res = self.anon.post(f"{_BASE}{path}", [], format="json")
             self.assertEqual(

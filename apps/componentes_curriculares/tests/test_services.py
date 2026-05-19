@@ -11,28 +11,32 @@ _REPO = "apps.componentes_curriculares.services.ComponentesRepository"
 
 
 class TestComponentesService(SimpleTestCase):
-    """Valida delegação e regras do ComponentesService."""
+    """Valida delegação do service de componentes curriculares."""
 
     def setUp(self) -> None:
-        """Configura patch do repository para os testes."""
+        """Configura o repository usado pelos testes."""
         patcher = patch(_REPO)
         self.addCleanup(patcher.stop)
         self.mock_repo_cls = patcher.start()
         self.repo = self.mock_repo_cls.return_value
         self.service = ComponentesService()
 
-    def assert_delega(self, metodo_service, metodo_repo, *args, retorno=None, **kwargs):
-        """Valida delegação simples do service para o repository."""
+    def assert_delega(
+        self, metodo_service, metodo_repo, *args, retorno=None, **kwargs
+    ):
+        """Valida delegação do service para o repository."""
         retorno = [] if retorno is None else retorno
         getattr(self.repo, metodo_repo).return_value = retorno
 
         resultado = getattr(self.service, metodo_service)(*args, **kwargs)
 
         self.assertEqual(resultado, retorno)
-        getattr(self.repo, metodo_repo).assert_called_once_with(*args, **kwargs)
+        getattr(self.repo, metodo_repo).assert_called_once_with(
+            *args, **kwargs
+        )
 
     def test_ep1_sem_turma_delega_listar_por_funcionario(self) -> None:
-        """EP-1 sem codigoTurma delega a listar_por_funcionario."""
+        """Delega listagem sem turma para o repository."""
         self.repo.listar_por_funcionario.return_value = []
 
         resultado = self.service.listar_componentes_por_funcionario("f1")
@@ -41,7 +45,7 @@ class TestComponentesService(SimpleTestCase):
         self.repo.listar_por_funcionario.assert_called_once_with("f1")
 
     def test_ep1_com_turma_planejamento_true(self) -> None:
-        """EP-1 com planejamento=True delega ao fluxo de planejamento."""
+        """Delega listagem com planejamento para o repository."""
         self.repo.listar_planejamento_por_turma_funcionario.return_value = []
 
         resultado = self.service.listar_componentes_por_funcionario(
@@ -57,7 +61,7 @@ class TestComponentesService(SimpleTestCase):
         )
 
     def test_ep1_com_turma_planejamento_false(self) -> None:
-        """EP-1 com planejamento=False delega ao fluxo padrão por turma."""
+        """Delega listagem por turma para o repository."""
         self.repo.listar_por_turma_funcionario.return_value = []
 
         resultado = self.service.listar_componentes_por_funcionario(
@@ -72,7 +76,7 @@ class TestComponentesService(SimpleTestCase):
         )
 
     def test_ep1_agrupamento_false_nao_altera_retorno(self) -> None:
-        """EP-1 com agrupamento=False mantém exibir_componente_eol original."""
+        """Mantém exibição do componente quando agrupamento está inativo."""
         dados = [{"codigo": 1, "exibir_componente_eol": True}]
         self.repo.listar_por_funcionario.return_value = dados
 
@@ -85,7 +89,7 @@ class TestComponentesService(SimpleTestCase):
         self.assertTrue(resultado[0]["exibir_componente_eol"])
 
     def test_ep1_agrupamento_true_oculta_componente_eol(self) -> None:
-        """EP-1 com agrupamento=True força exibir_componente_eol como False."""
+        """Oculta componente EOL quando agrupamento está ativo."""
         self.repo.listar_por_funcionario.return_value = [
             {"codigo": 1, "exibir_componente_eol": True},
             {"codigo": 2, "exibir_componente_eol": True},
@@ -105,7 +109,7 @@ class TestComponentesService(SimpleTestCase):
         )
 
     def test_ep2_regencia_delega(self) -> None:
-        """EP-2 delega listar_regencia_por_ano_turma ao repository."""
+        """Delega listagem de regência para o repository."""
         self.assert_delega(
             "listar_regencia_por_ano_turma",
             "listar_regencia_por_ano_turma",
@@ -113,7 +117,7 @@ class TestComponentesService(SimpleTestCase):
         )
 
     def test_ep3_pap_delega(self) -> None:
-        """EP-3 delega turma_possui_componente_pap ao repository."""
+        """Delega verificação de componente PAP para o repository."""
         self.assert_delega(
             "turma_possui_componente_pap",
             "turma_possui_componente_pap",
@@ -123,7 +127,7 @@ class TestComponentesService(SimpleTestCase):
         )
 
     def test_ep4_ue_anos_escolares_delega(self) -> None:
-        """EP-4 delega componentes por UE, modalidade, ano e séries."""
+        """Delega listagem por UE, modalidade, ano e séries."""
         self.assert_delega(
             "listar_por_ue_modalidade_ano_e_anos_escolares",
             "listar_por_ue_modalidade_ano_e_anos_escolares",
@@ -134,7 +138,7 @@ class TestComponentesService(SimpleTestCase):
         )
 
     def test_ep5_turma_programa_delega(self) -> None:
-        """EP-5 delega listar_turma_programa_por_ue_modalidade_ano."""
+        """Delega listagem de turmas programa."""
         self.assert_delega(
             "listar_turma_programa_por_ue_modalidade_ano",
             "listar_turma_programa_por_ue_modalidade_ano",
@@ -144,7 +148,7 @@ class TestComponentesService(SimpleTestCase):
         )
 
     def test_ep6_ue_turmas_delega(self) -> None:
-        """EP-6 delega listar_por_ue_e_turmas ao repository."""
+        """Delega listagem por UE e turmas."""
         self.assert_delega(
             "listar_por_ue_e_turmas",
             "listar_por_ue_e_turmas",
@@ -153,7 +157,7 @@ class TestComponentesService(SimpleTestCase):
         )
 
     def test_ep7_lista_turmas_delega(self) -> None:
-        """EP-7 delega listar_por_lista_turmas com parâmetro padrão."""
+        """Delega listagem por turmas com parâmetro padrão."""
         self.repo.listar_por_lista_turmas.return_value = []
 
         resultado = self.service.listar_por_lista_turmas(["T1"])
@@ -165,7 +169,7 @@ class TestComponentesService(SimpleTestCase):
         )
 
     def test_ep7_lista_turmas_sem_planejamento_delega(self) -> None:
-        """EP-7 delega listar_por_lista_turmas sem componentes de planejamento."""
+        """Delega listagem por turmas sem componentes de planejamento."""
         self.repo.listar_por_lista_turmas.return_value = []
 
         resultado = self.service.listar_por_lista_turmas(
@@ -180,7 +184,7 @@ class TestComponentesService(SimpleTestCase):
         )
 
     def test_ep8_brutos_delega(self) -> None:
-        """EP-8 delega listar_turmas_brutos ao repository."""
+        """Delega listagem de componentes sem pós-processamento."""
         self.assert_delega(
             "listar_turmas_brutos",
             "listar_turmas_brutos",
@@ -188,11 +192,11 @@ class TestComponentesService(SimpleTestCase):
         )
 
     def test_ep9_catalogo_delega(self) -> None:
-        """EP-9 delega listar_catalogo ao repository."""
+        """Delega listagem do catálogo ao repository."""
         self.assert_delega("listar_catalogo", "listar_catalogo")
 
     def test_ep10_vigencia_delega(self) -> None:
-        """EP-10 delega listar_vigencia_componentes ao repository."""
+        """Delega listagem de vigência ao repository."""
         self.assert_delega(
             "listar_vigencia_componentes",
             "listar_vigencia_componentes",
@@ -203,7 +207,7 @@ class TestComponentesService(SimpleTestCase):
         )
 
     def test_ep11_grade_curricular_delega(self) -> None:
-        """EP-11 delega listar_grade_curricular ao repository."""
+        """Delega listagem de grade curricular ao repository."""
         self.assert_delega(
             "listar_grade_curricular",
             "listar_grade_curricular",
@@ -211,7 +215,7 @@ class TestComponentesService(SimpleTestCase):
         )
 
     def test_ep12_sem_atribuicao_delega(self) -> None:
-        """EP-12 delega listar_componentes_sem_atribuicao ao repository."""
+        """Delega listagem de componentes sem atribuição."""
         self.assert_delega(
             "listar_componentes_sem_atribuicao",
             "listar_componentes_sem_atribuicao",
@@ -219,7 +223,7 @@ class TestComponentesService(SimpleTestCase):
         )
 
     def test_ep13_correlacionados_delega(self) -> None:
-        """EP-13 delega listar_agrupamentos_correlacionados ao repository."""
+        """Delega listagem de agrupamentos correlacionados."""
         data_base = date(2024, 1, 1)
 
         self.assert_delega(
@@ -230,7 +234,7 @@ class TestComponentesService(SimpleTestCase):
         )
 
     def test_ep14_correlacionados_lote_delega(self) -> None:
-        """EP-14 delega listar_agrupamentos_correlacionados_lote."""
+        """Delega listagem de agrupamentos correlacionados em lote."""
         self.assert_delega(
             "listar_agrupamentos_correlacionados_lote",
             "listar_agrupamentos_correlacionados_lote",
@@ -239,7 +243,7 @@ class TestComponentesService(SimpleTestCase):
         )
 
     def test_ep15_territorio_delega(self) -> None:
-        """EP-15 delega listar_agrupamentos_territorio ao repository."""
+        """Delega listagem de agrupamentos de território."""
         self.assert_delega(
             "listar_agrupamentos_territorio",
             "listar_agrupamentos_territorio",

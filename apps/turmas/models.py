@@ -1,8 +1,4 @@
-"""Modelos de leitura do domínio Turmas.
-
-Turma usa managed=False — tabela gerenciada pelo ETL.
-TurmaItinerarioEnsinoMedio é fixture local (managed=True).
-"""
+"""Modelos de leitura do domínio Turmas."""
 
 from django.db import models
 
@@ -10,6 +6,8 @@ from apps.core.models import ModeloBase
 
 
 class Turma(ModeloBase):
+    """Representa turma escolar do EOL."""
+
     codigo = models.BigIntegerField(unique=True)
     ano_letivo = models.IntegerField()
     ano = models.CharField(max_length=5, null=True, blank=True)  # NOSONAR
@@ -22,9 +20,13 @@ class Turma(ModeloBase):
     extinta = models.BooleanField(default=False)
     situacao = models.CharField(max_length=1, null=True, blank=True)  # NOSONAR
     ue_codigo = models.CharField(max_length=20)
-    serie_ensino = models.CharField(max_length=200, null=True, blank=True)  # NOSONAR
+    serie_ensino = models.CharField(
+        max_length=200, null=True, blank=True  # NOSONAR
+    )
     codigo_serie_ensino = models.IntegerField(null=True, blank=True)
-    modalidade = models.CharField(max_length=50, null=True, blank=True)  # NOSONAR
+    modalidade = models.CharField(
+        max_length=50, null=True, blank=True  # NOSONAR
+    )
     codigo_modalidade = models.IntegerField(null=True, blank=True)
     codigo_tipo_programa = models.IntegerField(null=True, blank=True)
     codigo_modalidade_etapa = models.IntegerField(null=True, blank=True)
@@ -50,10 +52,7 @@ class Turma(ModeloBase):
 
 
 class TurmaItinerarioEnsinoMedio(models.Model):
-    """Fixture local de itinerários do Ensino Médio.
-
-    Não sincronizada pelo ETL — populada via fixture Django.
-    """
+    """Representa itinerário do Ensino Médio."""
 
     nome = models.CharField(max_length=100)
     serie = models.CharField(max_length=10, blank=True, default="")

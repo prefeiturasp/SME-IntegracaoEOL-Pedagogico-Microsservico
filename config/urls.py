@@ -1,4 +1,4 @@
-"""URL configuration for the pedagogico microservice."""
+"""Rotas principais do microsserviço pedagógico."""
 
 from django.urls import include, path
 from drf_spectacular.views import (

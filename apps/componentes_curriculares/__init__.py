@@ -1,1 +1,0 @@
-# Componentes curriculares app package

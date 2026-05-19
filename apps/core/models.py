@@ -1,3 +1,5 @@
+"""Modelos base do microsserviço pedagógico."""
+
 from django.db import models
 
 

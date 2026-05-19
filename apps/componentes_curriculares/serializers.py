@@ -1,9 +1,10 @@
 """Serializers do domínio Componentes Curriculares."""
+
 from rest_framework import serializers
 
 
 class ComponenteCurricularSerializer(serializers.Serializer):
-    """Contrato de resposta completo (EP-1, EP-4 a EP-8)."""
+    """Serializa dados completos de componente curricular."""
 
     codigo = serializers.IntegerField()
     codigo_componente_territorio_saber = serializers.IntegerField()
@@ -23,14 +24,14 @@ class ComponenteCurricularSerializer(serializers.Serializer):
 
 
 class ComponenteSimplificadoSerializer(serializers.Serializer):
-    """Contrato reduzido (EP-6, EP-9)."""
+    """Serializa dados simplificados de componente curricular."""
 
     codigo = serializers.IntegerField()
     descricao = serializers.CharField()
 
 
 class ComponenteRegenciaSerializer(serializers.Serializer):
-    """Contrato de resposta de regência (EP-2)."""
+    """Serializa dados de componente de regência."""
 
     ano_turma = serializers.CharField(allow_null=True)
     ano_letivo = serializers.IntegerField()
@@ -48,7 +49,7 @@ class ComponenteRegenciaSerializer(serializers.Serializer):
 
 
 class VigenciaComponenteSerializer(serializers.Serializer):
-    """Contrato de resposta de vigência de componentes (EP-10)."""
+    """Serializa dados de vigência de componente curricular."""
 
     componente_codigo = serializers.CharField()
     componente_descricao = serializers.CharField()
@@ -57,7 +58,7 @@ class VigenciaComponenteSerializer(serializers.Serializer):
 
 
 class GradeCurricularSerializer(serializers.Serializer):
-    """Contrato de resposta da grade curricular por ano letivo (EP-11)."""
+    """Serializa dados de grade curricular."""
 
     codigo_componente_curricular = serializers.IntegerField()
     descricao_componente_curricular = serializers.CharField()

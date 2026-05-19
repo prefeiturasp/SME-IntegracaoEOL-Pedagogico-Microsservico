@@ -10,7 +10,7 @@ class TestApiKeyAuthentication(TestCase):
     """Valida o comportamento da autenticação por API Key."""
 
     def test_sem_api_key_retorna_401_e_header_correto(self) -> None:
-        """Sem header retorna 401 com WWW-Authenticate configurado."""
+        """Valida rejeição de requisição sem API Key."""
         client = APIClient()
         resposta = client.get(_URL)
         self.assertEqual(resposta.status_code, 401)
@@ -19,7 +19,7 @@ class TestApiKeyAuthentication(TestCase):
         )
 
     def test_api_key_invalida_retorna_401(self) -> None:
-        """Requisição com API Key incorreta retorna 401."""
+        """Valida rejeição de API Key inválida."""
         client = APIClient()
         client.credentials(HTTP_X_API_KEY="chave-errada")
         resposta = client.get(_URL)

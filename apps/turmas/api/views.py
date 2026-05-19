@@ -19,11 +19,14 @@ _TAG = ["Turma"]
 
 
 class TurmasRegularesView(BaseAPIView):
-    """Filtra turmas regulares (tipo_turma=1) dentro de uma lista de códigos."""
+    """Lista turmas regulares pelos códigos informados."""
+
     @extend_schema(
         tags=_TAG,
         summary="Buscar turmas regulares por lista de códigos",
-        request={"application/json": {"type": "array", "items": {"type": "integer"}}},
+        request={
+            "application/json": {"type": "array", "items": {"type": "integer"}}
+        },
         responses={200: TurmaListSerializer(many=True)},
         operation_id="turmas_regulares",
     )
@@ -34,11 +37,14 @@ class TurmasRegularesView(BaseAPIView):
 
 
 class TurmasProgramaView(BaseAPIView):
-    """Filtra turmas programa (tipo_turma=3) dentro de uma lista de códigos."""
+    """Lista turmas programa pelos códigos informados."""
+
     @extend_schema(
         tags=_TAG,
         summary="Buscar turmas programa por lista de códigos",
-        request={"application/json": {"type": "array", "items": {"type": "integer"}}},
+        request={
+            "application/json": {"type": "array", "items": {"type": "integer"}}
+        },
         responses={200: TurmaListSerializer(many=True)},
         operation_id="turmas_programa",
     )
@@ -49,11 +55,14 @@ class TurmasProgramaView(BaseAPIView):
 
 
 class ListarTurmasView(BaseAPIView):
+    """Lista turmas pelos códigos informados."""
 
     @extend_schema(
         tags=_TAG,
         summary="Listar turmas por lista de códigos",
-        request={"application/json": {"type": "array", "items": {"type": "integer"}}},
+        request={
+            "application/json": {"type": "array", "items": {"type": "integer"}}
+        },
         responses={200: TurmaListSerializer(many=True)},
         operation_id="listar_turmas",
     )
@@ -65,6 +74,7 @@ class ListarTurmasView(BaseAPIView):
 
 class TurmaDadosView(BaseAPIView):
     """Retorna dados canônicos de uma turma."""
+
     @extend_schema(
         tags=_TAG,
         summary="Dados cadastrais de uma turma",
@@ -82,7 +92,8 @@ class TurmaDadosView(BaseAPIView):
 
 
 class TurmaSincronizacoesInstitucionaisView(BaseAPIView):
-    """Retorna anos letivos distintos com turmas na UE (exclui tipo_turma=4)."""
+    """Retorna dados de sincronização institucional da turma."""
+
     @extend_schema(
         tags=_TAG,
         summary="Sincronizações institucionais da turma",
@@ -99,14 +110,17 @@ class TurmaSincronizacoesInstitucionaisView(BaseAPIView):
         ue_codigo: str,
         turma_codigo: int,
     ) -> Response:
-        dados = TurmasService().sincronizacoes_institucionais(ue_codigo, turma_codigo)
+        dados = TurmasService().sincronizacoes_institucionais(
+            ue_codigo, turma_codigo
+        )
         if dados is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
         return Response(dados)
 
 
 class AnosLetivosUEView(BaseAPIView):
-    """Retorna anos letivos distintos com turmas na UE (exclui tipo_turma=4)."""
+    """Lista anos letivos com turmas na UE."""
+
     @extend_schema(
         tags=_TAG,
         summary="Anos letivos de sincronizações institucionais por UE",
@@ -122,7 +136,8 @@ class AnosLetivosUEView(BaseAPIView):
 
 
 class TurmasHistoricasProfessorView(BaseAPIView):
-    """Retorna turmas históricas do professor via AtribuicaoComponente."""
+    """Retorna turmas históricas do professor."""
+
     @extend_schema(
         tags=_TAG,
         summary="Turmas históricas do professor por ano letivo",
@@ -139,14 +154,17 @@ class TurmasHistoricasProfessorView(BaseAPIView):
         ano_letivo: int,
         professor_rf: str,
     ) -> Response:
-        dados = TurmasService().turmas_historicas_professor(ano_letivo, professor_rf)
+        dados = TurmasService().turmas_historicas_professor(
+            ano_letivo, professor_rf
+        )
         if not dados:
             return Response(status=status.HTTP_404_NOT_FOUND)
         return Response(dados)
 
 
 class ItinerarioEnsinoMedioView(BaseAPIView):
-    """Retorna os itinerários do Ensino Médio (fixture local)."""
+    """Retorna itinerários do Ensino Médio."""
+
     @extend_schema(
         tags=_TAG,
         summary="Itinerários do Ensino Médio",
