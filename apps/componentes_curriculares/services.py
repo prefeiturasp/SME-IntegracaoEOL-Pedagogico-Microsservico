@@ -18,7 +18,20 @@ class ComponentesService:
         planejamento: bool = False,
         agrupamento: bool = False,
     ) -> list[dict]:
-        """Retorna componentes do funcionário."""
+        """Retorna componentes do funcionário.
+
+        Args:
+            login: Login (RF) do funcionário.
+            codigo_turma: Filtra pelos componentes da turma quando
+                informado.
+            planejamento: Quando True, substitui regência pelos filhos
+                de planejamento.
+            agrupamento: Quando True, desativa a exibição do componente
+                EOL.
+
+        Returns:
+            Lista de componentes curriculares do funcionário.
+        """
         if codigo_turma is None:
             dados = self._repo.listar_por_funcionario(login)
         elif planejamento:
@@ -40,7 +53,14 @@ class ComponentesService:
         self,
         ano_turma: int,
     ) -> list[dict]:
-        """Retorna componentes de regência por ano de turma."""
+        """Retorna componentes de regência por ano de turma.
+
+        Args:
+            ano_turma: Ano de turma para filtro.
+
+        Returns:
+            Lista de componentes de regência.
+        """
         return self._repo.listar_regencia_por_ano_turma(ano_turma)
 
     def turma_possui_componente_pap(
@@ -48,7 +68,15 @@ class ComponentesService:
         codigo_turma: str,
         login: str,
     ) -> bool:
-        """Verifica presença de componente PAP na turma."""
+        """Verifica presença de componente PAP na turma.
+
+        Args:
+            codigo_turma: Código da turma.
+            login: Login (RF) do funcionário.
+
+        Returns:
+            True se a turma possui componente PAP para o funcionário.
+        """
         return self._repo.turma_possui_componente_pap(codigo_turma, login)
 
     def listar_por_ue_modalidade_ano_e_anos_escolares(
@@ -58,7 +86,17 @@ class ComponentesService:
         ano_letivo: int,
         anos_escolares: list[str],
     ) -> list[dict]:
-        """Retorna componentes da grade por UE, modalidade e séries."""
+        """Retorna componentes da grade por UE, modalidade e séries.
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+            modalidade: Código da modalidade de ensino.
+            ano_letivo: Ano letivo consultado.
+            anos_escolares: Séries a serem filtradas.
+
+        Returns:
+            Lista de componentes da grade curricular.
+        """
         return self._repo.listar_por_ue_modalidade_ano_e_anos_escolares(
             ue_codigo, modalidade, ano_letivo, anos_escolares
         )
@@ -69,7 +107,16 @@ class ComponentesService:
         modalidade: int,
         ano_letivo: int,
     ) -> list[dict]:
-        """Retorna componentes de turmas programa."""
+        """Retorna componentes de turmas programa.
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+            modalidade: Código da modalidade de ensino.
+            ano_letivo: Ano letivo consultado.
+
+        Returns:
+            Lista de componentes de turmas programa.
+        """
         return self._repo.listar_turma_programa_por_ue_modalidade_ano(
             ue_codigo, modalidade, ano_letivo
         )
@@ -79,7 +126,15 @@ class ComponentesService:
         ue_id: str,
         turmas: list[str],
     ) -> list[dict]:
-        """Retorna componentes simplificados por lista de turmas."""
+        """Retorna componentes simplificados por lista de turmas.
+
+        Args:
+            ue_id: Código da unidade educacional.
+            turmas: Códigos das turmas a consultar.
+
+        Returns:
+            Lista de componentes simplificados das turmas.
+        """
         return self._repo.listar_por_ue_e_turmas(ue_id, turmas)
 
     def listar_por_lista_turmas(
@@ -87,7 +142,16 @@ class ComponentesService:
         codigos_turmas: list[str],
         adicionar_componentes_planejamento: bool = True,
     ) -> list[dict]:
-        """Retorna componentes de múltiplas turmas para planejamento."""
+        """Retorna componentes de múltiplas turmas para planejamento.
+
+        Args:
+            codigos_turmas: Códigos das turmas consultadas.
+            adicionar_componentes_planejamento: Quando True, expande
+                regência com os componentes de planejamento.
+
+        Returns:
+            Lista de componentes das turmas informadas.
+        """
         return self._repo.listar_por_lista_turmas(
             codigos_turmas,
             adicionar_componentes_planejamento=adicionar_componentes_planejamento,
@@ -97,11 +161,22 @@ class ComponentesService:
         self,
         codigos_turmas: list[str],
     ) -> list[dict]:
-        """Retorna componentes sem pós-processamento."""
+        """Retorna componentes sem pós-processamento.
+
+        Args:
+            codigos_turmas: Códigos das turmas a consultar.
+
+        Returns:
+            Lista de componentes sem normalização de dados.
+        """
         return self._repo.listar_turmas_brutos(codigos_turmas)
 
     def listar_catalogo(self) -> list[dict]:
-        """Retorna catálogo completo de componentes."""
+        """Retorna catálogo completo de componentes.
+
+        Returns:
+            Lista completa de componentes curriculares.
+        """
         return self._repo.listar_catalogo()
 
     def listar_vigencia_componentes(
@@ -111,7 +186,17 @@ class ComponentesService:
         componentes_curriculares: list[str],
         semestre: int | None,
     ) -> list[dict]:
-        """Retorna vigência de componentes por turma e UE."""
+        """Retorna vigência de componentes por turma e UE.
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+            ano_letivo: Ano letivo consultado.
+            componentes_curriculares: Códigos dos componentes a consultar.
+            semestre: Semestre letivo; None para todos os semestres.
+
+        Returns:
+            Lista de vigências de componentes por turma.
+        """
         return self._repo.listar_vigencia_componentes(
             ue_codigo, ano_letivo, componentes_curriculares, semestre
         )
@@ -120,14 +205,28 @@ class ComponentesService:
         self,
         ano_letivo: int,
     ) -> list[dict]:
-        """Retorna grade curricular completa por ano letivo."""
+        """Retorna grade curricular completa por ano letivo.
+
+        Args:
+            ano_letivo: Ano letivo consultado.
+
+        Returns:
+            Linhas da grade curricular do ano letivo.
+        """
         return self._repo.listar_grade_curricular(ano_letivo)
 
     def listar_componentes_sem_atribuicao(
         self,
         codigo_turma: str,
     ) -> list[str]:
-        """Retorna componentes sem professor atribuído."""
+        """Retorna componentes sem professor atribuído.
+
+        Args:
+            codigo_turma: Código da turma.
+
+        Returns:
+            Descrições dos componentes sem professor atribuído.
+        """
         return self._repo.listar_componentes_sem_atribuicao(codigo_turma)
 
     def listar_agrupamentos_correlacionados(
@@ -135,7 +234,15 @@ class ComponentesService:
         codigo_componente: int,
         data_base: date | None,
     ) -> list[dict]:
-        """Retorna agrupamentos correlacionados de território do saber."""
+        """Retorna agrupamentos correlacionados de território do saber.
+
+        Args:
+            codigo_componente: Código do componente de origem.
+            data_base: Data de referência; None para sem filtro de data.
+
+        Returns:
+            Lista de agrupamentos correlacionados ao componente.
+        """
         return self._repo.listar_agrupamentos_correlacionados(
             codigo_componente, data_base
         )
@@ -145,7 +252,15 @@ class ComponentesService:
         codigos: list[int],
         data_base: date | None,
     ) -> list[dict]:
-        """Retorna agrupamentos correlacionados em lote."""
+        """Retorna agrupamentos correlacionados em lote.
+
+        Args:
+            codigos: Códigos dos componentes de origem.
+            data_base: Data de referência; None para sem filtro de data.
+
+        Returns:
+            Lista de agrupamentos correlacionados sem duplicatas.
+        """
         return self._repo.listar_agrupamentos_correlacionados_lote(
             codigos, data_base
         )
@@ -154,5 +269,12 @@ class ComponentesService:
         self,
         ids: list[int],
     ) -> list[dict]:
-        """Retorna agrupamentos de Território do Saber por IDs."""
+        """Retorna agrupamentos de Território do Saber por IDs.
+
+        Args:
+            ids: IDs dos agrupamentos a consultar.
+
+        Returns:
+            Lista de agrupamentos de Território do Saber.
+        """
         return self._repo.listar_agrupamentos_territorio(ids)
