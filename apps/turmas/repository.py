@@ -108,7 +108,14 @@ class TurmasRepository:
     _DB = "default"
 
     def turmas_regulares(self, codigos: list[int]) -> list[dict]:
-        """Lista turmas regulares pelos códigos informados."""
+        """Lista turmas regulares pelos códigos informados.
+
+        Args:
+            codigos: Códigos das turmas a consultar.
+
+        Returns:
+            Lista de turmas regulares encontradas.
+        """
         turmas = Turma.objects.using(self._DB).filter(
             tipo_turma=TIPO_TURMA_REGULAR,
             codigo__in=codigos,
@@ -116,7 +123,14 @@ class TurmasRepository:
         return [_turma_para_lista(t) for t in turmas]
 
     def turmas_programa(self, codigos: list[int]) -> list[dict]:
-        """Lista turmas programa pelos códigos informados."""
+        """Lista turmas programa pelos códigos informados.
+
+        Args:
+            codigos: Códigos das turmas a consultar.
+
+        Returns:
+            Lista de turmas programa encontradas.
+        """
         turmas = Turma.objects.using(self._DB).filter(
             tipo_turma=TIPO_TURMA_PROGRAMA,
             codigo__in=codigos,
@@ -124,12 +138,26 @@ class TurmasRepository:
         return [_turma_para_lista(t) for t in turmas]
 
     def listar_turmas(self, codigos: list[int]) -> list[dict]:
-        """Lista turmas pelos códigos informados."""
+        """Lista turmas pelos códigos informados.
+
+        Args:
+            codigos: Códigos das turmas a consultar.
+
+        Returns:
+            Lista de turmas encontradas.
+        """
         turmas = Turma.objects.using(self._DB).filter(codigo__in=codigos)
         return [_turma_para_lista(t) for t in turmas]
 
     def dados_turma(self, codigo: int) -> dict | None:
-        """Retorna dados cadastrais de uma turma."""
+        """Retorna dados cadastrais de uma turma.
+
+        Args:
+            codigo: Código da turma.
+
+        Returns:
+            Dados da turma, ou None se não encontrada.
+        """
         turma = Turma.objects.using(self._DB).filter(codigo=codigo).first()
         if turma is None:
             return None
@@ -140,7 +168,15 @@ class TurmasRepository:
         ue_codigo: str,
         turma_codigo: int,
     ) -> dict | None:
-        """Retorna dados de sincronização institucional da turma."""
+        """Retorna dados de sincronização institucional da turma.
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+            turma_codigo: Código da turma.
+
+        Returns:
+            Dados de sincronização, ou None se não encontrada.
+        """
         turma = (
             Turma.objects.using(self._DB)
             .filter(ue_codigo=ue_codigo, codigo=turma_codigo)
@@ -151,7 +187,14 @@ class TurmasRepository:
         return _turma_para_sincronizacao(turma)
 
     def anos_letivos_por_ue(self, ue_codigo: str) -> list[int]:
-        """Lista anos letivos com turmas na UE."""
+        """Lista anos letivos com turmas na UE.
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+
+        Returns:
+            Anos letivos com turmas na UE, em ordem crescente.
+        """
         return list(
             Turma.objects.using(self._DB)
             .filter(ue_codigo=ue_codigo)
@@ -166,7 +209,15 @@ class TurmasRepository:
         ano_letivo: int,
         professor_rf: str,
     ) -> list[dict]:
-        """Lista turmas históricas do professor no ano letivo."""
+        """Lista turmas históricas do professor no ano letivo.
+
+        Args:
+            ano_letivo: Ano letivo consultado.
+            professor_rf: Registro funcional do professor.
+
+        Returns:
+            Lista de turmas históricas do professor.
+        """
         codigos_str = (
             AtribuicaoComponente.objects.using(self._DB)
             .filter(professor=professor_rf, ano_letivo=ano_letivo)
@@ -188,7 +239,11 @@ class TurmasRepository:
         return [_turma_para_historico(t) for t in turmas]
 
     def itinerarios_ensino_medio(self) -> list[dict]:
-        """Lista itinerários do Ensino Médio ordenados por nome."""
+        """Lista itinerários do Ensino Médio ordenados por nome.
+
+        Returns:
+            Lista de itinerários do Ensino Médio.
+        """
         return [
             {"id": i.id, "nome": i.nome, "serie": i.serie}
             for i in TurmaItinerarioEnsinoMedio.objects.using(

@@ -24,7 +24,13 @@ class TestComponentesService(SimpleTestCase):
     def assert_delega(
         self, metodo_service, metodo_repo, *args, retorno=None, **kwargs
     ):
-        """Valida delegação do service para o repository."""
+        """Valida delegação do service para o repository.
+
+        Args:
+            metodo_service: Nome do método no service a ser chamado.
+            metodo_repo: Nome do método esperado no repository.
+            retorno: Valor retornado pelo repository; padrão é lista vazia.
+        """
         retorno = [] if retorno is None else retorno
         getattr(self.repo, metodo_repo).return_value = retorno
 
