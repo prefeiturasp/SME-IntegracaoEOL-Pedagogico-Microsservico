@@ -8,12 +8,11 @@ from django.db.models import F
 from apps.componentes_curriculares.constants import (
     CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL,
     DESCRICAO_COMPONENTE_REGENCIA_CLASSE_INFANTIL,
+    MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO,
 )
 from apps.componentes_curriculares.models import (
     AgrupamentoAtribuicaoTerritorioSaber,
-    AtribuicaoComponente,
     ComponenteCurricular,
-    ComponenteCurricularPAP,
     ComponenteCurricularPlanejamentoRegencia,
     GradeComponenteCurricular,
 )
@@ -25,6 +24,8 @@ from apps.componentes_curriculares.queries import (
     SQL_COMPONENTES_TURMA_COM_ATRIBUICAO,
     SQL_COMPONENTES_TURMA_PROGRAMA,
     SQL_COMPONENTES_TURMAS_BRUTOS,
+    SQL_FILTRO_ATRIBUICAO_POR_TURMA,
+    SQL_FILTRO_ATRIBUICAO_VIGENTE,
     SQL_VIGENCIA_COMPONENTES,
 )
 
@@ -220,6 +221,7 @@ class ComponentesRepository:
         sql = (
             f"{SQL_COMPONENTES_TURMA_COM_ATRIBUICAO}"
             " WHERE ac.professor = %s AND ct.turma_codigo = %s"
+            f"{SQL_FILTRO_ATRIBUICAO_POR_TURMA}"
         )
         rows = _raw(sql, [login, codigo_turma], self._DB)
         return [_componente_para_dict(r) for r in rows]
@@ -228,35 +230,52 @@ class ComponentesRepository:
         self,
         login: str,
     ) -> list[dict]:
-        """Lista todos os componentes do funcionário.
+        """Lista os componentes do funcionário no ano letivo corrente."""
+        sql = (
+            f"{SQL_COMPONENTES_TURMA_COM_ATRIBUICAO}"
+            " WHERE ac.professor = %s AND ac.ano_letivo = %s"
+            f"{SQL_FILTRO_ATRIBUICAO_VIGENTE}"
+        )
+        rows = _raw(sql, [login, date.today().year], self._DB)
 
-        Args:
-            login: Login (RF) do funcionário.
+        # Resolve componentes pais para substituir o código do filho.
+        codigos_pai = {
+            r["codigo_componente_curricular_pai"]
+            for r in rows
+            if r.get("codigo_componente_curricular_pai")
+        }
+        componentes_pai = (
+            ComponenteCurricular.objects.using(self._DB)
+            .filter(codigo__in=codigos_pai)
+            .in_bulk(field_name="codigo")
+            if codigos_pai
+            else {}
+        )
 
-        Returns:
-            Lista de componentes únicos do funcionário.
-        """
-        sql = f"{SQL_COMPONENTES_TURMA_COM_ATRIBUICAO} WHERE ac.professor = %s"
-        rows = _raw(sql, [login], self._DB)
-
-        # Remove repetições do mesmo componente em turmas diferentes.
-        seen_codigo: set[int] = set()
-        by_codigo: list[dict] = []
+        componentes: list[dict] = []
         for r in rows:
-            if r["codigo"] not in seen_codigo:
-                seen_codigo.add(r["codigo"])
-                r["turma_codigo"] = None
-                r["professor"] = None
-                by_codigo.append(_componente_para_dict(r))
+            item = _componente_para_dict(r)
+            pai = item.get("codigo_componente_curricular_pai")
+            componente_pai = componentes_pai.get(pai)
+            if componente_pai:
+                item["codigo"] = componente_pai.codigo
+                item["descricao"] = componente_pai.descricao
 
-        # Agrupa componentes filhos sob o respectivo componente pai.
-        seen_pai: set[int] = set()
+            item = _aplicar_regra_regencia_classe_infantil(item)
+            componentes.append(item)
+
+        seen: set[object] = set()
         result: list[dict] = []
-        for item in by_codigo:
-            pai = item.get("codigo_componente_curricular_pai") or 0
-            key = pai if pai > 0 else item["codigo"]
-            if key not in seen_pai:
-                seen_pai.add(key)
+        for item in componentes:
+            key = item.get("codigo_componente_curricular_pai") or item[
+                "codigo"
+            ]
+
+            if key not in seen:
+                seen.add(key)
+                # Alinhado ao legado: o SELECT não inclui o RF do professor
+                # nesse endpoint; o campo retorna sempre null.
+                item["professor"] = None
                 result.append(item)
 
         return result
@@ -278,6 +297,7 @@ class ComponentesRepository:
         sql = (
             f"{SQL_COMPONENTES_TURMA_COM_ATRIBUICAO}"
             " WHERE ac.professor = %s AND ct.turma_codigo = %s"
+            f"{SQL_FILTRO_ATRIBUICAO_POR_TURMA}"
         )
         rows = _raw(sql, [login, codigo_turma], self._DB)
         return _expandir_planejamento_regencia(rows, self._DB)
@@ -286,42 +306,34 @@ class ComponentesRepository:
         self,
         ano_turma: int,
     ) -> list[dict]:
-        """Lista componentes de regência por ano de turma.
-
-        Args:
-            ano_turma: Ano de turma para filtro.
-
-        Returns:
-            Lista de componentes de regência.
-        """
-        if ano_turma <= 0:
-            codigos = list(
-                ComponenteCurricularPlanejamentoRegencia.objects.using(
-                    self._DB
-                )
-                .filter(ano__isnull=True)
-                .values_list("id_componente_curricular", flat=True)
-            )
-        else:
-            codigos = list(
-                ComponenteCurricularPlanejamentoRegencia.objects.using(
-                    self._DB
-                )
-                .filter(ano=ano_turma)
-                .values_list("id_componente_curricular", flat=True)
-            )
+        """Lista componentes de regência por ano de turma."""
+        filtro = (
+            {"ano__isnull": True}
+            if ano_turma <= 0
+            else {"ano": ano_turma}
+        )
+        codigos = list(
+            ComponenteCurricularPlanejamentoRegencia.objects.using(self._DB)
+            .filter(**filtro)
+            .order_by("id_componente_curricular")
+            .values_list("id_componente_curricular", flat=True)
+        )
         componentes = (
             ComponenteCurricular.objects.using(self._DB)
             .filter(codigo__in=codigos)
-            .values("codigo", "descricao")
+            .in_bulk(field_name="codigo")
         )
+        componentes_ordenados = [
+            componentes[codigo] for codigo in codigos if codigo in componentes
+        ]
+
         return [
             {
                 "ano_turma": None,
                 "ano_letivo": 0,
-                "codigo": c["codigo"],
+                "codigo": c.codigo,
                 "codigo_componente_territorio_saber": 0,
-                "descricao": c["descricao"],
+                "descricao": c.descricao,
                 "territorio_saber": False,
                 "tipo_escola": None,
                 "turno_turma": 0,
@@ -331,7 +343,7 @@ class ComponentesRepository:
                 "inicio_atribuicao": None,
                 "fim_atribuicao": None,
             }
-            for c in componentes
+            for c in componentes_ordenados
         ]
 
     def turma_possui_componente_pap(
@@ -339,25 +351,39 @@ class ComponentesRepository:
         codigo_turma: str,
         login: str,
     ) -> bool:
-        """Verifica se a turma possui componente PAP para o funcionário.
-
-        Args:
-            codigo_turma: Código da turma.
-            login: Login (RF) do funcionário.
-
-        Returns:
-            True se a turma possui componente PAP.
-        """
-        codigos = list(
-            AtribuicaoComponente.objects.using(self._DB)
-            .filter(turma_codigo=codigo_turma, professor=login)
-            .values_list("componente_codigo", flat=True)
+        """Verifica se a turma possui componente PAP para o funcionário."""
+        rows = _raw(
+            """
+            SELECT EXISTS (
+                SELECT 1
+                  FROM atribuicao_componente ac
+                  JOIN turma t
+                    ON t.codigo::varchar = ac.turma_codigo
+                  JOIN componente_curricular_pap pap
+                    ON pap.id_componente_curricular = ac.componente_codigo
+                 WHERE ac.turma_codigo = %s
+                   AND ac.professor = %s
+                   AND ac.dt_cancelamento IS NULL
+                   AND (
+                         ac.dt_disponibilizacao >= make_date(
+                             t.ano_letivo,
+                             2,
+                             5
+                         )
+                         OR ac.dt_disponibilizacao IS NULL
+                         OR ac.cd_motivo_disponibilizacao = %s
+                       )
+                 LIMIT 1
+            ) AS possui
+            """,
+            [
+                codigo_turma,
+                login,
+                MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO,
+            ],
+            self._DB,
         )
-        return (
-            ComponenteCurricularPAP.objects.using(self._DB)
-            .filter(id_componente_curricular__in=codigos)
-            .exists()
-        )
+        return bool(rows and rows[0]["possui"])
 
     def listar_por_ue_modalidade_ano_e_anos_escolares(
         self,
@@ -384,7 +410,8 @@ class ComponentesRepository:
             sql += f" AND t.ano IN ({placeholders})"
             params.extend(anos_escolares)
         rows = _raw(sql, params, self._DB)
-        return [_grade_para_componente(r) for r in rows]
+        componentes = [_grade_para_componente(r) for r in rows]
+        return sorted(componentes, key=lambda c: c["codigo"])
 
     def listar_turma_programa_por_ue_modalidade_ano(
         self,
@@ -416,7 +443,8 @@ class ComponentesRepository:
             params.extend(series)
 
         rows = _raw(sql, params, self._DB)
-        return [_grade_para_componente(r) for r in rows]
+        componentes = [_grade_para_componente(r) for r in rows]
+        return sorted(componentes, key=lambda c: c["codigo"])
 
     def listar_por_ue_e_turmas(
         self,
@@ -549,15 +577,8 @@ class ComponentesRepository:
         self,
         ano_letivo: int,
     ) -> list[dict]:
-        """Lista grade curricular completa por ano letivo.
-
-        Args:
-            ano_letivo: Ano letivo consultado.
-
-        Returns:
-            Linhas da grade curricular do ano letivo.
-        """
-        return list(
+        """Lista grade curricular completa por ano letivo."""
+        rows = list(
             GradeComponenteCurricular.objects.using(self._DB)
             .filter(ano_letivo=ano_letivo)
             .values(
@@ -570,6 +591,7 @@ class ComponentesRepository:
             )
             .distinct()
         )
+        return rows
 
     def listar_componentes_sem_atribuicao(
         self,
