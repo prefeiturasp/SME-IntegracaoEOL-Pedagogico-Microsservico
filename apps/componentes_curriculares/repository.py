@@ -31,6 +31,16 @@ from apps.componentes_curriculares.queries import (
 
 
 def _raw(sql: str, params: list, using: str = "default") -> list[dict]:
+    """Executa SQL bruto e retorna linhas como dicionários.
+
+    Args:
+        sql: Consulta SQL a executar.
+        params: Parâmetros da consulta.
+        using: Alias da conexão Django.
+
+    Returns:
+        Lista de linhas com nomes de colunas como chaves.
+    """
     with connections[using].cursor() as cursor:
         cursor.execute(sql, params)
         cols = [c[0] for c in cursor.description]
@@ -40,7 +50,14 @@ def _raw(sql: str, params: list, using: str = "default") -> list[dict]:
 
 
 def _componente_para_dict(row: dict) -> dict:
-    """Normaliza campos computados de componente curricular."""
+    """Normaliza campos computados de componente curricular.
+
+    Args:
+        row: Linha retornada pela consulta.
+
+    Returns:
+        Componente curricular no formato interno de resposta.
+    """
     return {
         **row,
         "codigo_componente_territorio_saber": (
@@ -52,7 +69,14 @@ def _componente_para_dict(row: dict) -> dict:
 
 
 def _grade_para_componente(row: dict) -> dict:
-    """Retorna componente curricular a partir de linha de grade."""
+    """Retorna componente curricular a partir de linha de grade.
+
+    Args:
+        row: Linha de grade curricular.
+
+    Returns:
+        Componente curricular no formato interno de resposta.
+    """
     item = {
         "codigo": row["codigo_componente_curricular"],
         "codigo_componente_territorio_saber": 0,
@@ -72,7 +96,14 @@ def _grade_para_componente(row: dict) -> dict:
 
 
 def _aplicar_regra_regencia_classe_infantil(item: dict) -> dict:
-    """Normaliza a regência de classe infantil."""
+    """Normaliza a regência de classe infantil.
+
+    Args:
+        item: Componente curricular a normalizar.
+
+    Returns:
+        Componente curricular normalizado.
+    """
     if item["codigo"] == CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL:
         # Compatibiliza o componente infantil com o retorno esperado pelo
         # domínio pedagógico.
@@ -87,7 +118,14 @@ def _aplicar_regra_regencia_classe_infantil(item: dict) -> dict:
 def _agrupamento_para_dict(
     agrupamento: AgrupamentoAtribuicaoTerritorioSaber,
 ) -> dict:
-    """Formata agrupamento de território para resposta."""
+    """Formata agrupamento de território para resposta.
+
+    Args:
+        agrupamento: Agrupamento de território do saber.
+
+    Returns:
+        Agrupamento no formato interno de resposta.
+    """
     codigos = _parse_csv(agrupamento.cod_componentes_curriculares)
     primeiro = codigos[0] if codigos else 0
     ts = agrupamento.desc_territorio_saber or ""
@@ -109,13 +147,28 @@ def _agrupamento_para_dict(
 
 
 def _parse_csv(csv_str: str | None) -> list[int]:
-    """Retorna códigos de componentes extraídos de CSV."""
+    """Retorna códigos de componentes extraídos de CSV.
+
+    Args:
+        csv_str: Texto CSV com códigos de componentes.
+
+    Returns:
+        Lista de códigos inteiros válidos.
+    """
     if not csv_str:
         return []
     return [int(c.strip()) for c in csv_str.split(",") if c.strip().isdigit()]
 
 
 def _int_or_none(value: object) -> int | None:
+    """Converte valor para inteiro quando possível.
+
+    Args:
+        value: Valor de entrada.
+
+    Returns:
+        Inteiro convertido ou None.
+    """
     if value is None:
         return None
     try:
@@ -128,6 +181,15 @@ def _componentes_planejamento_regencia(
     row: dict,
     using: str,
 ) -> list[ComponenteCurricular]:
+    """Busca componentes de planejamento de regência aplicáveis.
+
+    Args:
+        row: Linha com dados de turma e regência.
+        using: Alias da conexão Django.
+
+    Returns:
+        Componentes curriculares de planejamento na ordem configurada.
+    """
     turno = _int_or_none(row.get("turno_turma"))
     ano = _int_or_none(row.get("ano_turma"))
 
@@ -153,7 +215,15 @@ def _expandir_planejamento_regencia(
     rows: list[dict],
     using: str,
 ) -> list[dict]:
-    """Retorna componentes de regência expandidos para planejamento."""
+    """Retorna componentes de regência expandidos para planejamento.
+
+    Args:
+        rows: Linhas de componentes da turma.
+        using: Alias da conexão Django.
+
+    Returns:
+        Lista de componentes com regência substituída por planejamento.
+    """
     resultado: list[dict] = []
     vistos: set[tuple] = set()
 
@@ -230,7 +300,14 @@ class ComponentesRepository:
         self,
         login: str,
     ) -> list[dict]:
-        """Lista os componentes do funcionário no ano letivo corrente."""
+        """Lista os componentes do funcionário no ano letivo corrente.
+
+        Args:
+            login: Login (RF) do funcionário.
+
+        Returns:
+            Lista deduplicada de componentes do funcionário.
+        """
         sql = (
             f"{SQL_COMPONENTES_TURMA_COM_ATRIBUICAO}"
             " WHERE ac.professor = %s AND ac.ano_letivo = %s"
@@ -306,7 +383,14 @@ class ComponentesRepository:
         self,
         ano_turma: int,
     ) -> list[dict]:
-        """Lista componentes de regência por ano de turma."""
+        """Lista componentes de regência por ano de turma.
+
+        Args:
+            ano_turma: Ano escolar da turma.
+
+        Returns:
+            Lista de componentes de regência no formato de resposta.
+        """
         filtro = (
             {"ano__isnull": True}
             if ano_turma <= 0
@@ -351,7 +435,15 @@ class ComponentesRepository:
         codigo_turma: str,
         login: str,
     ) -> bool:
-        """Verifica se a turma possui componente PAP para o funcionário."""
+        """Verifica se a turma possui componente PAP para o funcionário.
+
+        Args:
+            codigo_turma: Código da turma.
+            login: Login (RF) do funcionário.
+
+        Returns:
+            True quando há componente PAP atribuído ao funcionário na turma.
+        """
         rows = _raw(
             """
             SELECT EXISTS (
@@ -577,7 +669,14 @@ class ComponentesRepository:
         self,
         ano_letivo: int,
     ) -> list[dict]:
-        """Lista grade curricular completa por ano letivo."""
+        """Lista grade curricular completa por ano letivo.
+
+        Args:
+            ano_letivo: Ano letivo consultado.
+
+        Returns:
+            Linhas da grade curricular do ano letivo.
+        """
         rows = list(
             GradeComponenteCurricular.objects.using(self._DB)
             .filter(ano_letivo=ano_letivo)
