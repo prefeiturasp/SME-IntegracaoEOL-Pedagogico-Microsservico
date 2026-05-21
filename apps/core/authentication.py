@@ -29,7 +29,18 @@ class ApiKeyAuthentication(BaseAuthentication):
     """Valida requisições via API Key."""
 
     def authenticate(self, request: Request) -> tuple[_ApiAuth, None] | None:
-        """Autentica a requisição por API Key."""
+        """Autentica a requisição por API Key.
+
+        Args:
+            request: Requisição HTTP recebida.
+
+        Returns:
+            Tupla com o usuário autenticado, ou None se a chave
+            não for fornecida.
+
+        Raises:
+            AuthenticationFailed: Se a chave fornecida for inválida.
+        """
         header_name = getattr(settings, "API_KEY_HEADER", "x-api-key")
         api_key = getattr(settings, "API_KEY", "")
         meta_key = "HTTP_" + header_name.upper().replace("-", "_")
@@ -42,7 +53,14 @@ class ApiKeyAuthentication(BaseAuthentication):
         return (_ApiAuth(), None)
 
     def authenticate_header(self, request: Request) -> str:
-        """Retorna o nome do header de autenticação."""
+        """Retorna o nome do header de autenticação.
+
+        Args:
+            request: Requisição HTTP recebida.
+
+        Returns:
+            Nome do header usado para autenticação por API Key.
+        """
         return getattr(settings, "API_KEY_HEADER", "x-api-key")
 
 

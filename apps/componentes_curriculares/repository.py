@@ -208,7 +208,15 @@ class ComponentesRepository:
         codigo_turma: str,
         login: str,
     ) -> list[dict]:
-        """Lista componentes por turma e funcionário."""
+        """Lista componentes por turma e funcionário.
+
+        Args:
+            codigo_turma: Código da turma.
+            login: Login (RF) do funcionário.
+
+        Returns:
+            Lista de componentes da turma para o funcionário.
+        """
         sql = (
             f"{SQL_COMPONENTES_TURMA_COM_ATRIBUICAO}"
             " WHERE ac.professor = %s AND ct.turma_codigo = %s"
@@ -220,7 +228,14 @@ class ComponentesRepository:
         self,
         login: str,
     ) -> list[dict]:
-        """Lista todos os componentes do funcionário."""
+        """Lista todos os componentes do funcionário.
+
+        Args:
+            login: Login (RF) do funcionário.
+
+        Returns:
+            Lista de componentes únicos do funcionário.
+        """
         sql = f"{SQL_COMPONENTES_TURMA_COM_ATRIBUICAO} WHERE ac.professor = %s"
         rows = _raw(sql, [login], self._DB)
 
@@ -251,7 +266,15 @@ class ComponentesRepository:
         codigo_turma: str,
         login: str,
     ) -> list[dict]:
-        """Lista componentes da turma aplicando planejamento de regência."""
+        """Lista componentes da turma aplicando planejamento de regência.
+
+        Args:
+            codigo_turma: Código da turma.
+            login: Login (RF) do funcionário.
+
+        Returns:
+            Lista de componentes com regência expandida para planejamento.
+        """
         sql = (
             f"{SQL_COMPONENTES_TURMA_COM_ATRIBUICAO}"
             " WHERE ac.professor = %s AND ct.turma_codigo = %s"
@@ -263,7 +286,14 @@ class ComponentesRepository:
         self,
         ano_turma: int,
     ) -> list[dict]:
-        """Lista componentes de regência por ano de turma."""
+        """Lista componentes de regência por ano de turma.
+
+        Args:
+            ano_turma: Ano de turma para filtro.
+
+        Returns:
+            Lista de componentes de regência.
+        """
         if ano_turma <= 0:
             codigos = list(
                 ComponenteCurricularPlanejamentoRegencia.objects.using(
@@ -309,7 +339,15 @@ class ComponentesRepository:
         codigo_turma: str,
         login: str,
     ) -> bool:
-        """Verifica se a turma possui componente PAP para o funcionário."""
+        """Verifica se a turma possui componente PAP para o funcionário.
+
+        Args:
+            codigo_turma: Código da turma.
+            login: Login (RF) do funcionário.
+
+        Returns:
+            True se a turma possui componente PAP.
+        """
         codigos = list(
             AtribuicaoComponente.objects.using(self._DB)
             .filter(turma_codigo=codigo_turma, professor=login)
@@ -328,7 +366,17 @@ class ComponentesRepository:
         ano_letivo: int,
         anos_escolares: list[str],
     ) -> list[dict]:
-        """Lista componentes da grade por UE, modalidade, ano e séries."""
+        """Lista componentes da grade por UE, modalidade, ano e séries.
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+            modalidade: Código da modalidade de ensino.
+            ano_letivo: Ano letivo consultado.
+            anos_escolares: Séries a serem filtradas.
+
+        Returns:
+            Lista de componentes da grade curricular.
+        """
         sql = SQL_COMPONENTES_GRADE_POR_UE_MODALIDADE_ANO
         params: list = [ue_codigo, modalidade, ano_letivo]
         if anos_escolares:
@@ -344,7 +392,16 @@ class ComponentesRepository:
         modalidade: int,
         ano_letivo: int,
     ) -> list[dict]:
-        """Lista componentes de turmas programa por UE, modalidade e ano."""
+        """Lista componentes de turmas programa por UE, modalidade e ano.
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+            modalidade: Código da modalidade de ensino.
+            ano_letivo: Ano letivo consultado.
+
+        Returns:
+            Lista de componentes de turmas programa.
+        """
         modalidades_validas = {1, 3, 4, 5, 6}
         if modalidade not in modalidades_validas:
             return []
@@ -366,7 +423,15 @@ class ComponentesRepository:
         ue_id: str,
         turmas: list[str],
     ) -> list[dict]:
-        """Lista componentes simplificados por lista de turmas."""
+        """Lista componentes simplificados por lista de turmas.
+
+        Args:
+            ue_id: Código da unidade educacional.
+            turmas: Códigos das turmas a consultar.
+
+        Returns:
+            Lista de componentes simplificados das turmas.
+        """
         sql = SQL_COMPONENTES_SIMPLIFICADOS_POR_TURMAS
         params: list = []
         if ue_id and ue_id != "-99":
@@ -384,7 +449,16 @@ class ComponentesRepository:
         codigos_turmas: list[str],
         adicionar_componentes_planejamento: bool = True,
     ) -> list[dict]:
-        """Lista componentes de múltiplas turmas para planejamento."""
+        """Lista componentes de múltiplas turmas para planejamento.
+
+        Args:
+            codigos_turmas: Códigos das turmas consultadas.
+            adicionar_componentes_planejamento: Quando True, expande
+                regência com os componentes de planejamento.
+
+        Returns:
+            Lista de componentes das turmas informadas.
+        """
         if not codigos_turmas:
             return []
         placeholders = ",".join(["%s"] * len(codigos_turmas))
@@ -408,7 +482,14 @@ class ComponentesRepository:
         self,
         codigos_turmas: list[str],
     ) -> list[dict]:
-        """Lista componentes sem pós-processamento."""
+        """Lista componentes sem pós-processamento.
+
+        Args:
+            codigos_turmas: Códigos das turmas a consultar.
+
+        Returns:
+            Lista de componentes sem normalização de dados.
+        """
         if not codigos_turmas:
             return []
         placeholders = ",".join(["%s"] * len(codigos_turmas))
@@ -419,7 +500,11 @@ class ComponentesRepository:
         return [_componente_para_dict(r) for r in rows]
 
     def listar_catalogo(self) -> list[dict]:
-        """Lista o catálogo completo de componentes."""
+        """Lista o catálogo completo de componentes.
+
+        Returns:
+            Lista completa de componentes curriculares.
+        """
         return list(
             ComponenteCurricular.objects.using(self._DB)
             .values("codigo", "descricao")
@@ -433,7 +518,17 @@ class ComponentesRepository:
         componentes_curriculares: list[str],
         semestre: int | None,
     ) -> list[dict]:
-        """Lista vigência de componentes por turma e UE."""
+        """Lista vigência de componentes por turma e UE.
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+            ano_letivo: Ano letivo consultado.
+            componentes_curriculares: Códigos dos componentes a consultar.
+            semestre: Semestre letivo; None para todos os semestres.
+
+        Returns:
+            Lista de vigências de componentes por turma.
+        """
         if not componentes_curriculares:
             return []
         placeholders = ",".join(["%s"] * len(componentes_curriculares))
@@ -454,7 +549,14 @@ class ComponentesRepository:
         self,
         ano_letivo: int,
     ) -> list[dict]:
-        """Lista grade curricular completa por ano letivo."""
+        """Lista grade curricular completa por ano letivo.
+
+        Args:
+            ano_letivo: Ano letivo consultado.
+
+        Returns:
+            Linhas da grade curricular do ano letivo.
+        """
         return list(
             GradeComponenteCurricular.objects.using(self._DB)
             .filter(ano_letivo=ano_letivo)
@@ -473,7 +575,14 @@ class ComponentesRepository:
         self,
         codigo_turma: str,
     ) -> list[str]:
-        """Lista componentes sem professor atribuído na turma."""
+        """Lista componentes sem professor atribuído na turma.
+
+        Args:
+            codigo_turma: Código da turma.
+
+        Returns:
+            Descrições dos componentes sem professor atribuído.
+        """
         rows = _raw(SQL_COMPONENTES_SEM_ATRIBUICAO, [codigo_turma], self._DB)
         return [r["descricao"] for r in rows]
 
@@ -482,7 +591,15 @@ class ComponentesRepository:
         codigo_componente: int,
         data_base: date | None,
     ) -> list[dict]:
-        """Retorna agrupamentos correlacionados de território do saber."""
+        """Retorna agrupamentos correlacionados de território do saber.
+
+        Args:
+            codigo_componente: Código do componente de origem.
+            data_base: Data de referência; None para sem filtro de data.
+
+        Returns:
+            Lista de agrupamentos correlacionados ao componente.
+        """
         origem = (
             AgrupamentoAtribuicaoTerritorioSaber.objects.using(self._DB)
             .filter(cod_agrupamento=codigo_componente)
@@ -517,7 +634,15 @@ class ComponentesRepository:
         codigos_agrupamentos: list[int],
         data_base: date | None,
     ) -> list[dict]:
-        """Retorna agrupamentos correlacionados em lote."""
+        """Retorna agrupamentos correlacionados em lote.
+
+        Args:
+            codigos_agrupamentos: Códigos dos componentes de origem.
+            data_base: Data de referência; None para sem filtro de data.
+
+        Returns:
+            Lista de agrupamentos correlacionados sem duplicatas.
+        """
         resultado: list[dict] = []
         vistos: set[int] = set()
         for cod in codigos_agrupamentos:
@@ -534,7 +659,14 @@ class ComponentesRepository:
         self,
         codigos_agrupamentos: list[int],
     ) -> list[dict]:
-        """Retorna agrupamentos de território do saber por IDs."""
+        """Retorna agrupamentos de território do saber por IDs.
+
+        Args:
+            codigos_agrupamentos: IDs dos agrupamentos a consultar.
+
+        Returns:
+            Lista de agrupamentos de Território do Saber.
+        """
         agrupamentos = (
             AgrupamentoAtribuicaoTerritorioSaber.objects.using(self._DB)
             .filter(cod_agrupamento__in=codigos_agrupamentos)
