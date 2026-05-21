@@ -72,7 +72,15 @@ class ComponentesPorFuncionarioView(BaseAPIView):
         operation_id="componentes_funcionario",
     )
     def get(self, request: Request, login: str) -> Response:
+        """Lista componentes curriculares do funcionário.
 
+        Args:
+            request: Requisição HTTP.
+            login: Login (RF) do funcionário.
+
+        Returns:
+            Resposta com componentes curriculares do funcionário.
+        """
         codigo_turma = request.query_params.get(
             "codigo_turma", request.query_params.get("codigoTurma")
         )
@@ -108,6 +116,15 @@ class ComponentesRegenciaView(BaseAPIView):
         operation_id="componentes_regencia",
     )
     def get(self, _request: Request, ano_turma: int) -> Response:
+        """Lista componentes curriculares de regência.
+
+        Args:
+            _request: Requisição HTTP.
+            ano_turma: Ano escolar da turma.
+
+        Returns:
+            Resposta com componentes de regência.
+        """
         service = ComponentesService()
         dados = service.listar_regencia_por_ano_turma(ano_turma)
         return Response(dados)
@@ -138,6 +155,15 @@ class ValidarPapView(BaseAPIView):
         operation_id="validar_pap",
     )
     def get(self, request: Request, codigo_turma: str) -> Response:
+        """Verifica se a turma possui componente PAP.
+
+        Args:
+            request: Requisição HTTP.
+            codigo_turma: Código da turma.
+
+        Returns:
+            Resposta booleana indicando presença de componente PAP.
+        """
         login = request.query_params.get("login", "")
 
         service = ComponentesService()
@@ -171,6 +197,17 @@ class ComponentesPorUeAnosEscolaresView(BaseAPIView):
         modalidade: int,
         ano_letivo: int,
     ) -> Response:
+        """Lista componentes por UE, modalidade e anos escolares.
+
+        Args:
+            request: Requisição HTTP.
+            ue_id: Código da unidade educacional.
+            modalidade: Código da modalidade.
+            ano_letivo: Ano letivo consultado.
+
+        Returns:
+            Resposta com componentes curriculares encontrados.
+        """
         anos_escolares: list[str] = request.query_params.getlist(
             "anos_escolares"
         ) or request.query_params.getlist("anosEscolares")
@@ -197,6 +234,17 @@ class ComponentesTurmaProgramaView(BaseAPIView):
         modalidade: int,
         ano_letivo: int,
     ) -> Response:
+        """Lista componentes de turmas programa.
+
+        Args:
+            _request: Requisição HTTP.
+            ue_id: Código da unidade educacional.
+            modalidade: Código da modalidade.
+            ano_letivo: Ano letivo consultado.
+
+        Returns:
+            Resposta com componentes de turmas programa.
+        """
         service = ComponentesService()
         dados = service.listar_turma_programa_por_ue_modalidade_ano(
             ue_id, modalidade, ano_letivo
@@ -224,7 +272,15 @@ class ComponentesPorUeTurmasView(BaseAPIView):
         operation_id="componentes_ue_turmas",
     )
     def get(self, request: Request, ue_id: str) -> Response:
+        """Lista componentes simplificados por UE e turmas.
 
+        Args:
+            request: Requisição HTTP.
+            ue_id: Código da unidade educacional.
+
+        Returns:
+            Resposta com componentes simplificados.
+        """
         turmas: list[str] = request.query_params.getlist("turmas")
         service = ComponentesService()
         dados = service.listar_por_ue_e_turmas(ue_id, turmas)
@@ -258,7 +314,14 @@ class ComponentesPorListaTurmasView(BaseAPIView):
         operation_id="componentes_lista_turmas",
     )
     def get(self, request: Request) -> Response:
+        """Lista componentes para planejamento por lista de turmas.
 
+        Args:
+            request: Requisição HTTP.
+
+        Returns:
+            Resposta com componentes das turmas informadas.
+        """
         codigos_turmas: list[str] = request.query_params.getlist(
             "codigo_turmas"
         ) or request.query_params.getlist("codigoTurmas")
@@ -300,7 +363,14 @@ class ComponentesTurmasBrutosView(BaseAPIView):
         operation_id="componentes_turmas_brutos",
     )
     def get(self, request: Request) -> Response:
+        """Lista componentes de turmas sem pós-processamento.
 
+        Args:
+            request: Requisição HTTP.
+
+        Returns:
+            Resposta com componentes brutos das turmas.
+        """
         codigos: list[str] = request.query_params.getlist(
             "codigo_turmas"
         ) or request.query_params.getlist("codigoTurmas")
@@ -319,7 +389,14 @@ class ComponentesCatalogoView(BaseAPIView):
         operation_id="catalogo_componentes",
     )
     def get(self, _request: Request) -> Response:
+        """Lista o catálogo completo de componentes.
 
+        Args:
+            _request: Requisição HTTP.
+
+        Returns:
+            Resposta com catálogo de componentes curriculares.
+        """
         service = ComponentesService()
         dados = service.listar_catalogo()
         return Response(dados)
@@ -365,7 +442,14 @@ class VigenciaComponentesView(BaseAPIView):
         operation_id="vigencia_componentes",
     )
     def get(self, request: Request) -> Response:
+        """Lista vigência de componentes por turma e UE.
 
+        Args:
+            request: Requisição HTTP.
+
+        Returns:
+            Resposta com vigências de componentes.
+        """
         ue_codigo = request.query_params.get(
             "ue_codigo", request.query_params.get("ueCodigo", "")
         )
@@ -396,7 +480,15 @@ class GradeCurricularView(BaseAPIView):
         operation_id="grade_curricular",
     )
     def get(self, _request: Request, ano_letivo: int) -> Response:
+        """Lista grade curricular por ano letivo.
 
+        Args:
+            _request: Requisição HTTP.
+            ano_letivo: Ano letivo consultado.
+
+        Returns:
+            Resposta com grade curricular do ano letivo.
+        """
         service = ComponentesService()
         dados = service.listar_grade_curricular(ano_letivo)
         return Response(dados)
@@ -421,7 +513,15 @@ class ComponentesSemAtribuicaoView(BaseAPIView):
         operation_id="componentes_sem_atribuicao",
     )
     def get(self, request: Request, codigo_turma: str) -> Response:
+        """Lista componentes sem professor atribuído.
 
+        Args:
+            request: Requisição HTTP.
+            codigo_turma: Código da turma.
+
+        Returns:
+            Resposta com descrições dos componentes sem atribuição.
+        """
         service = ComponentesService()
         dados = service.listar_componentes_sem_atribuicao(codigo_turma)
         return Response(dados)
@@ -449,7 +549,18 @@ class AgrupamentosCorrelacionadosView(BaseAPIView):
         request: Request,
         codigo_componente: int,
     ) -> Response:
+        """Retorna agrupamentos correlacionados por componente.
 
+        Args:
+            request: Requisição HTTP.
+            codigo_componente: Código do agrupamento ou componente de origem.
+
+        Returns:
+            Resposta com agrupamentos correlacionados.
+
+        Raises:
+            ValueError: Quando `data_base` não estiver em formato ISO.
+        """
         data_base_raw = request.query_params.get(
             "data_base", request.query_params.get("dataBase")
         )
@@ -487,7 +598,17 @@ class AgrupamentosCorrelacionadosLoteView(BaseAPIView):
         operation_id="agrupamentos_correlacionados_lote",
     )
     def post(self, request: Request) -> Response:
+        """Retorna agrupamentos correlacionados em lote.
 
+        Args:
+            request: Requisição HTTP com lista de códigos no corpo.
+
+        Returns:
+            Resposta com agrupamentos correlacionados sem duplicatas.
+
+        Raises:
+            ValueError: Quando `data_base` não estiver em formato ISO.
+        """
         codigos = request.data
         if not isinstance(codigos, list):
             return Response(
@@ -523,7 +644,14 @@ class AgrupamentosTerritorioLoteView(BaseAPIView):
         operation_id="agrupamentos_territorio",
     )
     def post(self, request: Request) -> Response:
+        """Retorna agrupamentos de território do saber por IDs.
 
+        Args:
+            request: Requisição HTTP com lista de IDs no corpo.
+
+        Returns:
+            Resposta com agrupamentos de território do saber.
+        """
         ids = request.data
         if not isinstance(ids, list):
             return Response(
