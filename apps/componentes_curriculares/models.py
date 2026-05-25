@@ -57,6 +57,11 @@ class AtribuicaoComponente(ModeloBase):
     professor = models.CharField(max_length=20, null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
     atribuicao_externa = models.BooleanField()
     ano_letivo = models.IntegerField()
+    id_atribuicao_origem = models.BigIntegerField(null=True, blank=True)
+    dt_atribuicao = models.DateTimeField(null=True, blank=True)
+    dt_cancelamento = models.DateTimeField(null=True, blank=True)
+    dt_disponibilizacao = models.DateTimeField(null=True, blank=True)
+    cd_motivo_disponibilizacao = models.IntegerField(null=True, blank=True)
 
     class Meta:
         db_table = "atribuicao_componente"
@@ -73,6 +78,23 @@ class AtribuicaoComponente(ModeloBase):
             models.Index(fields=["turma_codigo"], name="idx_ac_turma_codigo"),
             models.Index(
                 fields=["professor", "ano_letivo"], name="idx_ac_prof_ano"
+            ),
+            models.Index(
+                fields=["professor", "ano_letivo"],
+                name="idx_ac_prof_ano_vigente",
+                condition=models.Q(
+                    dt_cancelamento__isnull=True,
+                    dt_disponibilizacao__isnull=True,
+                ),
+            ),
+            models.Index(
+                fields=[
+                    "turma_codigo",
+                    "professor",
+                    "componente_codigo",
+                    "ano_letivo",
+                ],
+                name="idx_ac_turma_prof_comp_ano",
             ),
         ]
 

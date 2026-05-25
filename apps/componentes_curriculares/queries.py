@@ -1,9 +1,12 @@
 """Queries SQL do domínio Componentes Curriculares."""
 
 from apps.componentes_curriculares.constants import (
+    MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO,
     TIPO_TURMA_EVENTO_PARA_ATRIBUICAO,
     TIPO_TURMA_PROGRAMA,
 )
+
+MOTIVO_FIM_ANO = MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO
 
 COMPONENTE_TURMA_CAMPOS_RESPOSTA = """\
     ct.componente_codigo AS codigo,
@@ -17,6 +20,18 @@ COMPONENTE_TURMA_CAMPOS_RESPOSTA = """\
     t.ano_letivo,
     t.duracao_turno AS turno_turma,
     t.ano AS ano_turma"""
+
+SQL_FILTRO_ATRIBUICAO_POR_TURMA = f"""\
+ AND ac.dt_cancelamento IS NULL
+ AND (
+       ac.dt_disponibilizacao >= make_date(t.ano_letivo, 2, 5)
+       OR ac.dt_disponibilizacao IS NULL
+       OR ac.cd_motivo_disponibilizacao = {MOTIVO_FIM_ANO}
+     )"""
+
+SQL_FILTRO_ATRIBUICAO_VIGENTE = """\
+ AND ac.dt_cancelamento IS NULL
+ AND ac.dt_disponibilizacao IS NULL"""
 
 SQL_COMPONENTES_TURMA_COM_ATRIBUICAO = f"""\
 SELECT {COMPONENTE_TURMA_CAMPOS_RESPOSTA}, ac.professor
@@ -135,6 +150,12 @@ SELECT {COMPONENTE_TURMA_CAMPOS_RESPOSTA}, ac.professor
   LEFT JOIN atribuicao_componente ac
          ON ac.turma_codigo = ct.turma_codigo
         AND ac.componente_codigo = ct.componente_codigo
+        AND ac.dt_cancelamento IS NULL
+        AND (
+              ac.dt_disponibilizacao >= make_date(t.ano_letivo, 2, 5)
+              OR ac.dt_disponibilizacao IS NULL
+              OR ac.cd_motivo_disponibilizacao = {MOTIVO_FIM_ANO}
+            )
  WHERE ct.turma_codigo IN ({{placeholders}})"""
 
 SQL_COMPONENTES_TURMAS_BRUTOS = """\
@@ -178,6 +199,12 @@ JOIN atribuicao_componente ac
   ON ac.turma_codigo = ct.turma_codigo
  AND ac.componente_codigo = ct.componente_codigo
  AND ac.atribuicao_externa = false
+ AND ac.dt_cancelamento IS NULL
+ AND (
+       ac.dt_disponibilizacao >= make_date(t.ano_letivo, 2, 5)
+       OR ac.dt_disponibilizacao IS NULL
+       OR ac.cd_motivo_disponibilizacao = {MOTIVO_FIM_ANO}
+     )
 WHERE t.ue_codigo = %s
   AND t.ano_letivo = %s
   AND ct.componente_codigo IN ({{placeholders}})
@@ -194,5 +221,11 @@ SELECT cc.descricao
   LEFT JOIN atribuicao_componente ac
          ON ac.turma_codigo = ct.turma_codigo
         AND ac.componente_codigo = ct.componente_codigo
+        AND ac.dt_cancelamento IS NULL
+        AND (
+              ac.dt_disponibilizacao >= make_date(t.ano_letivo, 2, 5)
+              OR ac.dt_disponibilizacao IS NULL
+              OR ac.cd_motivo_disponibilizacao = {MOTIVO_FIM_ANO}
+            )
  WHERE ct.turma_codigo = %s
    AND ac.turma_codigo IS NULL"""

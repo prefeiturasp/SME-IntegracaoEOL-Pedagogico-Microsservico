@@ -8,7 +8,6 @@ from django.test import TestCase
 from apps.componentes_curriculares.models import (
     AgrupamentoAtribuicaoTerritorioSaber,
     ComponenteCurricular,
-    ComponenteCurricularPAP,
     ComponenteCurricularPlanejamentoRegencia,
     GradeComponenteCurricular,
 )
@@ -156,20 +155,74 @@ class TestComponentesRepository(TestCase):
         mock_raw.assert_called_once()
 
     @patch("apps.componentes_curriculares.repository._raw")
-    def test_listar_por_funcionario_deduplica_por_codigo(
+    def test_listar_por_funcionario_deduplica_por_componente(
         self, mock_raw
     ) -> None:
-        """Deduplica componentes repetidos ao listar por funcionário."""
+        """Deduplica por componente no endpoint sem turma."""
         mock_raw.return_value = [
-            {"codigo": 1, "codigo_componente_curricular_pai": None},
-            {"codigo": 1, "codigo_componente_curricular_pai": None},
+            {
+                "codigo": 1,
+                "codigo_componente_curricular_pai": None,
+                "turma_codigo": "T1",
+                "professor": "RF1",
+            },
+            {
+                "codigo": 1,
+                "codigo_componente_curricular_pai": None,
+                "turma_codigo": "T2",
+                "professor": "RF1",
+            },
         ]
 
         resultado = self.repo.listar_por_funcionario("RF1")
 
         self.assertEqual(len(resultado), 1)
-        self.assertIsNone(resultado[0]["turma_codigo"])
+        self.assertEqual(resultado[0]["turma_codigo"], "T1")
         self.assertIsNone(resultado[0]["professor"])
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_funcionario_filtra_por_ano_letivo_atual(
+        self, mock_raw
+    ) -> None:
+        """Filtra atribuições pelo ano letivo corrente."""
+        from datetime import date
+
+        mock_raw.return_value = []
+
+        self.repo.listar_por_funcionario("RF1")
+
+        args, _ = mock_raw.call_args
+        self.assertIn("ac.ano_letivo", args[0])
+        self.assertNotIn("ORDER BY ct.componente_codigo, ct.turma_codigo", args[0])
+        self.assertEqual(args[1], ["RF1", date.today().year])
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_funcionario_normaliza_regencia_infantil_pai(
+        self,
+        mock_raw,
+    ) -> None:
+        """Agrupa filho de regência infantil pelo componente pai."""
+        ComponenteCurricular.objects.create(
+            codigo=512,
+            descricao="ED.INF. EMEI 4 HS",
+        )
+        mock_raw.return_value = [
+            {
+                "codigo": 513,
+                "descricao": "ED.INF. EMEI 2 HS",
+                "codigo_componente_curricular_pai": 512,
+            }
+        ]
+
+        resultado = self.repo.listar_por_funcionario("RF1")
+
+        self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0]["codigo"], 512)
+        self.assertEqual(
+            resultado[0]["descricao"],
+            "Regência de classe infantil",
+        )
+        self.assertTrue(resultado[0]["regencia"])
 
     @patch("apps.componentes_curriculares.repository._raw")
     def test_listar_planejamento_expande_regencia(self, mock_raw) -> None:
@@ -203,8 +256,27 @@ class TestComponentesRepository(TestCase):
         self.assertTrue(resultado[0]["planejamento_regencia"])
 
     def test_listar_regencia_por_ano_turma(self) -> None:
-        """Lista componentes de planejamento por ano de turma."""
-        ComponenteCurricular.objects.create(codigo=4, descricao="C4")
+        """Lista componentes de planejamento de regência por ano de turma."""
+        ComponenteCurricular.objects.create(
+            codigo=4,
+            descricao="C4",
+        )
+        ComponenteCurricular.objects.create(
+            codigo=9,
+            descricao="C9",
+        )
+        ComponenteCurricular.objects.create(
+            codigo=12,
+            descricao="C12",
+        )
+        ComponenteCurricularPlanejamentoRegencia.objects.create(
+            id_componente_curricular=12,
+            ano=2024,
+        )
+        ComponenteCurricularPlanejamentoRegencia.objects.create(
+            id_componente_curricular=9,
+            ano=2025,
+        )
         ComponenteCurricularPlanejamentoRegencia.objects.create(
             id_componente_curricular=4,
             ano=2024,
@@ -212,13 +284,16 @@ class TestComponentesRepository(TestCase):
 
         resultado = self.repo.listar_regencia_por_ano_turma(2024)
 
-        self.assertEqual(len(resultado), 1)
-        self.assertEqual(resultado[0]["codigo"], 4)
+        self.assertEqual([item["codigo"] for item in resultado], [4, 12])
         self.assertEqual(resultado[0]["descricao"], "C4")
+        self.assertEqual(resultado[1]["descricao"], "C12")
 
     def test_listar_regencia_ano_nulo(self) -> None:
         """Usa configuração padrão quando ano da turma é nulo."""
-        ComponenteCurricular.objects.create(codigo=5, descricao="C5")
+        ComponenteCurricular.objects.create(
+            codigo=5,
+            descricao="C5",
+        )
         ComponenteCurricularPlanejamentoRegencia.objects.create(
             id_componente_curricular=5,
             ano=None,
@@ -228,23 +303,18 @@ class TestComponentesRepository(TestCase):
 
         self.assertEqual(resultado[0]["codigo"], 5)
 
-    def test_turma_possui_componente_pap(self) -> None:
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_turma_possui_componente_pap(self, mock_raw) -> None:
         """Verifica componente PAP associado à atribuição."""
-        from apps.componentes_curriculares.models import AtribuicaoComponente
-
-        AtribuicaoComponente.objects.create(
-            turma_codigo="T1",
-            componente_codigo=10,
-            professor="RF1",
-            atribuicao_externa=False,
-            ano_letivo=2024,
-        )
-        ComponenteCurricularPAP.objects.create(id_componente_curricular=10)
+        mock_raw.return_value = [{"possui": True}]
 
         self.assertTrue(self.repo.turma_possui_componente_pap("T1", "RF1"))
 
-    def test_turma_nao_possui_componente_pap(self) -> None:
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_turma_nao_possui_componente_pap(self, mock_raw) -> None:
         """Verifica ausência de componente PAP na turma."""
+        mock_raw.return_value = [{"possui": False}]
+
         self.assertFalse(self.repo.turma_possui_componente_pap("T1", "RF1"))
 
     @patch("apps.componentes_curriculares.repository._raw")
@@ -304,7 +374,13 @@ class TestComponentesRepository(TestCase):
         """Aplica filtro de série para educação infantil."""
         mock_raw.return_value = [
             {
-                "codigo_componente_curricular": 6,
+                "codigo_componente_curricular": 1056,
+                "codigo_componente_curricular_pai": None,
+                "descricao_componente_curricular": "TIC",
+                "regencia": False,
+            },
+            {
+                "codigo_componente_curricular": 1030,
                 "codigo_componente_curricular_pai": 1,
                 "descricao_componente_curricular": "Pai C1",
                 "regencia": True,
@@ -317,6 +393,7 @@ class TestComponentesRepository(TestCase):
             2024,
         )
 
+        self.assertEqual([item["codigo"] for item in resultado], [1030, 1056])
         self.assertEqual(resultado[0]["codigo_componente_curricular_pai"], 1)
         self.assertEqual(resultado[0]["descricao"], "Pai C1")
         self.assertTrue(resultado[0]["regencia"])
@@ -445,6 +522,36 @@ class TestComponentesRepository(TestCase):
 
         self.assertEqual(len(resultado), 1)
         self.assertEqual(resultado[0]["codigo_componente_curricular"], 1)
+
+    def test_listar_grade_curricular_preserva_ano_turma_do_etl(self) -> None:
+        """Preserva o código de ano turma materializado pelo ETL."""
+        GradeComponenteCurricular.objects.create(
+            codigo_componente_curricular=1308,
+            descricao_componente_curricular="REG CLASSE ESC PARTIC PRE",
+            codigo_ano_turma="5",
+            descricao_serie_ensino="5ºESC PARTIC PRE I",
+            codigo_serie_ensino=313,
+            modalidade=1,
+            ano_letivo=2024,
+        )
+        GradeComponenteCurricular.objects.create(
+            codigo_componente_curricular=1309,
+            descricao_componente_curricular="REG CLASSE ESC PARTIC CRECHE",
+            codigo_ano_turma="6",
+            descricao_serie_ensino="6ºESC PARTIC PREII",
+            codigo_serie_ensino=314,
+            modalidade=1,
+            ano_letivo=2024,
+        )
+
+        resultado = self.repo.listar_grade_curricular(2024)
+
+        codigos_ano = {
+            item["codigo_componente_curricular"]: item["codigo_ano_turma"]
+            for item in resultado
+        }
+        self.assertEqual(codigos_ano[1308], "5")
+        self.assertEqual(codigos_ano[1309], "6")
 
     @patch("apps.componentes_curriculares.repository._raw")
     def test_listar_componentes_sem_atribuicao(self, mock_raw) -> None:
