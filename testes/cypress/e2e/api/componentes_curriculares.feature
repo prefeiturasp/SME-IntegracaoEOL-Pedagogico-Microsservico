@@ -68,12 +68,6 @@ Funcionalidade: Listar componentes curriculares
     Então o status da resposta deve ser 200
     E o retorno deve ser uma lista de componentes PAP
 
-  Cenário: Listar componentes sem atribuição com sucesso
-    Dado que possuo acesso à API de componentes sem atribuição
-    Quando envio uma requisição GET para listar componentes sem atribuição da turma
-    Então o status da resposta deve ser 200
-    E o retorno deve ser uma lista de componentes sem atribuição
-
   Cenário: Listar componentes brutos por turma com sucesso
     Dado que possuo acesso à API de componentes brutos por turma
     Quando envio uma requisição GET para listar componentes brutos da turma
