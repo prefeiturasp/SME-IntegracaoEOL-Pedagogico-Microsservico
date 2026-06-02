@@ -58,3 +58,29 @@ Then('a API de PAP deve responder com sucesso', () => {
 Then('o retorno da validação PAP deve ser booleano', () => {
   expect(response.body).to.be.a('boolean')
 })
+
+// =========================
+// SEM AUTENTICAÇÃO
+// =========================
+
+When('envio uma requisição GET para validar PAP sem autenticação', () => {
+  const apiUrl = getEnvOrFail('API_URL_NOVA')
+  const turma = getEnvOrFail('TURMA_PAP_CODIGO')
+  const login = getEnvOrFail('LOGIN_FUNCIONARIO')
+  const perfil = getEnvOrFail('ID_PERFIL')
+
+  cy.request({
+    method: 'GET',
+    url: `${apiUrl}/api/v1/componentes-curriculares/turmas/${turma}/funcionarios/${login}/perfis/${perfil}/validar/pap/`,
+    headers: {
+      accept: 'application/json',
+    },
+    failOnStatusCode: false,
+  }).then((res) => {
+    response = res
+  })
+})
+
+Then('o status da resposta de validação PAP deve ser 403', () => {
+  expect(response.status).to.eq(403)
+})
