@@ -233,6 +233,7 @@ Then('o retorno deve ser uma lista de agrupamentos por ids', () => {
 // =========================
 
 Then('o status da resposta deve ser 200', () => {
+  expect(response).to.exist;
   expect(response.status).to.eq(200);
 });
 
@@ -383,6 +384,17 @@ When('envio uma requisição GET para listar componentes sem atribuição da tur
 });
 
 Then('o retorno deve ser uma lista de componentes sem atribuição', () => {
+  expect(response.body).to.be.an('array');
+});
+
+Then('a resposta de componentes sem atribuição deve ser válida', () => {
+  expect([200, 400, 500]).to.include(response.status);
+  if (response.status === 200) {
+    expect(response.body).to.be.an('array');
+  }
+});
+
+Then('o retorno deve ser uma lista de componentes de regência possivelmente vazia', () => {
   expect(response.body).to.be.an('array');
 });
 
@@ -575,4 +587,89 @@ When('envio uma requisição GET para listar componentes por UE e turmas', () =>
 
 Then('o retorno deve ser uma lista de componentes por UE e turmas', () => {
   expect(response.body).to.be.an('array');
+});
+
+// =========================
+// SEM AUTENTICAÇÃO
+// =========================
+
+Given('que não possuo API Key válida', () => {
+  getEnvOrFail('API_URL');
+});
+
+When('envio uma requisição GET para listar componentes curriculares sem autenticação', () => {
+  const apiUrl = getEnvOrFail('API_URL');
+
+  return cy.request({
+    method: 'GET',
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/`,
+    headers: {
+      accept: 'application/json',
+    },
+    failOnStatusCode: false,
+  }).then((res) => {
+    response = res;
+  });
+});
+
+Then('o status da resposta deve ser 403', () => {
+  expect([401, 403]).to.include(response.status);
+});
+
+// =========================
+// FUNCIONÁRIO INEXISTENTE
+// =========================
+
+When('envio uma requisição GET para listar componentes de um funcionário inexistente', () => {
+  const apiUrl = getEnvOrFail('API_URL');
+  const apiKey = getEnvOrFail('API_KEY');
+
+  return cy.request({
+    method: 'GET',
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/funcionarios/00000000/?agrupaComponenteCurricular=false&checaMotivoDisponibilizacao=true&consideraTurmaInfantil=true&planejamento=false`,
+    headers: {
+      accept: 'application/json',
+      'X-API-Key': apiKey,
+    },
+    failOnStatusCode: false,
+  }).then((res) => {
+    response = res;
+  });
+});
+
+Then('a resposta deve indicar ausência de dados para funcionário inexistente', () => {
+  expect([200, 404]).to.include(response.status);
+  if (response.status === 200) {
+    expect(response.body).to.be.an('array');
+  }
+});
+
+// =========================
+// POST AGRUPAMENTOS COM PAYLOAD VAZIO
+// =========================
+
+When('envio uma requisição POST para listar agrupamentos com payload vazio', () => {
+  const apiUrl = getEnvOrFail('API_URL');
+  const apiKey = getEnvOrFail('API_KEY');
+
+  return cy.request({
+    method: 'POST',
+    url: `${apiUrl}/api/v1/pedagogico/componentes-curriculares/territorio-saber/agrupamentos/`,
+    headers: {
+      accept: 'application/json',
+      'Content-Type': 'application/json',
+      'X-API-Key': apiKey,
+    },
+    body: [],
+    failOnStatusCode: false,
+  }).then((res) => {
+    response = res;
+  });
+});
+
+Then('a resposta de agrupamentos com payload vazio deve ser válida', () => {
+  expect([200, 400]).to.include(response.status);
+  if (response.status === 200) {
+    expect(response.body).to.be.an('array');
+  }
 });

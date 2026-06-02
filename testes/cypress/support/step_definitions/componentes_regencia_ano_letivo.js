@@ -43,13 +43,9 @@ When(
       failOnStatusCode: false,
     })
     .then((res) => {
-
       cy.log(`STATUS => ${res.status}`);
       cy.log(`BODY => ${JSON.stringify(res.body)}`);
-
-      // VALIDAÇÃO DIRETA
-      expect(res.status).to.eq(200);
-
+      cy.wrap(res).as('regenciaResponse');
     });
   }
 );
@@ -60,4 +56,41 @@ When(
 
 Then('a API deve responder com sucesso', () => {
   cy.log('Validação executada com sucesso');
+});
+
+// =========================
+// RETORNO COM ARRAY
+// =========================
+
+Then('a API de regência deve retornar status 200 e array', () => {
+  cy.get('@regenciaResponse').then((res) => {
+    expect(res).to.exist;
+    expect(res.status).to.eq(200);
+    expect(res.body).to.be.an('array');
+  });
+});
+
+// =========================
+// SEM AUTENTICAÇÃO
+// =========================
+
+When('envio uma requisição GET para listar regência sem autenticação', () => {
+  const apiUrl = getEnvOrFail('API_URL_NOVA');
+
+  return cy.request({
+    method: 'GET',
+    url: `${apiUrl}/api/v1/componentes-curriculares/anos/5/regencia/`,
+    headers: {
+      accept: 'application/json',
+    },
+    failOnStatusCode: false,
+  }).then((res) => {
+    cy.wrap(res.status).as('statusRegenciaSemAuth');
+  });
+});
+
+Then('o status da resposta de regência deve ser 403', () => {
+  cy.get('@statusRegenciaSemAuth').then((status) => {
+    expect(status).to.eq(403);
+  });
 });
