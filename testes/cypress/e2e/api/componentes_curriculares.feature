@@ -97,3 +97,35 @@ Funcionalidade: Listar componentes curriculares
     Quando envio uma requisição GET para listar componentes por UE e turmas
     Então o status da resposta deve ser 200
     E o retorno deve ser uma lista de componentes por UE e turmas
+
+  Cenário: Listar componentes sem atribuição por turma com sucesso
+    Dado que possuo acesso à API de componentes sem atribuição
+    Quando envio uma requisição GET para listar componentes sem atribuição da turma
+    Então a resposta de componentes sem atribuição deve ser válida
+
+  Cenário: Acessar componentes curriculares sem API Key deve retornar 403
+    Dado que não possuo API Key válida
+    Quando envio uma requisição GET para listar componentes curriculares sem autenticação
+    Então o status da resposta deve ser 403
+
+  Cenário: Consultar funcionário inexistente deve retornar lista vazia ou 404
+    Dado que possuo acesso à API de componentes por funcionário
+    Quando envio uma requisição GET para listar componentes de um funcionário inexistente
+    Então a resposta deve indicar ausência de dados para funcionário inexistente
+
+  Cenário: Consultar grade curricular com ano inexistente deve retornar lista vazia
+    Dado que possuo acesso à API de grade curricular
+    Quando envio uma requisição GET para listar grade curricular do ano 1900
+    Então o status da resposta deve ser 200
+    E o retorno deve ser uma lista de grade curricular
+
+  Cenário: POST agrupamentos com payload vazio deve retornar lista vazia ou erro
+    Dado que possuo acesso à API de agrupamentos por território do saber
+    Quando envio uma requisição POST para listar agrupamentos com payload vazio
+    Então a resposta de agrupamentos com payload vazio deve ser válida
+
+  Cenário: Listar componentes de regência para ano sem componentes deve retornar lista vazia ou 200
+    Dado que possuo acesso à API de componentes de regência
+    Quando envio uma requisição GET para listar componentes de regência do ano 99
+    Então o status da resposta deve ser 200
+    E o retorno deve ser uma lista de componentes de regência possivelmente vazia

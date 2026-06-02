@@ -5,7 +5,7 @@ Funcionalidade: Componentes de regência por ano de turma
   Quero consultar componentes de regência por ano
   Para garantir que a API retorna sucesso
 
-  Cenário: Listar componentes de regência com sucesso
+  Cenário: Consultar regência sem API Key deve retornar 403
     Dado que possuo acesso à API de componentes de regência
-    Quando envio uma requisição GET para listar componentes de regência do ano 0
-    Então a API deve responder com sucesso
+    Quando envio uma requisição GET para listar regência sem autenticação
+    Então o status da resposta de regência deve ser 403
