@@ -11,6 +11,9 @@ from apps.componentes_curriculares.models import (
     ComponenteCurricularPlanejamentoRegencia,
     GradeComponenteCurricular,
 )
+from apps.componentes_curriculares.queries import (
+    SQL_COMPONENTES_SEM_ATRIBUICAO,
+)
 from apps.componentes_curriculares.repository import (
     ComponentesRepository,
     _agrupamento_para_dict,
@@ -145,14 +148,54 @@ class TestComponentesRepository(TestCase):
                 "descricao": "Matemática",
                 "codigo_componente_territorio_saber": None,
                 "codigo_componente_curricular_pai": None,
+                "exibir_componente_eol": True,
             }
         ]
 
         resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
 
         self.assertEqual(resultado[0]["codigo"], 1)
-        self.assertFalse(resultado[0]["exibir_componente_eol"])
+        self.assertTrue(resultado[0]["exibir_componente_eol"])
         mock_raw.assert_called_once()
+        self.assertIn("NOT EXISTS", mock_raw.call_args.args[0])
+        self.assertIn(
+            "componente_curricular_hierarquia",
+            mock_raw.call_args.args[0],
+        )
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_normaliza_regencia_infantil(
+        self,
+        mock_raw,
+    ) -> None:
+        """Consolida filhos de regência infantil no componente 512."""
+        mock_raw.return_value = [
+            {
+                "codigo": 512,
+                "descricao": "ED.INF. EMEI 4 HS",
+                "codigo_componente_curricular_pai": 512,
+                "turma_codigo": "T1",
+                "professor": "RF1",
+            },
+            {
+                "codigo": 513,
+                "descricao": "ED.INF. EMEI 2 HS",
+                "codigo_componente_curricular_pai": 512,
+                "turma_codigo": "T1",
+                "professor": "RF1",
+            },
+        ]
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0]["codigo"], 512)
+        self.assertEqual(
+            resultado[0]["descricao"],
+            "Regência de classe infantil",
+        )
+        self.assertTrue(resultado[0]["regencia"])
+        self.assertEqual(resultado[0]["professor"], "RF1")
 
     @patch("apps.componentes_curriculares.repository._raw")
     def test_listar_por_funcionario_deduplica_por_componente(
@@ -165,12 +208,14 @@ class TestComponentesRepository(TestCase):
                 "codigo_componente_curricular_pai": None,
                 "turma_codigo": "T1",
                 "professor": "RF1",
+                "exibir_componente_eol": True,
             },
             {
                 "codigo": 1,
                 "codigo_componente_curricular_pai": None,
                 "turma_codigo": "T2",
                 "professor": "RF1",
+                "exibir_componente_eol": True,
             },
         ]
 
@@ -179,6 +224,7 @@ class TestComponentesRepository(TestCase):
         self.assertEqual(len(resultado), 1)
         self.assertEqual(resultado[0]["turma_codigo"], "T1")
         self.assertIsNone(resultado[0]["professor"])
+        self.assertFalse(resultado[0]["exibir_componente_eol"])
 
     @patch("apps.componentes_curriculares.repository._raw")
     def test_listar_por_funcionario_filtra_por_ano_letivo_atual(
@@ -193,7 +239,10 @@ class TestComponentesRepository(TestCase):
 
         args, _ = mock_raw.call_args
         self.assertIn("ac.ano_letivo", args[0])
-        self.assertNotIn("ORDER BY ct.componente_codigo, ct.turma_codigo", args[0])
+        self.assertNotIn(
+            "ORDER BY ct.componente_codigo, ct.turma_codigo",
+            args[0],
+        )
         self.assertEqual(args[1], ["RF1", date.today().year])
 
     @patch("apps.componentes_curriculares.repository._raw")
@@ -243,6 +292,7 @@ class TestComponentesRepository(TestCase):
                 "turno_turma": None,
                 "ano_turma": None,
                 "professor": "RF1",
+                "exibir_componente_eol": True,
             }
         ]
 
@@ -254,6 +304,41 @@ class TestComponentesRepository(TestCase):
         self.assertEqual(len(resultado), 1)
         self.assertEqual(resultado[0]["codigo"], 10)
         self.assertTrue(resultado[0]["planejamento_regencia"])
+        self.assertIsNone(resultado[0]["professor"])
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_planejamento_normaliza_regencia_infantil(
+        self,
+        mock_raw,
+    ) -> None:
+        """Expandir componente infantil sem marcação de regência na origem."""
+        ComponenteCurricular.objects.create(codigo=10, descricao="Filho")
+        ComponenteCurricularPlanejamentoRegencia.objects.create(
+            id_componente_curricular=10,
+            turno=None,
+            ano=None,
+        )
+        mock_raw.return_value = [
+            {
+                "codigo": 512,
+                "descricao": "ED.INF. EMEI 4 HS",
+                "regencia": False,
+                "turma_codigo": "T1",
+                "ano_letivo": 2024,
+                "turno_turma": None,
+                "ano_turma": None,
+                "professor": "RF1",
+            }
+        ]
+
+        resultado = self.repo.listar_planejamento_por_turma_funcionario(
+            "T1",
+            "RF1",
+        )
+
+        self.assertEqual([item["codigo"] for item in resultado], [10])
+        self.assertTrue(resultado[0]["planejamento_regencia"])
+        self.assertFalse(resultado[0]["exibir_componente_eol"])
 
     def test_listar_regencia_por_ano_turma(self) -> None:
         """Lista componentes de planejamento de regência por ano de turma."""
@@ -447,6 +532,39 @@ class TestComponentesRepository(TestCase):
         self.assertEqual(len(resultado), 1)
         self.assertEqual(resultado[0]["codigo"], 9)
 
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_lista_turmas_deduplica_professores(
+        self,
+        mock_raw,
+    ) -> None:
+        """Não multiplica componentes de planejamento por professor."""
+        ComponenteCurricular.objects.create(codigo=10, descricao="Filho")
+        ComponenteCurricularPlanejamentoRegencia.objects.create(
+            id_componente_curricular=10,
+            turno=None,
+            ano=None,
+        )
+        mock_raw.return_value = [
+            {
+                "codigo": 512,
+                "descricao": "ED.INF. EMEI 4 HS",
+                "turma_codigo": "T1",
+                "professor": "RF1",
+            },
+            {
+                "codigo": 513,
+                "codigo_componente_curricular_pai": 512,
+                "descricao": "ED.INF. EMEI 2 HS",
+                "turma_codigo": "T1",
+                "professor": "RF2",
+            },
+        ]
+
+        resultado = self.repo.listar_por_lista_turmas(["T1"])
+
+        self.assertEqual([item["codigo"] for item in resultado], [10])
+        self.assertIsNone(resultado[0]["professor"])
+
     def test_listar_turmas_brutos_vazio(self) -> None:
         """Retorna lista vazia quando não há turmas."""
         self.assertEqual(self.repo.listar_turmas_brutos([]), [])
@@ -466,6 +584,37 @@ class TestComponentesRepository(TestCase):
 
         self.assertIsNone(resultado[0]["professor"])
         self.assertEqual(resultado[0]["codigo"], 10)
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_turmas_brutos_consolida_regencia_infantil(
+        self,
+        mock_raw,
+    ) -> None:
+        """Consolida 512 e filhos em uma única regência infantil."""
+        mock_raw.return_value = [
+            {
+                "codigo": 512,
+                "descricao": "ED.INF. EMEI 4 HS",
+                "turma_codigo": "T1",
+            },
+            {
+                "codigo": 513,
+                "codigo_componente_curricular_pai": 512,
+                "descricao": "ED.INF. EMEI 2 HS",
+                "turma_codigo": "T2",
+            },
+        ]
+
+        resultado = self.repo.listar_turmas_brutos(["T1", "T2"])
+
+        self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0]["codigo"], 512)
+        self.assertEqual(resultado[0]["turma_codigo"], "T1")
+        self.assertEqual(
+            resultado[0]["descricao"],
+            "Regência de classe infantil",
+        )
+        self.assertTrue(resultado[0]["regencia"])
 
     def test_listar_catalogo(self) -> None:
         """Lista catálogo ordenado por código."""
@@ -555,13 +704,21 @@ class TestComponentesRepository(TestCase):
 
     @patch("apps.componentes_curriculares.repository._raw")
     def test_listar_componentes_sem_atribuicao(self, mock_raw) -> None:
-        """Retorna descrições de componentes sem atribuição."""
-        mock_raw.return_value = [{"descricao": "C17"}]
+        """Retorna códigos de componentes sem atribuição na data."""
+        data_base = date(2024, 6, 1)
+        mock_raw.return_value = [{"codigo": 512}, {"codigo": 513}]
 
-        resultado = self.repo.listar_componentes_sem_atribuicao("T17")
+        resultado = self.repo.listar_componentes_sem_atribuicao(
+            "T17",
+            data_base,
+        )
 
-        self.assertEqual(resultado, ["C17"])
-        mock_raw.assert_called_once()
+        self.assertEqual(resultado, ["512", "513"])
+        mock_raw.assert_called_once_with(
+            SQL_COMPONENTES_SEM_ATRIBUICAO,
+            [data_base, data_base, "T17"],
+            "default",
+        )
 
     def test_listar_agrupamentos_correlacionados_sem_origem(self) -> None:
         """Retorna vazio quando agrupamento de origem não existe."""

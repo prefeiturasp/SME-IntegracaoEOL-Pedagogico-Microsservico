@@ -1,5 +1,6 @@
 """Testes das views do domínio Componentes Curriculares."""
 
+from datetime import date
 from unittest.mock import patch
 
 from django.test import TestCase
@@ -115,6 +116,29 @@ class TestComponentesViews(TestCase):
                 response.status_code,
                 status.HTTP_200_OK,
             )
+
+    @patch(_SVC)
+    def test_componentes_sem_atribuicao_repassa_data_base(
+        self,
+        mock_service,
+    ):
+        """Converte a data-base ISO antes de chamar o serviço."""
+        service = mock_service.return_value
+        service.listar_componentes_sem_atribuicao.return_value = [
+            "512",
+            "513",
+        ]
+
+        response = self.get(
+            "/turmas/T1/sem-atribuicao/?data_base=2024-06-01"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, ["512", "513"])
+        service.listar_componentes_sem_atribuicao.assert_called_once_with(
+            "T1",
+            date(2024, 6, 1),
+        )
 
     @patch(_SVC)
     def test_grade_curricular_retorna_resposta_snake_case(

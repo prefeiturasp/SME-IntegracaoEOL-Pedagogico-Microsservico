@@ -222,10 +222,12 @@ class TestComponentesService(SimpleTestCase):
 
     def test_ep12_sem_atribuicao_delega(self) -> None:
         """Delega listagem de componentes sem atribuição."""
+        data_base = date(2024, 6, 1)
         self.assert_delega(
             "listar_componentes_sem_atribuicao",
             "listar_componentes_sem_atribuicao",
             "T1",
+            data_base,
         )
 
     def test_ep13_correlacionados_delega(self) -> None:
