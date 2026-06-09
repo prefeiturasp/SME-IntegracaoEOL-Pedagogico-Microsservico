@@ -218,16 +218,21 @@ class ComponentesService:
     def listar_componentes_sem_atribuicao(
         self,
         codigo_turma: str,
+        data_base: date,
     ) -> list[str]:
-        """Retorna componentes sem professor atribuído.
+        """Retorna códigos de componentes sem professor atribuído.
 
         Args:
             codigo_turma: Código da turma.
+            data_base: Data usada para verificar a vigência da atribuição.
 
         Returns:
-            Descrições dos componentes sem professor atribuído.
+            Códigos dos componentes sem professor atribuído.
         """
-        return self._repo.listar_componentes_sem_atribuicao(codigo_turma)
+        return self._repo.listar_componentes_sem_atribuicao(
+            codigo_turma,
+            data_base,
+        )
 
     def listar_agrupamentos_correlacionados(
         self,
