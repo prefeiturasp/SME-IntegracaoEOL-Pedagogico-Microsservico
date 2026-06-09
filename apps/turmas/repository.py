@@ -31,6 +31,8 @@ def _turma_para_lista(t: Turma) -> dict:
         "data_fim": t.data_fim,
         "duracao_turno": t.duracao_turno,
         "tipo_turno": t.tipo_turno,
+        "codigo_etapa_ensino": t.codigo_etapa_ensino,
+        "codigo_ciclo_ensino": t.codigo_ciclo_ensino,
     }
 
 

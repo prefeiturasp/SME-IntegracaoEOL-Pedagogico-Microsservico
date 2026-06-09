@@ -72,6 +72,8 @@ def _turma(**kwargs):
         "data_fim": None,
         "codigo_tipo_programa": None,
         "codigo_modalidade_etapa": None,
+        "codigo_etapa_ensino": None,
+        "codigo_ciclo_ensino": None,
         "data_atualizacao": None,
         "data_status_turma_escola": None,
     }

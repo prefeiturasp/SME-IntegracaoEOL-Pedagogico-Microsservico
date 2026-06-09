@@ -20,6 +20,9 @@ class TurmaListSerializer(serializers.Serializer):
     codigo_serie_ensino = serializers.IntegerField(allow_null=True)
     situacao = serializers.CharField(allow_null=True)
     extinta = serializers.BooleanField()
+    tipo_turno = serializers.IntegerField(allow_null=True)
+    codigo_etapa_ensino = serializers.IntegerField(allow_null=True)
+    codigo_ciclo_ensino = serializers.IntegerField(allow_null=True)
 
 
 class TurmaDadosSerializer(serializers.Serializer):

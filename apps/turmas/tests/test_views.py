@@ -24,6 +24,9 @@ _TURMA = {
     "codigo_serie_ensino": 3,
     "situacao": "A",
     "extinta": False,
+    "tipo_turno": 1,
+    "codigo_etapa_ensino": 5,
+    "codigo_ciclo_ensino": 3,
 }
 
 _TURMA_DADOS = {
@@ -186,6 +189,9 @@ class TestTurmasViews(TestCase):
             "codigo_serie_ensino",
             "situacao",
             "extinta",
+            "tipo_turno",
+            "codigo_etapa_ensino",
+            "codigo_ciclo_ensino",
         )
         for campo in campos:
             self.assertIn(campo, item, f"campo ausente: {campo}")
