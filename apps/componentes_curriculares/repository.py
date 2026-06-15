@@ -63,7 +63,7 @@ def _componente_para_dict(row: dict) -> dict:
         "codigo_componente_territorio_saber": (
             row.get("codigo_componente_territorio_saber") or 0
         ),
-        "exibir_componente_eol": False,
+        "exibir_componente_eol": row.get("exibir_componente_eol", False),
         "codigos_territorios_agrupamento": [],
     }
 
@@ -113,6 +113,24 @@ def _aplicar_regra_regencia_classe_infantil(item: dict) -> dict:
         item["descricao"] = DESCRICAO_COMPONENTE_REGENCIA_CLASSE_INFANTIL
         item["regencia"] = True
     return item
+
+
+def _normalizar_componente_turma(row: dict) -> dict:
+    """Normaliza um componente vinculado a uma turma.
+
+    Args:
+        row: Linha retornada pelas consultas de turma.
+
+    Returns:
+        Componente no formato de resposta, com regência infantil consolidada.
+    """
+    item = _componente_para_dict(row)
+    if (
+        item.get("codigo_componente_curricular_pai")
+        == CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL
+    ):
+        item["codigo"] = CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL
+    return _aplicar_regra_regencia_classe_infantil(item)
 
 
 def _agrupamento_para_dict(
@@ -225,22 +243,25 @@ def _expandir_planejamento_regencia(
         Lista de componentes com regência substituída por planejamento.
     """
     resultado: list[dict] = []
-    vistos: set[tuple] = set()
+    vistos: set[tuple[object, object]] = set()
 
     for row in rows:
-        if not row.get("regencia"):
-            item = _componente_para_dict(row)
+        item_normalizado = _normalizar_componente_turma(row)
+        if not item_normalizado.get("regencia"):
+            item_normalizado["professor"] = None
             key = (
-                item.get("turma_codigo"),
-                item.get("codigo"),
-                item.get("professor"),
+                item_normalizado.get("turma_codigo"),
+                item_normalizado.get("codigo"),
             )
             if key not in vistos:
                 vistos.add(key)
-                resultado.append(item)
+                resultado.append(item_normalizado)
             continue
 
-        for componente in _componentes_planejamento_regencia(row, using):
+        for componente in _componentes_planejamento_regencia(
+            item_normalizado,
+            using,
+        ):
             item = _componente_para_dict(
                 {
                     "codigo": componente.codigo,
@@ -254,13 +275,12 @@ def _expandir_planejamento_regencia(
                     "ano_letivo": row.get("ano_letivo"),
                     "turno_turma": row.get("turno_turma"),
                     "ano_turma": row.get("ano_turma"),
-                    "professor": row.get("professor"),
+                    "professor": None,
                 }
             )
             key = (
                 item.get("turma_codigo"),
                 item.get("codigo"),
-                item.get("professor"),
             )
             if key not in vistos:
                 vistos.add(key)
@@ -294,7 +314,19 @@ class ComponentesRepository:
             f"{SQL_FILTRO_ATRIBUICAO_POR_TURMA}"
         )
         rows = _raw(sql, [login, codigo_turma], self._DB)
-        return [_componente_para_dict(r) for r in rows]
+        resultado: list[dict] = []
+        vistos: set[tuple[object, object, object]] = set()
+        for row in rows:
+            item = _normalizar_componente_turma(row)
+            key = (
+                item.get("turma_codigo"),
+                item.get("codigo"),
+                item.get("professor"),
+            )
+            if key not in vistos:
+                vistos.add(key)
+                resultado.append(item)
+        return resultado
 
     def listar_por_funcionario(
         self,
@@ -331,6 +363,7 @@ class ComponentesRepository:
 
         componentes: list[dict] = []
         for r in rows:
+            r["exibir_componente_eol"] = False
             item = _componente_para_dict(r)
             pai = item.get("codigo_componente_curricular_pai")
             componente_pai = componentes_pai.get(pai)
@@ -377,6 +410,8 @@ class ComponentesRepository:
             f"{SQL_FILTRO_ATRIBUICAO_POR_TURMA}"
         )
         rows = _raw(sql, [login, codigo_turma], self._DB)
+        for row in rows:
+            row["exibir_componente_eol"] = False
         return _expandir_planejamento_regencia(rows, self._DB)
 
     def listar_regencia_por_ano_turma(
@@ -592,10 +627,12 @@ class ComponentesRepository:
         seen: set[tuple] = set()
         result: list[dict] = []
         for r in rows:
-            key = (r["turma_codigo"], r["codigo"])
+            item = _normalizar_componente_turma(r)
+            key = (item["turma_codigo"], item["codigo"])
             if key not in seen:
                 seen.add(key)
-                result.append(_componente_para_dict(r))
+                item["professor"] = None
+                result.append(item)
         return result
 
     def listar_turmas_brutos(
@@ -615,9 +652,19 @@ class ComponentesRepository:
         placeholders = ",".join(["%s"] * len(codigos_turmas))
         sql = SQL_COMPONENTES_TURMAS_BRUTOS.format(placeholders=placeholders)
         rows = _raw(sql, list(codigos_turmas), self._DB)
-        for r in rows:
-            r["professor"] = None
-        return [_componente_para_dict(r) for r in rows]
+        resultado: list[dict] = []
+        vistos: set[object] = set()
+        for row in rows:
+            row["professor"] = None
+            item = _normalizar_componente_turma(row)
+            key = (
+                item.get("codigo_componente_curricular_pai")
+                or item.get("codigo")
+            )
+            if key not in vistos:
+                vistos.add(key)
+                resultado.append(item)
+        return resultado
 
     def listar_catalogo(self) -> list[dict]:
         """Lista o catálogo completo de componentes.
@@ -695,17 +742,23 @@ class ComponentesRepository:
     def listar_componentes_sem_atribuicao(
         self,
         codigo_turma: str,
+        data_base: date,
     ) -> list[str]:
-        """Lista componentes sem professor atribuído na turma.
+        """Lista códigos de componentes sem atribuição na data informada.
 
         Args:
             codigo_turma: Código da turma.
+            data_base: Data usada para verificar a vigência da atribuição.
 
         Returns:
-            Descrições dos componentes sem professor atribuído.
+            Códigos dos componentes sem professor atribuído.
         """
-        rows = _raw(SQL_COMPONENTES_SEM_ATRIBUICAO, [codigo_turma], self._DB)
-        return [r["descricao"] for r in rows]
+        rows = _raw(
+            SQL_COMPONENTES_SEM_ATRIBUICAO,
+            [data_base, data_base, codigo_turma],
+            self._DB,
+        )
+        return [str(r["codigo"]) for r in rows]
 
     def listar_agrupamentos_correlacionados(
         self,

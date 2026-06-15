@@ -520,10 +520,17 @@ class ComponentesSemAtribuicaoView(BaseAPIView):
             codigo_turma: Código da turma.
 
         Returns:
-            Resposta com descrições dos componentes sem atribuição.
+            Resposta com códigos dos componentes sem atribuição.
+
+        Raises:
+            ValueError: Quando `data_base` não estiver em formato ISO.
         """
+        data_base = date.fromisoformat(request.query_params["data_base"])
         service = ComponentesService()
-        dados = service.listar_componentes_sem_atribuicao(codigo_turma)
+        dados = service.listar_componentes_sem_atribuicao(
+            codigo_turma,
+            data_base,
+        )
         return Response(dados)
 
 

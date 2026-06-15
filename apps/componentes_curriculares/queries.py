@@ -33,8 +33,32 @@ SQL_FILTRO_ATRIBUICAO_VIGENTE = """\
  AND ac.dt_cancelamento IS NULL
  AND ac.dt_disponibilizacao IS NULL"""
 
+SQL_COMPONENTE_NAO_VIGENTE = """\
+NOT EXISTS (
+    SELECT 1
+      FROM componente_curricular_hierarquia h_vigente
+     WHERE h_vigente.idcomponentecurricular = ct.componente_codigo
+       AND (
+             h_vigente.vigencia >=
+                 CASE
+                     WHEN COALESCE(
+                              NULLIF(t.ano_letivo, 0),
+                              EXTRACT(YEAR FROM CURRENT_DATE)::integer
+                          ) = EXTRACT(YEAR FROM CURRENT_DATE)::integer
+                     THEN CURRENT_DATE
+                     ELSE make_date(t.ano_letivo, 12, 31)
+                 END
+             OR (
+                  h_vigente.vigencia IS NULL
+                  AND h_vigente.id > 0
+                )
+           )
+)"""
+
 SQL_COMPONENTES_TURMA_COM_ATRIBUICAO = f"""\
-SELECT {COMPONENTE_TURMA_CAMPOS_RESPOSTA}, ac.professor
+SELECT {COMPONENTE_TURMA_CAMPOS_RESPOSTA},
+       {SQL_COMPONENTE_NAO_VIGENTE} AS exibir_componente_eol,
+       ac.professor
   FROM componente_turma ct
   LEFT JOIN componente_curricular cc
     ON cc.codigo = ct.componente_codigo
@@ -213,19 +237,15 @@ WHERE t.ue_codigo = %s
 """
 
 SQL_COMPONENTES_SEM_ATRIBUICAO = """\
-SELECT cc.descricao
+SELECT DISTINCT ct.componente_codigo AS codigo
   FROM componente_turma ct
-  JOIN componente_curricular cc
-    ON cc.codigo = ct.componente_codigo
   JOIN turma t ON t.codigo::varchar = ct.turma_codigo AND t.extinta = false
   LEFT JOIN atribuicao_componente ac
          ON ac.turma_codigo = ct.turma_codigo
         AND ac.componente_codigo = ct.componente_codigo
         AND ac.dt_cancelamento IS NULL
-        AND (
-              ac.dt_disponibilizacao >= make_date(t.ano_letivo, 2, 5)
-              OR ac.dt_disponibilizacao IS NULL
-              OR ac.cd_motivo_disponibilizacao = {MOTIVO_FIM_ANO}
-            )
+        AND %s BETWEEN ac.dt_atribuicao::date
+                   AND COALESCE(ac.dt_disponibilizacao::date, %s)
  WHERE ct.turma_codigo = %s
-   AND ac.turma_codigo IS NULL"""
+   AND ac.turma_codigo IS NULL
+ ORDER BY ct.componente_codigo"""

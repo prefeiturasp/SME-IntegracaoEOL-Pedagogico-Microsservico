@@ -27,6 +27,12 @@ def _turma_para_lista(t: Turma) -> dict:
         "codigo_serie_ensino": t.codigo_serie_ensino,
         "situacao": t.situacao,
         "extinta": t.extinta,
+        "data_inicio_turma": t.data_inicio_turma,
+        "data_fim": t.data_fim,
+        "duracao_turno": t.duracao_turno,
+        "tipo_turno": t.tipo_turno,
+        "codigo_etapa_ensino": t.codigo_etapa_ensino,
+        "codigo_ciclo_ensino": t.codigo_ciclo_ensino,
     }
 
 
