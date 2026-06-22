@@ -52,14 +52,25 @@ class TestTurmasService(TestCase):
             "000532", 5
         )
 
-    def test_anos_letivos_por_ue(self) -> None:
-        self.repo.anos_letivos_por_ue.return_value = [2023, 2024]
+    def test_codigos_turmas_por_ue_com_anos(self) -> None:
+        self.repo.codigos_turmas_por_ue.return_value = [3036225, 3082921]
 
         self.assertEqual(
-            self.service.anos_letivos_por_ue("000532"),
-            [2023, 2024],
+            self.service.codigos_turmas_por_ue("019437", [2025, 2026]),
+            [3036225, 3082921],
         )
-        self.repo.anos_letivos_por_ue.assert_called_once_with("000532")
+        self.repo.codigos_turmas_por_ue.assert_called_once_with(
+            "019437", [2025, 2026]
+        )
+
+    def test_codigos_turmas_por_ue_sem_anos(self) -> None:
+        self.repo.codigos_turmas_por_ue.return_value = [3036225]
+
+        self.assertEqual(
+            self.service.codigos_turmas_por_ue("019437", None),
+            [3036225],
+        )
+        self.repo.codigos_turmas_por_ue.assert_called_once_with("019437", None)
 
     def test_turmas_historicas_professor(self) -> None:
         self.repo.turmas_historicas_professor.return_value = [{"codigo": 6}]
