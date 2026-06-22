@@ -248,9 +248,7 @@ class TestTurmasRepository(TestCase):
     @patch("apps.turmas.repository.AtribuicaoComponente.objects.using")
     @patch("apps.turmas.repository.ComponenteCurricular.objects.using")
     @patch("apps.turmas.repository.ComponenteTurma.objects.using")
-    @patch(
-        "apps.turmas.repository." "TurmaItinerarioEnsinoMedio.objects.using"
-    )
+    @patch("apps.turmas.repository.TurmaItinerarioEnsinoMedio.objects.using")
     @patch("apps.turmas.repository.Turma.objects.using")
     def test_sincronizacoes_mapeia_contrato_legado(
         self,
@@ -574,6 +572,22 @@ class TestTurmasRepository(TestCase):
             ),
         )
         self.assertEqual(qs_turma.calls[-1], ("distinct", (), {}))
+
+    @patch("apps.turmas.repository.Turma.objects.using")
+    @patch("apps.turmas.repository.AtribuicaoComponente.objects.using")
+    def test_turmas_historicas_professor_inclui_codigo_sem_origem(
+        self, mock_atribuicao_using, mock_turma_using
+    ):
+        """Atribuição sem origem mantém o código no filtro de turmas."""
+        qs_atribuicao = FakeQuerySet(values=[("2112345", None)])
+        qs_turma = FakeQuerySet([_turma(codigo=2112345)])
+        mock_atribuicao_using.return_value = qs_atribuicao
+        mock_turma_using.return_value = qs_turma
+
+        resultado = self.repo.turmas_historicas_professor(2024, "RF1")
+
+        self.assertEqual(resultado[0]["codigo"], 2112345)
+        self.assertEqual(qs_turma.calls[0][2]["codigo__in"], [2112345])
 
     @patch("apps.turmas.repository.TurmaItinerarioEnsinoMedio.objects.using")
     def test_itinerarios_ensino_medio_ordena_por_id(self, mock_using):
