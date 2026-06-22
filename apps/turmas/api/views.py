@@ -7,6 +7,7 @@ from rest_framework.response import Response
 
 from apps.core.views import BaseAPIView
 from apps.turmas.serializers import (
+    AnosLetivosVigenteQuerySerializer,
     TurmaDadosSerializer,
     TurmaHistoricaSerializer,
     TurmaItinerarioSerializer,
@@ -162,28 +163,51 @@ class TurmaSincronizacoesInstitucionaisView(BaseAPIView):
 
 
 class AnosLetivosUEView(BaseAPIView):
-    """Lista anos letivos com turmas na UE."""
+    """Lista códigos de turma da UE."""
 
     @extend_schema(
         tags=_TAG,
-        summary="Anos letivos de sincronizações institucionais por UE",
+        summary="Códigos de turma da UE por anos letivos vigentes",
         parameters=[
             OpenApiParameter("ue_codigo", str, OpenApiParameter.PATH),
+            OpenApiParameter(
+                "anos_letivos_vigente",
+                {"type": "array", "items": {"type": "integer"}},
+                OpenApiParameter.QUERY,
+                required=False,
+                explode=True,
+            ),
         ],
         responses={200: {"type": "array", "items": {"type": "integer"}}},
         operation_id="anos_letivos_ue",
     )
-    def get(self, _request: Request, ue_codigo: str) -> Response:
-        """Lista os anos letivos com turmas na UE.
+    def get(self, request: Request, ue_codigo: str) -> Response:
+        """Lista os códigos de turma da UE.
 
         Args:
+            request: Requisição com os anos letivos em anos_letivos_vigente.
             ue_codigo: Código da unidade educacional.
 
         Returns:
-            Anos letivos com turmas na UE.
+            Códigos de turma da UE: todos quando o filtro é ausente, filtrados
+            pelos anos informados, ou lista vazia quando o filtro é informado
+            sem ano válido.
         """
-        anos = TurmasService().anos_letivos_por_ue(ue_codigo)
-        return Response(anos)
+        serializer = AnosLetivosVigenteQuerySerializer(
+            data=request.query_params
+        )
+        serializer.is_valid(raise_exception=True)
+        informados = serializer.validated_data.get("anos_letivos_vigente")
+        if not informados:
+            codigos = TurmasService().codigos_turmas_por_ue(ue_codigo, None)
+            return Response(codigos)
+        anos_letivos = [ano for ano in informados if ano > 0]
+        if not anos_letivos:
+            return Response([])
+        codigos = TurmasService().codigos_turmas_por_ue(
+            ue_codigo, anos_letivos
+        )
+        return Response(codigos)
 
 
 class TurmasHistoricasProfessorView(BaseAPIView):
@@ -196,7 +220,7 @@ class TurmasHistoricasProfessorView(BaseAPIView):
             OpenApiParameter("ano_letivo", int, OpenApiParameter.PATH),
             OpenApiParameter("professor_rf", str, OpenApiParameter.PATH),
         ],
-        responses={200: TurmaHistoricaSerializer(many=True), 404: dict},
+        responses={200: TurmaHistoricaSerializer(many=True)},
         operation_id="turmas_historicas_professor",
     )
     def get(
@@ -212,14 +236,11 @@ class TurmasHistoricasProfessorView(BaseAPIView):
             professor_rf: Registro funcional do professor.
 
         Returns:
-            Turmas históricas do professor, ou ausência de conteúdo quando não
-            há turmas.
+            Turmas históricas do professor.
         """
         dados = TurmasService().turmas_historicas_professor(
             ano_letivo, professor_rf
         )
-        if not dados:
-            return Response(status=status.HTTP_404_NOT_FOUND)
         return Response(dados)
 
 

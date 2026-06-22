@@ -96,8 +96,8 @@ curl -H "X-API-Key: dev-key-default" http://localhost:8001/api/componentes-curri
 | T03 | POST | `/api/v1/pedagogico/turmas/listar-turmas/` | Listar turmas por lista de códigos (sem filtro de tipo) |
 | T04 | GET | `/api/v1/pedagogico/turmas/{codigoTurma}/dados/` | Dados cadastrais de uma turma |
 | T05 | GET | `/api/v1/pedagogico/turmas/ues/{ueCodigo}/turmas/{turmaCodigo}/sincronizacoes-institucionais/` | Sincronizações institucionais de uma turma por UE |
-| T06 | GET | `/api/v1/pedagogico/turmas/ue/{ueCodigo}/sincronizacoes-institucionais/anosLetivos/` | Anos letivos com turmas na UE |
-| T07 | GET | `/api/v1/pedagogico/turmas/anos-letivos/{anoLetivo}/professor/{professorRf}/turmas-historicas-geral/` | Turmas históricas do professor por ano letivo |
+| T06 | GET | `/api/v1/pedagogico/turmas/ue/{ueCodigo}/sincronizacoes-institucionais/anosLetivos/` | Códigos de turma da UE (tipo_turma <> 4), filtráveis por `anos_letivos_vigente`; ausente/vazio lista todos da UE, `0` retorna `[]` |
+| T07 | GET | `/api/v1/pedagogico/turmas/anos-letivos/{anoLetivo}/professor/{professorRf}/turmas-historicas-geral/` | Turmas do professor por ano letivo com atribuição válida. Resposta no contrato legado de 7 campos (`ano`, `ano_letivo`, `codigo`, `modalidade`, `codigo_modalidade`, `nome_turma`, `semestre`); sem resultado retorna `200 []` |
 | T08 | GET | `/api/v1/pedagogico/turmas/itinerario/ensino-medio/` | Itinerários do Ensino Médio (fixture local) |
 
 ### Componentes Curriculares

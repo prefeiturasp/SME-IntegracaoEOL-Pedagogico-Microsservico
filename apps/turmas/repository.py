@@ -1,14 +1,64 @@
 """Repositório do domínio Turmas."""
 
-from django.db.models import Q
+from datetime import datetime
 
 from apps.componentes_curriculares.constants import (
+    TIPO_TURMA_ED_FISICA,
     TIPO_TURMA_EVENTO_PARA_ATRIBUICAO,
+    TIPO_TURMA_ITINERARIOS_2A_ANO,
     TIPO_TURMA_PROGRAMA,
     TIPO_TURMA_REGULAR,
 )
-from apps.componentes_curriculares.models import AtribuicaoComponente
+from apps.componentes_curriculares.models import (
+    AtribuicaoComponente,
+    ComponenteCurricular,
+    ComponenteTurma,
+)
+from apps.turmas.constants import (
+    DESCRICOES_GRADE_PROGRAMA_ITINERARIO,
+    ETAPA_ENSINO_MAGISTERIO,
+    ETAPAS_ENSINO_TURMAS_HISTORICAS_PROFESSOR,
+    TIPO_GRADE_PROGRAMA_ITINERARIO,
+    TIPOS_ESCOLA_TURMAS_HISTORICAS_PROFESSOR,
+)
 from apps.turmas.models import Turma, TurmaItinerarioEnsinoMedio
+
+
+def _nome_filtro(
+    turma: Turma,
+    itinerario: TurmaItinerarioEnsinoMedio | None,
+) -> str:
+    if itinerario is not None:
+        return (
+            f"{turma.nome_turma} - {itinerario.serie}ª Série - "
+            f"{itinerario.nome}"
+        )
+
+    serie_ensino = turma.serie_ensino or ""
+    if (
+        turma.tipo_turma == TIPO_TURMA_REGULAR
+        and turma.codigo_etapa_ensino == ETAPA_ENSINO_MAGISTERIO
+        and turma.serie_ensino is not None
+    ):
+        return f"{turma.nome_turma} - {turma.serie_ensino} - Magistério"
+    if turma.tipo_turma == TIPO_TURMA_ED_FISICA:
+        return f"{turma.nome_turma} - Ed Física"
+    if turma.descricao_grade_programa is None:
+        return f"{turma.nome_turma} - {serie_ensino}"
+    if turma.tipo_turma == TIPO_TURMA_PROGRAMA:
+        return (
+            f"{turma.nome_turma} - "
+            f"{turma.descricao_grade_programa.strip()}"
+        )
+    if turma.tipo_turma == TIPO_TURMA_ITINERARIOS_2A_ANO:
+        descricao = turma.descricao_grade_programa
+        if turma.tipo_grade_programa == TIPO_GRADE_PROGRAMA_ITINERARIO:
+            descricao = DESCRICOES_GRADE_PROGRAMA_ITINERARIO.get(
+                turma.codigo_grade_programa,
+                descricao,
+            )
+        return f"{turma.nome_turma} - {descricao}"
+    return f"{turma.nome_turma} - {serie_ensino}"
 
 
 def _turma_para_lista(t: Turma) -> dict:
@@ -63,49 +113,74 @@ def _turma_para_dados(t: Turma) -> dict:
     }
 
 
-def _turma_para_sincronizacao(t: Turma) -> dict:
-    return {
-        "codigo": t.codigo,
-        "ue_codigo": t.ue_codigo,
-        "ano_letivo": t.ano_letivo,
-        "data_inicio_turma": t.data_inicio_turma,
-        "data_fim": t.data_fim,
-        "data_atualizacao": t.data_atualizacao,
-        "data_status_turma_escola": t.data_status_turma_escola,
-        "situacao": t.situacao,
-        "extinta": t.extinta,
-        "codigo_modalidade": t.codigo_modalidade,
-        "modalidade": t.modalidade,
-        "semestre": t.semestre or 0,
-        "ensino_especial": t.ensino_especial,
-        "codigo_serie_ensino": t.codigo_serie_ensino,
-        "serie_ensino": t.serie_ensino,
-    }
-
-
-def _turma_para_historico(t: Turma) -> dict:
-    ehistorico = t.extinta or t.situacao == "C"
+def _turma_para_sincronizacao(
+    t: Turma,
+    componentes: list[dict],
+    itinerario: TurmaItinerarioEnsinoMedio | None,
+) -> dict:
     return {
         "ano": t.ano,
         "ano_letivo": t.ano_letivo,
         "codigo": t.codigo,
-        "tipo_turma": t.tipo_turma or 0,
+        "tipo_turma": t.tipo_turma,
         "modalidade": t.modalidade,
         "codigo_modalidade": t.codigo_modalidade,
         "nome_turma": t.nome_turma,
         "semestre": t.semestre or 0,
-        "duracao_turno": t.duracao_turno or 0,
-        "tipo_turno": t.tipo_turno or 0,
-        "data_fim": t.data_fim,
-        "ehistorico": ehistorico,
+        "duracao_turno": t.duracao_turno,
+        "tipo_turno": t.tipo_turno,
+        "data_fim_turma": t.data_fim,
         "ensino_especial": t.ensino_especial,
         "etapa_eja": 0,
         "serie_ensino": t.serie_ensino,
+        "codigo_serie_ensino": t.codigo_serie_ensino,
         "data_inicio_turma": t.data_inicio_turma,
         "extinta": t.extinta,
         "situacao": t.situacao,
         "ue_codigo": t.ue_codigo,
+        "data_atualizacao": t.data_atualizacao,
+        "data_status_turma_escola": t.data_status_turma_escola,
+        "etapa_ensino": t.codigo_etapa_ensino or 0,
+        "ciclo_ensino": t.codigo_ciclo_ensino or 0,
+        "tipo_escola": t.tipo_escola,
+        "descricao_grade_programa": t.descricao_grade_programa,
+        "tipo_grade_programa": t.tipo_grade_programa or 0,
+        "codigo_grade_programa": t.codigo_grade_programa,
+        "nome_filtro": _nome_filtro(t, itinerario),
+        "componentes": componentes,
     }
+
+
+def _turma_para_historico(t: Turma) -> dict:
+    return {
+        "ano": t.ano,
+        "ano_letivo": t.ano_letivo,
+        "codigo": t.codigo,
+        "modalidade": t.modalidade,
+        "codigo_modalidade": t.codigo_modalidade,
+        "nome_turma": t.nome_turma,
+        "semestre": t.semestre or 0,
+    }
+
+
+def _codigos_por_atribuicao_origem(
+    registros: list[tuple[str | None, int | None]],
+) -> list[int]:
+    codigos_por_origem: dict[int, int] = {}
+    codigos_sem_origem: set[int] = set()
+
+    for codigo_texto, atribuicao_origem in registros:
+        if not codigo_texto or not codigo_texto.isdigit():
+            continue
+        codigo = int(codigo_texto)
+        if atribuicao_origem is None:
+            codigos_sem_origem.add(codigo)
+            continue
+        codigo_atual = codigos_por_origem.get(atribuicao_origem)
+        if codigo_atual is None or codigo < codigo_atual:
+            codigos_por_origem[atribuicao_origem] = codigo
+
+    return sorted(codigos_sem_origem | set(codigos_por_origem.values()))
 
 
 class TurmasRepository:
@@ -190,24 +265,91 @@ class TurmasRepository:
         )
         if turma is None:
             return None
-        return _turma_para_sincronizacao(turma)
+        componentes = self._componentes_da_turma(turma.codigo)
+        itinerario = (
+            TurmaItinerarioEnsinoMedio.objects.using(self._DB)
+            .filter(id=turma.tipo_turma)
+            .first()
+        )
+        return _turma_para_sincronizacao(turma, componentes, itinerario)
 
-    def anos_letivos_por_ue(self, ue_codigo: str) -> list[int]:
-        """Lista anos letivos com turmas na UE.
+    def _componentes_da_turma(self, turma_codigo: int) -> list[dict]:
+        codigos = list(
+            ComponenteTurma.objects.using(self._DB)
+            .filter(turma_codigo=str(turma_codigo))
+            .values_list("componente_codigo", flat=True)
+        )
+        if not codigos:
+            return []
+        descricoes = {
+            c["codigo"]: c["descricao"]
+            for c in ComponenteCurricular.objects.using(self._DB)
+            .filter(codigo__in=codigos)
+            .values("codigo", "descricao")
+        }
+        atribuicoes = self._atribuicoes_da_turma(turma_codigo)
+        componentes: list[dict] = []
+        for codigo in codigos:
+            descricao = descricoes.get(codigo)
+            for rf, data_disp in atribuicoes.get(codigo, [(None, None)]):
+                componentes.append(
+                    {
+                        "nome_componente_curricular": descricao,
+                        "componente_curricular_codigo": codigo,
+                        "registro_funcional": rf,
+                        "data_disponibizacao": data_disp,
+                    }
+                )
+        return componentes
+
+    def _atribuicoes_da_turma(
+        self,
+        turma_codigo: int,
+    ) -> dict[int, list[tuple[str | None, datetime | None]]]:
+        atribuicoes: dict[int, list[tuple[str | None, datetime | None]]] = {}
+        registros = (
+            AtribuicaoComponente.objects.using(self._DB)
+            .filter(turma_codigo=str(turma_codigo))
+            .values(
+                "componente_codigo",
+                "professor",
+                "dt_disponibilizacao",
+            )
+        )
+        for atribuicao in registros:
+            atribuicoes.setdefault(atribuicao["componente_codigo"], []).append(
+                (
+                    atribuicao["professor"],
+                    atribuicao["dt_disponibilizacao"],
+                )
+            )
+        return atribuicoes
+
+    def codigos_turmas_por_ue(
+        self,
+        ue_codigo: str,
+        anos_letivos: list[int] | None,
+    ) -> list[int]:
+        """Lista códigos de turma da UE, exceto turmas de evento.
 
         Args:
             ue_codigo: Código da unidade educacional.
+            anos_letivos: Anos letivos a filtrar; quando vazio, lista todos.
 
         Returns:
-            Anos letivos com turmas na UE, em ordem crescente.
+            Códigos de turma da UE, em ordem crescente e sem duplicatas.
         """
-        return list(
+        consulta = (
             Turma.objects.using(self._DB)
             .filter(ue_codigo=ue_codigo)
             .exclude(tipo_turma=TIPO_TURMA_EVENTO_PARA_ATRIBUICAO)
-            .values_list("ano_letivo", flat=True)
+        )
+        if anos_letivos:
+            consulta = consulta.filter(ano_letivo__in=anos_letivos)
+        return list(
+            consulta.values_list("codigo", flat=True)
             .distinct()
-            .order_by("ano_letivo")
+            .order_by("codigo")
         )
 
     def turmas_historicas_professor(
@@ -224,28 +366,34 @@ class TurmasRepository:
         Returns:
             Lista de turmas históricas do professor.
         """
-        codigos_str = (
+        atribuicoes = list(
             AtribuicaoComponente.objects.using(self._DB)
-            .filter(professor=professor_rf, ano_letivo=ano_letivo)
-            .values_list("turma_codigo", flat=True)
+            .filter(
+                professor=professor_rf,
+                ano_letivo=ano_letivo,
+                dt_cancelamento__isnull=True,
+                dt_disponibilizacao__isnull=False,
+            )
+            .values_list("turma_codigo", "id_atribuicao_origem")
             .distinct()
         )
-        # O código de turma sincronizado como texto precisa ser filtrado como
-        # inteiro no modelo de turma.
-        codigos_int = [int(c) for c in codigos_str if c and c.isdigit()]
+        codigos_int = _codigos_por_atribuicao_origem(atribuicoes)
         if not codigos_int:
             return []
         turmas = (
             Turma.objects.using(self._DB)
             .filter(
                 codigo__in=codigos_int,
+                ano_letivo=ano_letivo,
+                tipo_escola__in=TIPOS_ESCOLA_TURMAS_HISTORICAS_PROFESSOR,
+                codigo_etapa_ensino__in=ETAPAS_ENSINO_TURMAS_HISTORICAS_PROFESSOR,
             )
-            .filter(Q(extinta=True) | Q(situacao__in=["C", "E"]))
+            .distinct()
         )
         return [_turma_para_historico(t) for t in turmas]
 
     def itinerarios_ensino_medio(self) -> list[dict]:
-        """Lista itinerários do Ensino Médio ordenados por nome.
+        """Lista itinerários do Ensino Médio ordenados por id.
 
         Returns:
             Lista de itinerários do Ensino Médio.
@@ -254,5 +402,5 @@ class TurmasRepository:
             {"id": i.id, "nome": i.nome, "serie": i.serie}
             for i in TurmaItinerarioEnsinoMedio.objects.using(
                 self._DB
-            ).order_by("nome")
+            ).order_by("id")
         ]

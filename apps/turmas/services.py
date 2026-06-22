@@ -71,16 +71,21 @@ class TurmasService:
             ue_codigo, turma_codigo
         )
 
-    def anos_letivos_por_ue(self, ue_codigo: str) -> list[int]:
-        """Retorna anos letivos com turmas na UE.
+    def codigos_turmas_por_ue(
+        self,
+        ue_codigo: str,
+        anos_letivos: list[int] | None,
+    ) -> list[int]:
+        """Retorna códigos de turma da UE.
 
         Args:
             ue_codigo: Código da unidade educacional.
+            anos_letivos: Anos letivos a filtrar; quando vazio, lista todos.
 
         Returns:
-            Anos letivos com turmas na UE, em ordem crescente.
+            Códigos de turma da UE, em ordem crescente.
         """
-        return self._repo.anos_letivos_por_ue(ue_codigo)
+        return self._repo.codigos_turmas_por_ue(ue_codigo, anos_letivos)
 
     def turmas_historicas_professor(
         self,
@@ -99,7 +104,7 @@ class TurmasService:
         return self._repo.turmas_historicas_professor(ano_letivo, professor_rf)
 
     def itinerarios_ensino_medio(self) -> list[dict]:
-        """Retorna itinerários do Ensino Médio ordenados por nome.
+        """Retorna itinerários do Ensino Médio ordenados por id.
 
         Returns:
             Lista de itinerários do Ensino Médio.
