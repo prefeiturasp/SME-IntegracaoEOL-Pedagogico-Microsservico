@@ -54,6 +54,44 @@ Acesse em: http://localhost:8001/api/docs/
 
 ---
 
+## Pre-commit
+
+O projeto usa `pre-commit` para rodar validações antes do commit:
+
+- `black` para formatação;
+- `ruff --fix` para lint e correções automáticas;
+- `mypy` para checagem de tipos.
+
+### Instalar localmente
+
+Depois de instalar as dependências de desenvolvimento:
+
+```bash
+pip install -r requirements/local.txt
+pre-commit install
+```
+
+A partir disso, os hooks rodam automaticamente a cada `git commit`.
+
+### Rodar manualmente
+
+Para validar todos os arquivos localmente:
+
+```bash
+pre-commit run --all-files
+```
+
+Ou via Docker:
+
+```bash
+./scripts/executar_precommit.sh
+```
+
+Quando `black` ou `ruff` alterarem arquivos, revise as mudanças e rode o
+comando novamente antes de commitar.
+
+---
+
 ## Executar Testes com Docker
 
 Para rodar a suíte completa de testes e gerar o relatório de cobertura:

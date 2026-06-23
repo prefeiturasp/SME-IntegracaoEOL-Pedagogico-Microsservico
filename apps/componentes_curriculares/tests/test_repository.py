@@ -369,7 +369,9 @@ class TestComponentesRepository(TestCase):
             {(item["codigo"], item["professor"]) for item in resultado},
             {(813071, "RF1"), (1216, "RF2")},
         )
-        self.assertEqual([item["codigo"] for item in resultado], [813071, 1216])
+        self.assertEqual(
+            [item["codigo"] for item in resultado], [813071, 1216]
+        )
         self.assertEqual(resultado[1]["descricao"], "TS - EP")
 
     @patch("apps.componentes_curriculares.repository._raw")
@@ -644,7 +646,7 @@ class TestComponentesRepository(TestCase):
                 "codigo_componente_curricular_pai": 1,
                 "descricao_componente_curricular": "Pai C1",
                 "regencia": True,
-            }
+            },
         ]
 
         resultado = self.repo.listar_turma_programa_por_ue_modalidade_ano(
@@ -1006,7 +1008,9 @@ class TestComponentesRepository(TestCase):
 
         resultado = self.repo.listar_agrupamentos_correlacionados(1001, None)
 
-        self.assertEqual([item["codigo"] for item in resultado], [1001, 100, 200])
+        self.assertEqual(
+            [item["codigo"] for item in resultado], [1001, 100, 200]
+        )
         self.assertEqual(
             [item["codigos_territorios_agrupamento"] for item in resultado],
             [[100, 200], [100], [200]],

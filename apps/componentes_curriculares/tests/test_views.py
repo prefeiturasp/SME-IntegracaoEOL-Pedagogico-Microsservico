@@ -129,9 +129,7 @@ class TestComponentesViews(TestCase):
             "513",
         ]
 
-        response = self.get(
-            "/turmas/T1/sem-atribuicao/?data_base=2024-06-01"
-        )
+        response = self.get("/turmas/T1/sem-atribuicao/?data_base=2024-06-01")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, ["512", "513"])

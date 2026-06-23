@@ -1,5 +1,6 @@
 """Repositório do domínio Turmas."""
 
+from collections.abc import Sequence
 from datetime import datetime
 
 from apps.componentes_curriculares.constants import (
@@ -52,7 +53,10 @@ def _nome_filtro(
         )
     if turma.tipo_turma == TIPO_TURMA_ITINERARIOS_2A_ANO:
         descricao = turma.descricao_grade_programa
-        if turma.tipo_grade_programa == TIPO_GRADE_PROGRAMA_ITINERARIO:
+        if (
+            turma.tipo_grade_programa == TIPO_GRADE_PROGRAMA_ITINERARIO
+            and turma.codigo_grade_programa is not None
+        ):
             descricao = DESCRICOES_GRADE_PROGRAMA_ITINERARIO.get(
                 turma.codigo_grade_programa,
                 descricao,
@@ -164,7 +168,7 @@ def _turma_para_historico(t: Turma) -> dict:
 
 
 def _codigos_por_atribuicao_origem(
-    registros: list[tuple[str | None, int | None]],
+    registros: Sequence[tuple[str | None, int | None]],
 ) -> list[int]:
     codigos_por_origem: dict[int, int] = {}
     codigos_sem_origem: set[int] = set()
@@ -281,12 +285,11 @@ class TurmasRepository:
         )
         if not codigos:
             return []
-        descricoes = {
-            c["codigo"]: c["descricao"]
-            for c in ComponenteCurricular.objects.using(self._DB)
+        descricoes = dict(
+            ComponenteCurricular.objects.using(self._DB)
             .filter(codigo__in=codigos)
-            .values("codigo", "descricao")
-        }
+            .values_list("codigo", "descricao")
+        )
         atribuicoes = self._atribuicoes_da_turma(turma_codigo)
         componentes: list[dict] = []
         for codigo in codigos:
@@ -310,18 +313,15 @@ class TurmasRepository:
         registros = (
             AtribuicaoComponente.objects.using(self._DB)
             .filter(turma_codigo=str(turma_codigo))
-            .values(
+            .values_list(
                 "componente_codigo",
                 "professor",
                 "dt_disponibilizacao",
             )
         )
-        for atribuicao in registros:
-            atribuicoes.setdefault(atribuicao["componente_codigo"], []).append(
-                (
-                    atribuicao["professor"],
-                    atribuicao["dt_disponibilizacao"],
-                )
+        for componente_codigo, professor, dt_disponibilizacao in registros:
+            atribuicoes.setdefault(componente_codigo, []).append(
+                (professor, dt_disponibilizacao)
             )
         return atribuicoes
 

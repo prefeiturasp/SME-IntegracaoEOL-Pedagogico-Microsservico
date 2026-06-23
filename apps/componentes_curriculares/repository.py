@@ -14,8 +14,8 @@ from apps.componentes_curriculares.models import (
     AgrupamentoAtribuicaoTerritorioSaber,
     AtribuicaoComponente,
     ComponenteCurricular,
-    ComponenteTurma,
     ComponenteCurricularPlanejamentoRegencia,
+    ComponenteTurma,
     GradeComponenteCurricular,
 )
 from apps.componentes_curriculares.queries import (
@@ -144,7 +144,7 @@ def _normalizar_componente_turma(row: dict) -> dict:
 
 
 def _int_or_none(value: object) -> int | None:
-    """Converte valor para inteiro quando possível.
+    """Converta valor para inteiro quando possível.
 
     Args:
         value: Valor de entrada.
@@ -155,7 +155,7 @@ def _int_or_none(value: object) -> int | None:
     if value is None:
         return None
     try:
-        return int(value)
+        return int(str(value))
     except (TypeError, ValueError):
         return None
 
@@ -354,9 +354,9 @@ class ComponentesRepository:
         seen: set[object] = set()
         result: list[dict] = []
         for item in componentes:
-            key = item.get("codigo_componente_curricular_pai") or item[
-                "codigo"
-            ]
+            key = (
+                item.get("codigo_componente_curricular_pai") or item["codigo"]
+            )
 
             if key not in seen:
                 seen.add(key)
@@ -402,10 +402,8 @@ class ComponentesRepository:
         Returns:
             Lista de componentes de regência no formato de resposta.
         """
-        filtro = (
-            {"ano__isnull": True}
-            if ano_turma <= 0
-            else {"ano": ano_turma}
+        filtro: dict[str, object] = (
+            {"ano__isnull": True} if ano_turma <= 0 else {"ano": ano_turma}
         )
         codigos = list(
             ComponenteCurricularPlanejamentoRegencia.objects.using(self._DB)
@@ -633,9 +631,8 @@ class ComponentesRepository:
         for row in rows:
             row["professor"] = None
             item = _normalizar_componente_turma(row)
-            key = (
-                item.get("codigo_componente_curricular_pai")
-                or item.get("codigo")
+            key = item.get("codigo_componente_curricular_pai") or item.get(
+                "codigo"
             )
             if key not in vistos:
                 vistos.add(key)
@@ -648,11 +645,14 @@ class ComponentesRepository:
         Returns:
             Lista completa de componentes curriculares.
         """
-        return list(
-            ComponenteCurricular.objects.using(self._DB)
-            .values("codigo", "descricao")
-            .order_by("codigo")
-        )
+        return [
+            {"codigo": codigo, "descricao": descricao}
+            for codigo, descricao in (
+                ComponenteCurricular.objects.using(self._DB)
+                .values_list("codigo", "descricao")
+                .order_by("codigo")
+            )
+        ]
 
     def listar_vigencia_componentes(
         self,
@@ -700,10 +700,10 @@ class ComponentesRepository:
         Returns:
             Linhas da grade curricular do ano letivo.
         """
-        rows = list(
+        rows = (
             GradeComponenteCurricular.objects.using(self._DB)
             .filter(ano_letivo=ano_letivo)
-            .values(
+            .values_list(
                 "codigo_componente_curricular",
                 "descricao_componente_curricular",
                 "codigo_ano_turma",
@@ -713,7 +713,24 @@ class ComponentesRepository:
             )
             .distinct()
         )
-        return rows
+        return [
+            {
+                "codigo_componente_curricular": codigo,
+                "descricao_componente_curricular": descricao,
+                "codigo_ano_turma": codigo_ano_turma,
+                "descricao_serie_ensino": descricao_serie_ensino,
+                "codigo_serie_ensino": codigo_serie_ensino,
+                "modalidade": modalidade,
+            }
+            for (
+                codigo,
+                descricao,
+                codigo_ano_turma,
+                descricao_serie_ensino,
+                codigo_serie_ensino,
+                modalidade,
+            ) in rows
+        ]
 
     def listar_componentes_sem_atribuicao(
         self,
@@ -812,9 +829,12 @@ class ComponentesRepository:
             )
             if atribuicao is None or componente is None:
                 continue
-            if data_base and atribuicao.dt_atribuicao:
-                if atribuicao.dt_atribuicao.date() > data_base:
-                    continue
+            if (
+                data_base
+                and atribuicao.dt_atribuicao
+                and atribuicao.dt_atribuicao.date() > data_base
+            ):
+                continue
             resultado.append(
                 atribuicao_nao_agrupada_para_dict(
                     componente,

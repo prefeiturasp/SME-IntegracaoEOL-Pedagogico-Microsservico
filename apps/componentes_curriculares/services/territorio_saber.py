@@ -232,7 +232,12 @@ def mesclar_agrupamentos_territorio(
                 codigos_existentes.add(agrupamento.cod_agrupamento)
         resultado = agrupamentos_para_adicionar + resultado
         for item in resultado:
-            descricao = descricoes_primeiros_codigos.get(item.get("codigo"))
+            codigo = item.get("codigo")
+            descricao = (
+                descricoes_primeiros_codigos.get(codigo)
+                if isinstance(codigo, int)
+                else None
+            )
             if item.get("professor") != login and descricao:
                 item["descricao"] = descricao
 

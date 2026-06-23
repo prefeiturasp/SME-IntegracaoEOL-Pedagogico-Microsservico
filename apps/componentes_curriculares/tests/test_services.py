@@ -7,7 +7,9 @@ from django.test import SimpleTestCase
 
 from apps.componentes_curriculares.services import ComponentesService
 
-_REPO = "apps.componentes_curriculares.services.componentes.ComponentesRepository"
+_REPO = (
+    "apps.componentes_curriculares.services.componentes.ComponentesRepository"
+)
 
 
 class TestComponentesService(SimpleTestCase):

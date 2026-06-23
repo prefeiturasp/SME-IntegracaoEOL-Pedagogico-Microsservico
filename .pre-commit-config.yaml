@@ -11,6 +11,14 @@ repos:
         args: [--fix]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.10.0
+    rev: v1.11.2
     hooks:
       - id: mypy
+        exclude: (^|/)(tests|migrations)/
+        additional_dependencies:
+          - django-stubs
+          - djangorestframework-stubs
+          - django
+          - djangorestframework
+          - drf-spectacular
+          - httpx
