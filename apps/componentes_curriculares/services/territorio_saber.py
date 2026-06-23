@@ -331,7 +331,7 @@ def _primeiros_codigos_outros_professores(
         ):
             codigos_por_professor.setdefault(professor, []).append(codigo)
     return {
-        (professor, sorted(codigos)[0])
+        (professor, min(codigos))
         for professor, codigos in codigos_por_professor.items()
         if codigos
     }

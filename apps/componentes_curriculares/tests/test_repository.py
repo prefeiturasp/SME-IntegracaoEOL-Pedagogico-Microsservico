@@ -43,6 +43,55 @@ def _make_agrupamento(**kwargs):
     return AgrupamentoAtribuicaoTerritorioSaber.objects.create(**defaults)
 
 
+_DESCRICOES_TERRITORIO = {
+    1214: "TERRIT SABER / EXP PEDAG 1",
+    1215: "TERRIT SABER / EXP PEDAG 2",
+    1216: "TERRIT SABER / EXP PEDAG 3",
+    1217: "TERRIT SABER / EXP PEDAG 4",
+    1520: "TERRIT SABER / ARTE",
+}
+
+
+def _componente_territorio(
+    codigo: int,
+    professor: str,
+    turma_codigo: str = "T1",
+    descricao: str | None = None,
+) -> dict:
+    """Cria linha normalizada de componente de território.
+
+    Args:
+        codigo: Código do componente curricular.
+        professor: RF do professor atribuído.
+        turma_codigo: Código da turma.
+        descricao: Descrição alternativa para o componente.
+
+    Returns:
+        Dicionário no formato retornado pela consulta raw do repository.
+    """
+    return {
+        "codigo": codigo,
+        "descricao": descricao or _DESCRICOES_TERRITORIO[codigo],
+        "codigo_componente_territorio_saber": codigo,
+        "territorio_saber": True,
+        "turma_codigo": turma_codigo,
+        "professor": professor,
+    }
+
+
+def _componentes_territorio(codigos: list[int], professor: str) -> list[dict]:
+    """Cria linhas normalizadas de componentes de território.
+
+    Args:
+        codigos: Códigos dos componentes curriculares.
+        professor: RF do professor atribuído.
+
+    Returns:
+        Lista de dicionários no formato retornado pela consulta raw.
+    """
+    return [_componente_territorio(codigo, professor) for codigo in codigos]
+
+
 class TestHelpersRepository(TestCase):
     """Valida funções auxiliares do repository."""
 
@@ -207,24 +256,7 @@ class TestComponentesRepository(TestCase):
         mock_raw,
     ) -> None:
         """Substitui componentes agrupados pelo agrupamento de território."""
-        mock_raw.return_value = [
-            {
-                "codigo": 1216,
-                "descricao": "TERRIT SABER / EXP PEDAG 3",
-                "codigo_componente_territorio_saber": 1216,
-                "territorio_saber": True,
-                "turma_codigo": "T1",
-                "professor": "RF1",
-            },
-            {
-                "codigo": 1217,
-                "descricao": "TERRIT SABER / EXP PEDAG 4",
-                "codigo_componente_territorio_saber": 1217,
-                "territorio_saber": True,
-                "turma_codigo": "T1",
-                "professor": "RF1",
-            },
-        ]
+        mock_raw.return_value = _componentes_territorio([1216, 1217], "RF1")
         _make_agrupamento(
             cod_agrupamento=813071,
             cod_turma="T1",
@@ -249,16 +281,7 @@ class TestComponentesRepository(TestCase):
         mock_raw,
     ) -> None:
         """Mantém território de componente único (sem agrupamento)."""
-        mock_raw.return_value = [
-            {
-                "codigo": 1216,
-                "descricao": "TERRIT SABER / EXP PEDAG 3",
-                "codigo_componente_territorio_saber": 1216,
-                "territorio_saber": True,
-                "turma_codigo": "T1",
-                "professor": "RF1",
-            },
-        ]
+        mock_raw.return_value = [_componente_territorio(1216, "RF1")]
         # Agrupamento de componente único não deve agrupar (len < 2).
         _make_agrupamento(
             cod_agrupamento=813090,
@@ -278,24 +301,7 @@ class TestComponentesRepository(TestCase):
         mock_raw,
     ) -> None:
         """Não aplica agrupamento de território de outro professor."""
-        mock_raw.return_value = [
-            {
-                "codigo": 1216,
-                "descricao": "TERRIT SABER / EXP PEDAG 3",
-                "codigo_componente_territorio_saber": 1216,
-                "territorio_saber": True,
-                "turma_codigo": "T1",
-                "professor": "RF1",
-            },
-            {
-                "codigo": 1217,
-                "descricao": "TERRIT SABER / EXP PEDAG 4",
-                "codigo_componente_territorio_saber": 1217,
-                "territorio_saber": True,
-                "turma_codigo": "T1",
-                "professor": "RF1",
-            },
-        ]
+        mock_raw.return_value = _componentes_territorio([1216, 1217], "RF1")
         _make_agrupamento(
             cod_agrupamento=813099,
             cod_turma="T1",
@@ -315,46 +321,9 @@ class TestComponentesRepository(TestCase):
     ) -> None:
         """Agrupamento do login não remove componente atribuído a outro RF."""
         mock_raw.return_value = [
-            {
-                "codigo": 1216,
-                "descricao": "TERRIT SABER / EXP PEDAG 3",
-                "codigo_componente_territorio_saber": 1216,
-                "territorio_saber": True,
-                "turma_codigo": "T1",
-                "professor": "RF1",
-            },
-            {
-                "codigo": 1217,
-                "descricao": "TERRIT SABER / EXP PEDAG 4",
-                "codigo_componente_territorio_saber": 1217,
-                "territorio_saber": True,
-                "turma_codigo": "T1",
-                "professor": "RF1",
-            },
-            {
-                "codigo": 1216,
-                "descricao": "TERRIT SABER / EXP PEDAG 3",
-                "codigo_componente_territorio_saber": 1216,
-                "territorio_saber": True,
-                "turma_codigo": "T1",
-                "professor": "RF2",
-            },
-            {
-                "codigo": 1217,
-                "descricao": "TERRIT SABER / EXP PEDAG 4",
-                "codigo_componente_territorio_saber": 1217,
-                "territorio_saber": True,
-                "turma_codigo": "T1",
-                "professor": "RF2",
-            },
-            {
-                "codigo": 1520,
-                "descricao": "TERRIT SABER / ARTE",
-                "codigo_componente_territorio_saber": 1520,
-                "territorio_saber": True,
-                "turma_codigo": "T1",
-                "professor": "RF3",
-            },
+            *_componentes_territorio([1216, 1217], "RF1"),
+            *_componentes_territorio([1216, 1217], "RF2"),
+            _componente_territorio(1520, "RF3"),
         ]
         _make_agrupamento(
             cod_agrupamento=813071,
@@ -381,54 +350,8 @@ class TestComponentesRepository(TestCase):
     ) -> None:
         """Não mantém territórios soltos do login quando há agrupamento."""
         mock_raw.return_value = [
-            {
-                "codigo": 1214,
-                "descricao": "TERRIT SABER / EXP PEDAG 1",
-                "codigo_componente_territorio_saber": 1214,
-                "territorio_saber": True,
-                "turma_codigo": "T1",
-                "professor": "RF1",
-            },
-            {
-                "codigo": 1215,
-                "descricao": "TERRIT SABER / EXP PEDAG 2",
-                "codigo_componente_territorio_saber": 1215,
-                "territorio_saber": True,
-                "turma_codigo": "T1",
-                "professor": "RF1",
-            },
-            {
-                "codigo": 1216,
-                "descricao": "TERRIT SABER / EXP PEDAG 3",
-                "codigo_componente_territorio_saber": 1216,
-                "territorio_saber": True,
-                "turma_codigo": "T1",
-                "professor": "RF1",
-            },
-            {
-                "codigo": 1217,
-                "descricao": "TERRIT SABER / EXP PEDAG 4",
-                "codigo_componente_territorio_saber": 1217,
-                "territorio_saber": True,
-                "turma_codigo": "T1",
-                "professor": "RF1",
-            },
-            {
-                "codigo": 1216,
-                "descricao": "TERRIT SABER / EXP PEDAG 3",
-                "codigo_componente_territorio_saber": 1216,
-                "territorio_saber": True,
-                "turma_codigo": "T1",
-                "professor": "RF2",
-            },
-            {
-                "codigo": 1217,
-                "descricao": "TERRIT SABER / EXP PEDAG 4",
-                "codigo_componente_territorio_saber": 1217,
-                "territorio_saber": True,
-                "turma_codigo": "T1",
-                "professor": "RF2",
-            },
+            *_componentes_territorio([1214, 1215, 1216, 1217], "RF1"),
+            *_componentes_territorio([1216, 1217], "RF2"),
         ]
         _make_agrupamento(
             cod_agrupamento=810333,
