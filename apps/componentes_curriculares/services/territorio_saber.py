@@ -18,7 +18,14 @@ from apps.componentes_curriculares.models import (
 
 @dataclass
 class AgrupamentosTerritorioSelecionados:
-    """Agrupamentos e metadados selecionados para uma turma."""
+    """Armazena agrupamentos selecionados para recompor uma resposta.
+
+    Attributes:
+        agrupamentos: Agrupamentos que devem entrar no retorno.
+        codigos_agrupados: Componentes contemplados pelos agrupamentos.
+        primeiros_codigos: Primeiro componente de cada agrupamento.
+        descricoes_primeiros_codigos: Descrição por primeiro componente.
+    """
 
     agrupamentos: list[AgrupamentoAtribuicaoTerritorioSaber] = field(
         default_factory=list
@@ -159,11 +166,42 @@ def atribuicao_nao_agrupada_para_dict(
 
 
 def _codigos_turmas_com_territorio(componentes: list[dict]) -> set[object]:
-    """Retorna turmas com componentes de território."""
+    """Retorna turmas presentes em componentes de Território do Saber.
+
+    Args:
+        componentes: Componentes normalizados para resposta.
+
+    Returns:
+        Códigos de turma encontrados nos componentes de território.
+    """
     return {
         item["turma_codigo"]
         for item in componentes
         if item.get("territorio_saber") and item.get("turma_codigo")
+    }
+
+
+def _codigos_territorio_do_login(
+    componentes: list[dict],
+    turma_codigo: object,
+    login: str,
+) -> set[object]:
+    """Retorna códigos de território atribuídos a um login.
+
+    Args:
+        componentes: Componentes normalizados para resposta.
+        turma_codigo: Código da turma usada como filtro.
+        login: RF do professor usado como filtro.
+
+    Returns:
+        Códigos dos componentes de território do professor na turma.
+    """
+    return {
+        item["codigo"]
+        for item in componentes
+        if item.get("territorio_saber")
+        and item.get("turma_codigo") == turma_codigo
+        and item.get("professor") == login
     }
 
 
@@ -172,7 +210,16 @@ def _buscar_agrupamentos_da_turma(
     turma_codigo: object,
     login: str,
 ) -> Iterable[AgrupamentoAtribuicaoTerritorioSaber]:
-    """Busca agrupamentos de território da turma e professor."""
+    """Busca agrupamentos de território de uma turma e professor.
+
+    Args:
+        using: Alias da conexão Django.
+        turma_codigo: Código da turma usada como filtro.
+        login: RF do professor usado como filtro.
+
+    Returns:
+        Agrupamentos ordenados para seleção.
+    """
     return (
         AgrupamentoAtribuicaoTerritorioSaber.objects.using(using)
         .filter(cod_turma=turma_codigo, rf_professor=login)
@@ -186,7 +233,14 @@ def _buscar_agrupamentos_da_turma(
 def _selecionar_agrupamentos(
     agrupamentos: Iterable[AgrupamentoAtribuicaoTerritorioSaber],
 ) -> AgrupamentosTerritorioSelecionados:
-    """Seleciona agrupamentos válidos por conjunto de componentes."""
+    """Seleciona agrupamentos e consolida seus metadados.
+
+    Args:
+        agrupamentos: Agrupamentos candidatos a entrar no retorno.
+
+    Returns:
+        Agrupamentos selecionados e índices auxiliares.
+    """
     selecionados = AgrupamentosTerritorioSelecionados()
     chaves_vistas: set[str | None] = set()
 
@@ -211,15 +265,76 @@ def _deve_remover_componente_territorio(
     turma_codigo: object,
     login: str,
     selecionados: AgrupamentosTerritorioSelecionados,
+    codigos_territorio_login: set[object],
+    primeiros_codigos_outros_professores: set[tuple[object, int]],
 ) -> bool:
-    """Indica se um componente deve sair da lista final."""
+    """Indica se um componente deve ser removido da resposta.
+
+    Args:
+        item: Componente normalizado avaliado.
+        turma_codigo: Código da turma em processamento.
+        login: RF do professor usado como filtro.
+        selecionados: Agrupamentos selecionados para a turma.
+        codigos_territorio_login: Componentes de território do professor.
+        primeiros_codigos_outros_professores: Primeiro componente por
+            professor.
+
+    Returns:
+        True quando o componente deve ser removido.
+    """
     if not item.get("territorio_saber"):
         return False
     if item.get("turma_codigo") != turma_codigo:
         return False
     if item.get("professor") == login:
-        return item.get("codigo") in selecionados.codigos_agrupados
-    return item.get("codigo") not in selecionados.primeiros_codigos
+        return item.get("codigo") in codigos_territorio_login
+    if item.get("codigo") not in codigos_territorio_login:
+        return True
+    if (
+        item.get("professor") != login
+        and (item.get("professor"), item.get("codigo"))
+        not in primeiros_codigos_outros_professores
+    ):
+        return True
+    if item.get("codigo") in selecionados.codigos_agrupados:
+        return item.get("codigo") not in selecionados.primeiros_codigos
+    return False
+
+
+def _primeiros_codigos_outros_professores(
+    componentes: list[dict],
+    turma_codigo: object,
+    login: str,
+    codigos_territorio_login: set[object],
+) -> set[tuple[object, int]]:
+    """Retorna o primeiro componente de território por outro professor.
+
+    Args:
+        componentes: Componentes normalizados para resposta.
+        turma_codigo: Código da turma em processamento.
+        login: RF do professor usado como filtro.
+        codigos_territorio_login: Componentes de território do professor.
+
+    Returns:
+        Pares de professor e primeiro código correlato.
+    """
+    codigos_por_professor: dict[object, list[int]] = {}
+    for item in componentes:
+        professor = item.get("professor")
+        codigo = item.get("codigo")
+        if (
+            item.get("territorio_saber")
+            and item.get("turma_codigo") == turma_codigo
+            and professor != login
+            and isinstance(codigo, int)
+            and codigo in codigos_territorio_login
+        ):
+            codigos_por_professor.setdefault(professor, []).append(codigo)
+    return {
+        (professor, sorted(codigos)[0])
+        for professor, codigos in codigos_por_professor.items()
+        if codigos
+    }
 
 
 def _remover_componentes_agrupados(
@@ -227,8 +342,23 @@ def _remover_componentes_agrupados(
     turma_codigo: object,
     login: str,
     selecionados: AgrupamentosTerritorioSelecionados,
+    codigos_territorio_login: set[object],
+    primeiros_codigos_outros_professores: set[tuple[object, int]],
 ) -> list[dict]:
-    """Remove componentes substituídos por agrupamentos."""
+    """Remove componentes que não devem permanecer na resposta.
+
+    Args:
+        componentes: Componentes normalizados para resposta.
+        turma_codigo: Código da turma em processamento.
+        login: RF do professor usado como filtro.
+        selecionados: Agrupamentos selecionados para a turma.
+        codigos_territorio_login: Componentes de território do professor.
+        primeiros_codigos_outros_professores: Primeiro componente por
+            professor.
+
+    Returns:
+        Componentes restantes após a remoção.
+    """
     return [
         item
         for item in componentes
@@ -237,6 +367,8 @@ def _remover_componentes_agrupados(
             turma_codigo,
             login,
             selecionados,
+            codigos_territorio_login,
+            primeiros_codigos_outros_professores,
         )
     ]
 
@@ -245,7 +377,15 @@ def _adicionar_agrupamentos(
     componentes: list[dict],
     selecionados: AgrupamentosTerritorioSelecionados,
 ) -> list[dict]:
-    """Adiciona agrupamentos ainda ausentes na lista."""
+    """Adiciona agrupamentos que ainda não estão na lista.
+
+    Args:
+        componentes: Componentes normalizados para resposta.
+        selecionados: Agrupamentos selecionados para a turma.
+
+    Returns:
+        Componentes com agrupamentos adicionados no início da lista.
+    """
     codigos_existentes = {item["codigo"] for item in componentes}
     agrupamentos_para_adicionar = []
     for agrupamento in selecionados.agrupamentos:
@@ -261,7 +401,13 @@ def _atualizar_descricoes_outros_professores(
     login: str,
     selecionados: AgrupamentosTerritorioSelecionados,
 ) -> None:
-    """Atualiza descrições dos componentes de outros professores."""
+    """Atualiza descrições dos componentes preservados na resposta.
+
+    Args:
+        componentes: Componentes normalizados para resposta.
+        login: RF do professor usado como filtro.
+        selecionados: Agrupamentos selecionados para a turma.
+    """
     for item in componentes:
         codigo = item.get("codigo")
         descricao = (
@@ -303,11 +449,26 @@ def mesclar_agrupamentos_territorio(
         if not selecionados.agrupamentos:
             continue
 
+        codigos_territorio_login = _codigos_territorio_do_login(
+            resultado,
+            turma_codigo,
+            login,
+        )
+        primeiros_codigos_outros_professores = (
+            _primeiros_codigos_outros_professores(
+                resultado,
+                turma_codigo,
+                login,
+                codigos_territorio_login,
+            )
+        )
         resultado = _remover_componentes_agrupados(
             resultado,
             turma_codigo,
             login,
             selecionados,
+            codigos_territorio_login,
+            primeiros_codigos_outros_professores,
         )
         resultado = _adicionar_agrupamentos(resultado, selecionados)
         _atualizar_descricoes_outros_professores(

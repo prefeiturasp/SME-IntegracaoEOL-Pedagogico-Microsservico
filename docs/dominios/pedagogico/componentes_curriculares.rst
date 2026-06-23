@@ -149,6 +149,19 @@ professores quando o legado faria isso. O campo ``exibirComponenteEOL`` deve
 permanecer ``false`` para esses itens de Territorio do Saber, seguindo a
 resposta observada no legado.
 
+A descricao dos componentes de Territorio do Saber e contextual da turma. Para
+componentes individuais, a query prioriza ``componente_turma.desc_territorio_saber``
+e ``componente_turma.desc_experiencia_pedagogica`` quando esses campos foram
+preenchidos pelo ETL. A descricao final fica no formato
+``desc_territorio_saber - desc_experiencia_pedagogica``; se a experiencia nao
+existir, usa apenas ``desc_territorio_saber``. Apenas quando esses dados nao
+existem o MS usa a descricao generica de ``componente_curricular``.
+
+Essa diferenca explica casos em que um componente como ``1216`` deixa de
+retornar a descricao generica ``TERRIT SABER / EXP PEDAG 3`` e passa a retornar
+a descricao contextual da grade, como ``III - ORIENTACAO DE ESTUDOS E INVENCAO
+CRIATIVA - CLUBE DE CIENCIAS/INVESTIGACOES``.
+
 Essa compatibilidade corresponde ao comportamento do
 ``AdicionarComponentesTerritorioAsync`` no legado:
 

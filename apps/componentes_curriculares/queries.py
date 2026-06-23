@@ -12,7 +12,18 @@ COMPONENTE_TURMA_CAMPOS_RESPOSTA = """\
     ct.componente_codigo AS codigo,
     ct.codigo_componente_territorio_saber,
     cch.idcomponentecurricularpai AS codigo_componente_curricular_pai,
-    cc.descricao,
+    CASE
+        WHEN ct.codigo_componente_territorio_saber IS NOT NULL
+         AND ct.desc_territorio_saber IS NOT NULL
+        THEN
+            CASE
+                WHEN ct.desc_experiencia_pedagogica IS NOT NULL
+                THEN ct.desc_territorio_saber || ' - ' ||
+                     ct.desc_experiencia_pedagogica
+                ELSE ct.desc_territorio_saber
+            END
+        ELSE cc.descricao
+    END AS descricao,
     COALESCE(cc.regencia, false) AS regencia,
     false AS planejamento_regencia,
     (ct.codigo_componente_territorio_saber IS NOT NULL) AS territorio_saber,

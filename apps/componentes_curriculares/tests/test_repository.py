@@ -375,6 +375,80 @@ class TestComponentesRepository(TestCase):
         self.assertEqual(resultado[1]["descricao"], "TS - EP")
 
     @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_remove_territorios_soltos_do_login(
+        self,
+        mock_raw,
+    ) -> None:
+        """Não mantém territórios soltos do login quando há agrupamento."""
+        mock_raw.return_value = [
+            {
+                "codigo": 1214,
+                "descricao": "TERRIT SABER / EXP PEDAG 1",
+                "codigo_componente_territorio_saber": 1214,
+                "territorio_saber": True,
+                "turma_codigo": "T1",
+                "professor": "RF1",
+            },
+            {
+                "codigo": 1215,
+                "descricao": "TERRIT SABER / EXP PEDAG 2",
+                "codigo_componente_territorio_saber": 1215,
+                "territorio_saber": True,
+                "turma_codigo": "T1",
+                "professor": "RF1",
+            },
+            {
+                "codigo": 1216,
+                "descricao": "TERRIT SABER / EXP PEDAG 3",
+                "codigo_componente_territorio_saber": 1216,
+                "territorio_saber": True,
+                "turma_codigo": "T1",
+                "professor": "RF1",
+            },
+            {
+                "codigo": 1217,
+                "descricao": "TERRIT SABER / EXP PEDAG 4",
+                "codigo_componente_territorio_saber": 1217,
+                "territorio_saber": True,
+                "turma_codigo": "T1",
+                "professor": "RF1",
+            },
+            {
+                "codigo": 1216,
+                "descricao": "TERRIT SABER / EXP PEDAG 3",
+                "codigo_componente_territorio_saber": 1216,
+                "territorio_saber": True,
+                "turma_codigo": "T1",
+                "professor": "RF2",
+            },
+            {
+                "codigo": 1217,
+                "descricao": "TERRIT SABER / EXP PEDAG 4",
+                "codigo_componente_territorio_saber": 1217,
+                "territorio_saber": True,
+                "turma_codigo": "T1",
+                "professor": "RF2",
+            },
+        ]
+        _make_agrupamento(
+            cod_agrupamento=810333,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_componentes_curriculares="1214,1215",
+            cod_territorio_saber=1,
+            cod_experiencia_pedagogica=2,
+            desc_territorio_saber="I - EDUCOMUNICAÇÃO E NOVAS LINGUAGENS",
+            desc_experiencia_pedagogica="CLUBE DA LEITURA",
+        )
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        self.assertEqual(
+            [(item["codigo"], item["professor"]) for item in resultado],
+            [(810333, "RF1"), (1216, "RF2")],
+        )
+
+    @patch("apps.componentes_curriculares.repository._raw")
     def test_listar_por_funcionario_deduplica_por_componente(
         self, mock_raw
     ) -> None:
