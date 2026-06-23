@@ -122,4 +122,27 @@ curl -H "X-API-Key: dev-key-default" http://localhost:8001/api/componentes-curri
 
 ---
 
+## Documentação (Sphinx)
+
+Gera a documentação HTML a partir dos arquivos em `docs/`.
+
+Via Docker:
+
+```bash
+docker compose -f docker-compose-dev.yml run --rm pedagogico \
+  sphinx-build -b html docs docs/_build
+```
+
+Via venv (requer `pip install -r requirements/local.txt`):
+
+```bash
+sphinx-build -b html docs docs/_build
+```
+
+O resultado fica em `docs/_build/index.html` (acessível no host via volume
+quando gerado pelo Docker).
+
+---
+
 ## Referências
+- Projeto ETL de referência: `../SME-SGP-MS-ETL/`
