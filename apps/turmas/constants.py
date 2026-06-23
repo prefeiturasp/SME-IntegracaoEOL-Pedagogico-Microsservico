@@ -1,5 +1,10 @@
 """Constantes do domínio Turmas."""
 
+MENSAGEM_COMPORTAMENTO_INESPERADO = (
+    "Houve um comportamento inesperado do sistema. "
+    "Por favor, contate a SME."
+)
+
 ETAPA_ENSINO_MAGISTERIO = 9
 TIPO_GRADE_PROGRAMA_ITINERARIO = 23
 

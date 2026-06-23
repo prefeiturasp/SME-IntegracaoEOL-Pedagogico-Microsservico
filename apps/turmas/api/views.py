@@ -6,6 +6,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.core.views import BaseAPIView
+from apps.turmas.constants import MENSAGEM_COMPORTAMENTO_INESPERADO
 from apps.turmas.serializers import (
     AnosLetivosVigenteQuerySerializer,
     TurmaDadosSerializer,
@@ -135,7 +136,7 @@ class TurmaSincronizacoesInstitucionaisView(BaseAPIView):
             OpenApiParameter("ue_codigo", str, OpenApiParameter.PATH),
             OpenApiParameter("turma_codigo", int, OpenApiParameter.PATH),
         ],
-        responses={200: TurmaSincronizacaoSerializer, 404: dict},
+        responses={200: TurmaSincronizacaoSerializer, 400: dict},
         operation_id="turma_sincronizacoes_institucionais",
     )
     def get(
@@ -147,18 +148,22 @@ class TurmaSincronizacoesInstitucionaisView(BaseAPIView):
         """Retorna os dados de sincronização institucional da turma.
 
         Args:
-            ue_codigo: Código da unidade educacional.
+            ue_codigo: Código da unidade educacional, obrigatório no
+                contrato mas não usado na consulta.
             turma_codigo: Código da turma consultada.
 
         Returns:
-            Dados de sincronização institucional da turma, ou ausência de
-            conteúdo quando não encontrada.
+            Dados de sincronização institucional da turma, ou erro 400
+            quando a turma não é encontrada.
         """
         dados = TurmasService().sincronizacoes_institucionais(
             ue_codigo, turma_codigo
         )
         if dados is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": MENSAGEM_COMPORTAMENTO_INESPERADO},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(dados)
 
 
