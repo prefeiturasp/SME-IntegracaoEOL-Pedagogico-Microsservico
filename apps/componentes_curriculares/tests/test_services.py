@@ -117,10 +117,10 @@ class TestComponentesService(SimpleTestCase):
             ],
         )
 
-    def test_ep1_agrupamento_true_com_turma_inclui_territorios_outros_rfs(
+    def test_ep1_agrupamento_true_com_turma_nao_expande_query_base(
         self,
     ) -> None:
-        """Solicita territórios de outros RFs quando agrupa por turma."""
+        """Mantém query base restrita ao RF quando agrupa por turma."""
         self.repo.listar_por_turma_funcionario.return_value = [
             {"codigo": 813071, "exibir_componente_eol": True},
             {"codigo": 1216, "exibir_componente_eol": True},
@@ -135,7 +135,7 @@ class TestComponentesService(SimpleTestCase):
         self.repo.listar_por_turma_funcionario.assert_called_once_with(
             "T1",
             "f1",
-            incluir_territorios_outros_professores=True,
+            incluir_territorios_outros_professores=False,
         )
         self.assertEqual(
             resultado,

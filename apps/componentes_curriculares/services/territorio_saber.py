@@ -62,8 +62,8 @@ def agrupamento_para_dict(
     """
     codigos = parse_csv(agrupamento.cod_componentes_curriculares)
     primeiro = codigos[0] if codigos else 0
-    ts = agrupamento.desc_territorio_saber or ""
-    ep = agrupamento.desc_experiencia_pedagogica or ""
+    ts = (agrupamento.desc_territorio_saber or "").strip()
+    ep = (agrupamento.desc_experiencia_pedagogica or "").strip()
     descricao = f"{ts} - {ep}" if ep else ts
     return {
         "codigo": agrupamento.cod_agrupamento,
@@ -230,6 +230,36 @@ def _buscar_agrupamentos_da_turma(
     )
 
 
+def _buscar_componentes_agrupados_encerrados_por_professor(
+    using: str,
+    turma_codigo: object,
+) -> dict[object, set[int]]:
+    """Busca componentes cobertos por agrupamentos encerrados na turma.
+
+    Args:
+        using: Alias da conexão Django.
+        turma_codigo: Código da turma usada como filtro.
+
+    Returns:
+        Mapa de professor para códigos cobertos por agrupamentos encerrados.
+    """
+    agrupamentos = (
+        AgrupamentoAtribuicaoTerritorioSaber.objects.using(using)
+        .filter(cod_turma=turma_codigo)
+        .exclude(
+            cod_motivo_disponibilizacao=MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO
+        )
+        .values_list("rf_professor", "cod_componentes_curriculares")
+    )
+    codigos_por_professor: dict[object, set[int]] = {}
+    for professor, componentes_csv in agrupamentos:
+        codigos = parse_csv(componentes_csv)
+        if len(codigos) < 2:
+            continue
+        codigos_por_professor.setdefault(professor, set()).update(codigos)
+    return codigos_por_professor
+
+
 def _selecionar_agrupamentos(
     agrupamentos: Iterable[AgrupamentoAtribuicaoTerritorioSaber],
 ) -> AgrupamentosTerritorioSelecionados:
@@ -267,6 +297,7 @@ def _deve_remover_componente_territorio(
     selecionados: AgrupamentosTerritorioSelecionados,
     codigos_territorio_login: set[object],
     primeiros_codigos_outros_professores: set[tuple[object, int]],
+    codigos_agrupados_encerrados_por_professor: dict[object, set[int]],
 ) -> bool:
     """Indica se um componente deve ser removido da resposta.
 
@@ -278,6 +309,8 @@ def _deve_remover_componente_territorio(
         codigos_territorio_login: Componentes de território do professor.
         primeiros_codigos_outros_professores: Primeiro componente por
             professor.
+        codigos_agrupados_encerrados_por_professor: Componentes cobertos por
+            agrupamentos encerrados por professor.
 
     Returns:
         True quando o componente deve ser removido.
@@ -288,6 +321,11 @@ def _deve_remover_componente_territorio(
         return False
     if item.get("professor") == login:
         return item.get("codigo") in codigos_territorio_login
+    if item.get("codigo") in codigos_agrupados_encerrados_por_professor.get(
+        item.get("professor"),
+        set(),
+    ):
+        return True
     if item.get("codigo") not in codigos_territorio_login:
         return True
     if (
@@ -344,6 +382,7 @@ def _remover_componentes_agrupados(
     selecionados: AgrupamentosTerritorioSelecionados,
     codigos_territorio_login: set[object],
     primeiros_codigos_outros_professores: set[tuple[object, int]],
+    codigos_agrupados_encerrados_por_professor: dict[object, set[int]],
 ) -> list[dict]:
     """Remove componentes que não devem permanecer na resposta.
 
@@ -355,6 +394,8 @@ def _remover_componentes_agrupados(
         codigos_territorio_login: Componentes de território do professor.
         primeiros_codigos_outros_professores: Primeiro componente por
             professor.
+        codigos_agrupados_encerrados_por_professor: Componentes cobertos por
+            agrupamentos encerrados por professor.
 
     Returns:
         Componentes restantes após a remoção.
@@ -369,6 +410,7 @@ def _remover_componentes_agrupados(
             selecionados,
             codigos_territorio_login,
             primeiros_codigos_outros_professores,
+            codigos_agrupados_encerrados_por_professor,
         )
     ]
 
@@ -462,6 +504,12 @@ def mesclar_agrupamentos_territorio(
                 codigos_territorio_login,
             )
         )
+        codigos_agrupados_encerrados_por_professor = (
+            _buscar_componentes_agrupados_encerrados_por_professor(
+                using,
+                turma_codigo,
+            )
+        )
         resultado = _remover_componentes_agrupados(
             resultado,
             turma_codigo,
@@ -469,6 +517,7 @@ def mesclar_agrupamentos_territorio(
             selecionados,
             codigos_territorio_login,
             primeiros_codigos_outros_professores,
+            codigos_agrupados_encerrados_por_professor,
         )
         resultado = _adicionar_agrupamentos(resultado, selecionados)
         _atualizar_descricoes_outros_professores(

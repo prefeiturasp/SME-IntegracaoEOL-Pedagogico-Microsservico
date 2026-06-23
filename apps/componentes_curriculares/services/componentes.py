@@ -27,8 +27,7 @@ class ComponentesService:
             planejamento: Quando True, substitui regência pelos filhos
                 de planejamento.
             agrupamento: Quando True, aplica agrupamentos de território no
-                repositório e inclui territórios de outros professores da
-                turma.
+                repositório.
 
         Returns:
             Lista de componentes curriculares do funcionário.
@@ -43,7 +42,7 @@ class ComponentesService:
             dados = self._repo.listar_por_turma_funcionario(
                 codigo_turma,
                 login,
-                incluir_territorios_outros_professores=agrupamento,
+                incluir_territorios_outros_professores=False,
             )
 
         if agrupamento:

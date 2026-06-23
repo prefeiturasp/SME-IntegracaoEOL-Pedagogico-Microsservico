@@ -319,10 +319,10 @@ class TestComponentesRepository(TestCase):
         self,
         mock_raw,
     ) -> None:
-        """Agrupamento do login não remove componente atribuído a outro RF."""
+        """Preserva território de outro RF sem agrupamento próprio."""
         mock_raw.return_value = [
             *_componentes_territorio([1216, 1217], "RF1"),
-            *_componentes_territorio([1216, 1217], "RF2"),
+            _componente_territorio(1216, "RF2"),
             _componente_territorio(1520, "RF3"),
         ]
         _make_agrupamento(
@@ -342,6 +342,36 @@ class TestComponentesRepository(TestCase):
             [item["codigo"] for item in resultado], [813071, 1216]
         )
         self.assertEqual(resultado[1]["descricao"], "TS - EP")
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_remove_outro_professor_agrupado(
+        self,
+        mock_raw,
+    ) -> None:
+        """Remove territórios de outro RF quando já existe agrupamento."""
+        mock_raw.return_value = [
+            *_componentes_territorio([1216, 1217], "RF1"),
+            *_componentes_territorio([1216, 1217], "RF2"),
+        ]
+        _make_agrupamento(
+            cod_agrupamento=813071,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_componentes_curriculares="1216,1217",
+        )
+        _make_agrupamento(
+            cod_agrupamento=813071,
+            cod_turma="T1",
+            rf_professor="RF2",
+            cod_componentes_curriculares="1216,1217",
+        )
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        self.assertEqual(
+            [(item["codigo"], item["professor"]) for item in resultado],
+            [(813071, "RF1")],
+        )
 
     @patch("apps.componentes_curriculares.repository._raw")
     def test_listar_por_turma_funcionario_remove_territorios_soltos_do_login(
