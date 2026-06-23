@@ -2,6 +2,7 @@
 
 from collections.abc import Sequence
 from datetime import datetime
+from typing import cast
 
 from apps.componentes_curriculares.constants import (
     TIPO_TURMA_ED_FISICA,
@@ -285,11 +286,20 @@ class TurmasRepository:
         )
         if not codigos:
             return []
-        descricoes = dict(
+        rows_descricoes = (
             ComponenteCurricular.objects.using(self._DB)
             .filter(codigo__in=codigos)
             .values_list("codigo", "descricao")
         )
+        descricoes: dict[int, str | None] = {}
+        for row in rows_descricoes:
+            if isinstance(row, dict):
+                codigo = cast(int, row["codigo"])
+                descricao = cast(str | None, row["descricao"])
+            else:
+                codigo, descricao = cast(tuple[int, str | None], row)
+            descricoes[codigo] = descricao
+
         atribuicoes = self._atribuicoes_da_turma(turma_codigo)
         componentes: list[dict] = []
         for codigo in codigos:
@@ -319,7 +329,19 @@ class TurmasRepository:
                 "dt_disponibilizacao",
             )
         )
-        for componente_codigo, professor, dt_disponibilizacao in registros:
+        for row in registros:
+            if isinstance(row, dict):
+                componente_codigo = cast(int, row["componente_codigo"])
+                professor = cast(str | None, row["professor"])
+                dt_disponibilizacao = cast(
+                    datetime | None,
+                    row["dt_disponibilizacao"],
+                )
+            else:
+                componente_codigo, professor, dt_disponibilizacao = cast(
+                    tuple[int, str | None, datetime | None],
+                    row,
+                )
             atribuicoes.setdefault(componente_codigo, []).append(
                 (professor, dt_disponibilizacao)
             )
