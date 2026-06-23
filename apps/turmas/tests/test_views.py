@@ -260,8 +260,8 @@ class TestTurmasViews(TestCase):
         )
 
     @patch(_SVC)
-    def test_sincronizacoes_ue_zero_busca_so_por_turma(self, mock_svc):
-        """Com ue_codigo=0, retorna 200 e delega ignorando a UE."""
+    def test_sincronizacoes_ue_qualquer_valor_retorna_200(self, mock_svc):
+        """UE com qualquer valor retorna 200 e delega o valor recebido."""
         mock_svc.return_value.sincronizacoes_institucionais.return_value = (
             _TURMA_SINC
         )

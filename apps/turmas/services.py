@@ -58,10 +58,11 @@ class TurmasService:
         ue_codigo: str,
         turma_codigo: int,
     ) -> dict | None:
-        """Retorna dados de sincronização institucional da turma por UE.
+        """Retorna dados de sincronização institucional da turma.
 
         Args:
-            ue_codigo: Código da unidade educacional.
+            ue_codigo: Código da unidade educacional, obrigatório no
+                contrato mas não usado na consulta.
             turma_codigo: Código da turma.
 
         Returns:

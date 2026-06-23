@@ -148,8 +148,8 @@ class TurmaSincronizacoesInstitucionaisView(BaseAPIView):
         """Retorna os dados de sincronização institucional da turma.
 
         Args:
-            ue_codigo: Código da unidade educacional. ``0`` desconsidera a
-                UE e busca a turma apenas pelo código.
+            ue_codigo: Código da unidade educacional, obrigatório no
+                contrato mas não usado na consulta.
             turma_codigo: Código da turma consultada.
 
         Returns:

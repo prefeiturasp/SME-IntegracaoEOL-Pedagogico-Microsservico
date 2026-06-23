@@ -246,24 +246,22 @@ class TurmasRepository:
 
     def sincronizacoes_institucionais(
         self,
-        ue_codigo: str,
+        _ue_codigo: str,
         turma_codigo: int,
     ) -> dict | None:
         """Retorna dados de sincronização institucional da turma.
 
         Args:
-            ue_codigo: Código da unidade educacional.
+            _ue_codigo: Código da unidade educacional, obrigatório no
+                contrato mas não usado na consulta.
             turma_codigo: Código da turma.
 
         Returns:
-            Dados de sincronização, ou None se não encontrada. Quando
-            ``ue_codigo`` é ``"0"``, a UE é desconsiderada e a turma é
-            buscada apenas pelo código.
+            Dados de sincronização, ou None se não encontrada.
         """
-        filtros: dict[str, object] = {"codigo": turma_codigo}
-        if ue_codigo != "0":
-            filtros["ue_codigo"] = ue_codigo
-        turma = Turma.objects.using(self._DB).filter(**filtros).first()
+        turma = (
+            Turma.objects.using(self._DB).filter(codigo=turma_codigo).first()
+        )
         if turma is None:
             return None
         componentes = self._componentes_da_turma(turma.codigo)
