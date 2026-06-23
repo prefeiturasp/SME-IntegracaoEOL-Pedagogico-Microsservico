@@ -256,13 +256,14 @@ class TurmasRepository:
             turma_codigo: Código da turma.
 
         Returns:
-            Dados de sincronização, ou None se não encontrada.
+            Dados de sincronização, ou None se não encontrada. Quando
+            ``ue_codigo`` é ``"0"``, a UE é desconsiderada e a turma é
+            buscada apenas pelo código.
         """
-        turma = (
-            Turma.objects.using(self._DB)
-            .filter(ue_codigo=ue_codigo, codigo=turma_codigo)
-            .first()
-        )
+        filtros: dict[str, object] = {"codigo": turma_codigo}
+        if ue_codigo != "0":
+            filtros["ue_codigo"] = ue_codigo
+        turma = Turma.objects.using(self._DB).filter(**filtros).first()
         if turma is None:
             return None
         componentes = self._componentes_da_turma(turma.codigo)

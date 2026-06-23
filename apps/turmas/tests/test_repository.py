@@ -245,6 +245,17 @@ class TestTurmasRepository(TestCase):
             self.repo.sincronizacoes_institucionais("000532", 9999999)
         )
 
+    @patch("apps.turmas.repository.Turma.objects.using")
+    def test_sincronizacoes_ue_zero_filtra_so_por_codigo(self, mock_using):
+        """Com ue_codigo=0, filtra a turma apenas pelo código."""
+        qs_turma = FakeQuerySet([])
+        mock_using.return_value = qs_turma
+
+        self.repo.sincronizacoes_institucionais("0", 2112345)
+
+        filtros = [c for c in qs_turma.calls if c[0] == "filter"]
+        self.assertEqual(filtros[0][2], {"codigo": 2112345})
+
     @patch("apps.turmas.repository.AtribuicaoComponente.objects.using")
     @patch("apps.turmas.repository.ComponenteCurricular.objects.using")
     @patch("apps.turmas.repository.ComponenteTurma.objects.using")

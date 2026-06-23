@@ -260,12 +260,30 @@ class TestTurmasViews(TestCase):
         )
 
     @patch(_SVC)
-    def test_sincronizacoes_nao_encontrada_retorna_404(self, mock_svc):
+    def test_sincronizacoes_ue_zero_busca_so_por_turma(self, mock_svc):
+        """Com ue_codigo=0, retorna 200 e delega ignorando a UE."""
+        mock_svc.return_value.sincronizacoes_institucionais.return_value = (
+            _TURMA_SINC
+        )
+        res = self.get("/ues/0/turmas/2112345/sincronizacoes-institucionais/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        mock_svc.return_value.sincronizacoes_institucionais.assert_called_once_with(
+            "0", 2112345
+        )
+
+    @patch(_SVC)
+    def test_sincronizacoes_nao_encontrada_retorna_400(self, mock_svc):
+        """Sem turma para os parâmetros, retorna 400 com a mensagem."""
         mock_svc.return_value.sincronizacoes_institucionais.return_value = None
         res = self.get(
             "/ues/999999/turmas/9999999/sincronizacoes-institucionais/"
         )
-        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            res.data["detail"],
+            "Houve um comportamento inesperado do sistema. "
+            "Por favor, contate a SME.",
+        )
 
     def test_sincronizacoes_sem_api_key_retorna_401(self):
         self.assert_401(
