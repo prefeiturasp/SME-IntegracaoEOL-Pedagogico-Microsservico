@@ -130,6 +130,24 @@ class TestTurmasRepository(TestCase):
         self.assertEqual(qs.calls[0][2], {"codigo__in": [2112345]})
 
     @patch("apps.turmas.repository.Turma.objects.using")
+    def test_turmas_recorte_filtra_codigos_e_etapa(self, mock_using):
+        """Verifica se o filtro aplica tanto o código de turma quanto o recorte de etapa."""
+        from apps.turmas.repository import _ETAPAS_RECORTE_FUND_MEDIO_EJA
+
+        qs = FakeQuerySet([_turma(codigo_etapa_ensino=4)])
+        mock_using.return_value = qs
+
+        resultado = self.repo.turmas_recorte_fund_medio_eja([2112345])
+
+        self.assertEqual(resultado[0]["codigo"], 2112345)
+        kwargs = qs.calls[0][2]
+        self.assertEqual(kwargs["codigo__in"], [2112345])
+        self.assertEqual(
+            kwargs["codigo_etapa_ensino__in"],
+            _ETAPAS_RECORTE_FUND_MEDIO_EJA,
+        )
+
+    @patch("apps.turmas.repository.Turma.objects.using")
     def test_dados_turma_retorna_none_quando_nao_encontrada(self, mock_using):
         mock_using.return_value = FakeQuerySet([])
 

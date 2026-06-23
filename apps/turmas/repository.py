@@ -10,6 +10,12 @@ from apps.componentes_curriculares.constants import (
 from apps.componentes_curriculares.models import AtribuicaoComponente
 from apps.turmas.models import Turma, TurmaItinerarioEnsinoMedio
 
+# (EOL cd_etapa_ensino): EJA (2,3,7,11) + Fundamental (4,5,12,13)
+# + Médio (6,7,8,14,17). Exclui Infantil (1,10).
+_ETAPAS_RECORTE_FUND_MEDIO_EJA = frozenset(
+    {2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 17}
+)
+
 
 def _turma_para_lista(t: Turma) -> dict:
     return {
@@ -153,6 +159,21 @@ class TurmasRepository:
             Lista de turmas encontradas.
         """
         turmas = Turma.objects.using(self._DB).filter(codigo__in=codigos)
+        return [_turma_para_lista(t) for t in turmas]
+
+    def turmas_recorte_fund_medio_eja(self, codigos: list[int]) -> list[dict]:
+        """Lista turmas no recorte de etapa (Fund/Médio/EJA).
+
+        Args:
+            codigos: Códigos das turmas a consultar.
+
+        Returns:
+            Lista de turmas no recorte de etapa encontradas.
+        """
+        turmas = Turma.objects.using(self._DB).filter(
+            codigo__in=codigos,
+            codigo_etapa_ensino__in=_ETAPAS_RECORTE_FUND_MEDIO_EJA,
+        )
         return [_turma_para_lista(t) for t in turmas]
 
     def dados_turma(self, codigo: int) -> dict | None:

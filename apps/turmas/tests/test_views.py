@@ -200,6 +200,34 @@ class TestTurmasViews(TestCase):
         self.assert_401("/listar-turmas/", method="post", payload=[1])
 
     @patch(_SVC)
+    def test_recorte_fund_medio_eja_retorna_200(self, mock_svc):
+        """Verifica se a view retorna 200 e delega ao service com os códigos informados."""
+        mock_svc.return_value.turmas_recorte_fund_medio_eja.return_value = [
+            _TURMA
+        ]
+        res = self.post("/recorte-fund-medio-eja/", [2112345])
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        (
+            mock_svc.return_value.turmas_recorte_fund_medio_eja
+        ).assert_called_once_with([2112345])
+
+    @patch(_SVC)
+    def test_recorte_fund_medio_eja_corpo_invalido_usa_lista_vazia(
+        self, mock_svc
+    ):
+        """Verifica se corpo fora de lista resulta em chamada ao service com lista vazia."""
+        mock_svc.return_value.turmas_recorte_fund_medio_eja.return_value = []
+        res = self.post("/recorte-fund-medio-eja/", {"codigo": 123})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        (
+            mock_svc.return_value.turmas_recorte_fund_medio_eja
+        ).assert_called_once_with([])
+
+    def test_recorte_fund_medio_eja_sem_api_key_retorna_401(self):
+        """Verifica se requisição sem autenticação é rejeitada."""
+        self.assert_401("/recorte-fund-medio-eja/", method="post", payload=[1])
+
+    @patch(_SVC)
     def test_turma_dados_retorna_200(self, mock_svc):
         mock_svc.return_value.dados_turma.return_value = _TURMA_DADOS
         res = self.get("/2112345/dados/")
