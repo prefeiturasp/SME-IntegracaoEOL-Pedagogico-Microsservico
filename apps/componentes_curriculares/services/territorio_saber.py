@@ -1,5 +1,7 @@
 """Serviços de Território do Saber."""
 
+from collections.abc import Iterable
+from dataclasses import dataclass, field
 from datetime import date
 
 from django.db.models import F
@@ -12,6 +14,18 @@ from apps.componentes_curriculares.models import (
     AtribuicaoComponente,
     ComponenteTurma,
 )
+
+
+@dataclass
+class AgrupamentosTerritorioSelecionados:
+    """Agrupamentos e metadados selecionados para uma turma."""
+
+    agrupamentos: list[AgrupamentoAtribuicaoTerritorioSaber] = field(
+        default_factory=list
+    )
+    codigos_agrupados: set[int] = field(default_factory=set)
+    primeiros_codigos: set[int] = field(default_factory=set)
+    descricoes_primeiros_codigos: dict[int, str] = field(default_factory=dict)
 
 
 def parse_csv(csv_str: str | None) -> list[int]:
@@ -144,6 +158,121 @@ def atribuicao_nao_agrupada_para_dict(
     }
 
 
+def _codigos_turmas_com_territorio(componentes: list[dict]) -> set[object]:
+    """Retorna turmas com componentes de território."""
+    return {
+        item["turma_codigo"]
+        for item in componentes
+        if item.get("territorio_saber") and item.get("turma_codigo")
+    }
+
+
+def _buscar_agrupamentos_da_turma(
+    using: str,
+    turma_codigo: object,
+    login: str,
+) -> Iterable[AgrupamentoAtribuicaoTerritorioSaber]:
+    """Busca agrupamentos de território da turma e professor."""
+    return (
+        AgrupamentoAtribuicaoTerritorioSaber.objects.using(using)
+        .filter(cod_turma=turma_codigo, rf_professor=login)
+        .order_by(
+            F("dt_fim_atribuicao").asc(nulls_first=True),
+            "-dt_inicio_atribuicao",
+        )
+    )
+
+
+def _selecionar_agrupamentos(
+    agrupamentos: Iterable[AgrupamentoAtribuicaoTerritorioSaber],
+) -> AgrupamentosTerritorioSelecionados:
+    """Seleciona agrupamentos válidos por conjunto de componentes."""
+    selecionados = AgrupamentosTerritorioSelecionados()
+    chaves_vistas: set[str | None] = set()
+
+    for agrupamento in agrupamentos:
+        codigos = parse_csv(agrupamento.cod_componentes_curriculares)
+        if len(codigos) < 2:
+            continue
+        if agrupamento.cod_componentes_curriculares in chaves_vistas:
+            continue
+        chaves_vistas.add(agrupamento.cod_componentes_curriculares)
+        selecionados.agrupamentos.append(agrupamento)
+        selecionados.codigos_agrupados.update(codigos)
+        selecionados.primeiros_codigos.add(codigos[0])
+        selecionados.descricoes_primeiros_codigos[codigos[0]] = (
+            agrupamento_para_dict(agrupamento)["descricao"]
+        )
+    return selecionados
+
+
+def _deve_remover_componente_territorio(
+    item: dict,
+    turma_codigo: object,
+    login: str,
+    selecionados: AgrupamentosTerritorioSelecionados,
+) -> bool:
+    """Indica se um componente deve sair da lista final."""
+    if not item.get("territorio_saber"):
+        return False
+    if item.get("turma_codigo") != turma_codigo:
+        return False
+    if item.get("professor") == login:
+        return item.get("codigo") in selecionados.codigos_agrupados
+    return item.get("codigo") not in selecionados.primeiros_codigos
+
+
+def _remover_componentes_agrupados(
+    componentes: list[dict],
+    turma_codigo: object,
+    login: str,
+    selecionados: AgrupamentosTerritorioSelecionados,
+) -> list[dict]:
+    """Remove componentes substituídos por agrupamentos."""
+    return [
+        item
+        for item in componentes
+        if not _deve_remover_componente_territorio(
+            item,
+            turma_codigo,
+            login,
+            selecionados,
+        )
+    ]
+
+
+def _adicionar_agrupamentos(
+    componentes: list[dict],
+    selecionados: AgrupamentosTerritorioSelecionados,
+) -> list[dict]:
+    """Adiciona agrupamentos ainda ausentes na lista."""
+    codigos_existentes = {item["codigo"] for item in componentes}
+    agrupamentos_para_adicionar = []
+    for agrupamento in selecionados.agrupamentos:
+        if agrupamento.cod_agrupamento in codigos_existentes:
+            continue
+        agrupamentos_para_adicionar.append(agrupamento_para_dict(agrupamento))
+        codigos_existentes.add(agrupamento.cod_agrupamento)
+    return agrupamentos_para_adicionar + componentes
+
+
+def _atualizar_descricoes_outros_professores(
+    componentes: list[dict],
+    login: str,
+    selecionados: AgrupamentosTerritorioSelecionados,
+) -> None:
+    """Atualiza descrições dos componentes de outros professores."""
+    for item in componentes:
+        codigo = item.get("codigo")
+        descricao = (
+            selecionados.descricoes_primeiros_codigos.get(codigo)
+            if isinstance(codigo, int)
+            else None
+        )
+        if item.get("professor") != login and descricao:
+            item["descricao"] = descricao
+
+
 def mesclar_agrupamentos_territorio(
     componentes: list[dict],
     using: str,
@@ -159,86 +288,32 @@ def mesclar_agrupamentos_territorio(
     Returns:
         Lista de componentes com os agrupamentos de território aplicados.
     """
-    turmas = {
-        item["turma_codigo"]
-        for item in componentes
-        if item.get("territorio_saber") and item.get("turma_codigo")
-    }
+    turmas = _codigos_turmas_com_territorio(componentes)
     if not turmas:
         return componentes
 
     resultado = list(componentes)
     for turma_codigo in turmas:
-        agrupamentos = (
-            AgrupamentoAtribuicaoTerritorioSaber.objects.using(using)
-            .filter(cod_turma=turma_codigo, rf_professor=login)
-            .order_by(
-                F("dt_fim_atribuicao").asc(nulls_first=True),
-                "-dt_inicio_atribuicao",
-            )
+        agrupamentos = _buscar_agrupamentos_da_turma(
+            using,
+            turma_codigo,
+            login,
         )
-
-        # Mantém o agrupamento mais recente por conjunto de componentes e
-        # ignora atribuições de componente único.
-        selecionados: list[AgrupamentoAtribuicaoTerritorioSaber] = []
-        chaves_vistas: set[str | None] = set()
-        codigos_agrupados: set[int] = set()
-        primeiros_codigos_agrupados: set[int] = set()
-        descricoes_primeiros_codigos: dict[int, str] = {}
-        for agrupamento in agrupamentos:
-            codigos = parse_csv(agrupamento.cod_componentes_curriculares)
-            if len(codigos) < 2:
-                continue
-            if agrupamento.cod_componentes_curriculares in chaves_vistas:
-                continue
-            chaves_vistas.add(agrupamento.cod_componentes_curriculares)
-            selecionados.append(agrupamento)
-            codigos_agrupados.update(codigos)
-            primeiros_codigos_agrupados.add(codigos[0])
-            descricoes_primeiros_codigos[codigos[0]] = agrupamento_para_dict(
-                agrupamento
-            )["descricao"]
-
-        if not selecionados:
+        selecionados = _selecionar_agrupamentos(agrupamentos)
+        if not selecionados.agrupamentos:
             continue
 
-        resultado = [
-            item
-            for item in resultado
-            if not (
-                item.get("territorio_saber")
-                and item.get("turma_codigo") == turma_codigo
-                and (
-                    (
-                        item.get("professor") == login
-                        and item.get("codigo") in codigos_agrupados
-                    )
-                    or (
-                        item.get("professor") != login
-                        and item.get("codigo")
-                        not in primeiros_codigos_agrupados
-                    )
-                )
-            )
-        ]
-
-        codigos_existentes = {item["codigo"] for item in resultado}
-        agrupamentos_para_adicionar = []
-        for agrupamento in selecionados:
-            if agrupamento.cod_agrupamento not in codigos_existentes:
-                agrupamentos_para_adicionar.append(
-                    agrupamento_para_dict(agrupamento)
-                )
-                codigos_existentes.add(agrupamento.cod_agrupamento)
-        resultado = agrupamentos_para_adicionar + resultado
-        for item in resultado:
-            codigo = item.get("codigo")
-            descricao = (
-                descricoes_primeiros_codigos.get(codigo)
-                if isinstance(codigo, int)
-                else None
-            )
-            if item.get("professor") != login and descricao:
-                item["descricao"] = descricao
+        resultado = _remover_componentes_agrupados(
+            resultado,
+            turma_codigo,
+            login,
+            selecionados,
+        )
+        resultado = _adicionar_agrupamentos(resultado, selecionados)
+        _atualizar_descricoes_outros_professores(
+            resultado,
+            login,
+            selecionados,
+        )
 
     return resultado
