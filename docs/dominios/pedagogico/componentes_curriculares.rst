@@ -12,7 +12,8 @@ compatibilidade para preservar o contrato do legado.
 As principais classes envolvidas sao:
 
 * ``apps.componentes_curriculares.repository.ComponentesRepository``;
-* ``apps.componentes_curriculares.services.ComponentesService``;
+* ``apps.componentes_curriculares.services.componentes.ComponentesService``;
+* ``apps.componentes_curriculares.services.territorio_saber``;
 * ``apps.componentes_curriculares.api.views``;
 * tabelas materializadas em ``apps.componentes_curriculares.models``.
 
@@ -130,6 +131,57 @@ Esse endpoint nao deve ser interpretado como uma listagem de todas as turmas do
 professor. Ele entrega uma lista de componentes atribuídos ao funcionario, e
 ``turma_codigo`` e apenas um campo preservado do primeiro vinculo escolhido
 pela regra de deduplicacao.
+
+Territorio do Saber
+~~~~~~~~~~~~~~~~~~~
+
+Os endpoints de agrupamento de Territorio do Saber trabalham com o
+``cod_agrupamento`` materializado em
+``agrupamento_atribuicao_territorio_saber``. Esse valor e o ID publico usado
+pelo contrato legado; ele nao e necessariamente unico como linha fisica, pois
+pode existir mais de uma ocorrencia para professores ou recortes historicos
+distintos.
+
+No endpoint de componentes por turma/funcionario, quando
+``agrupaComponenteCurricular=true``, o MS deve retornar o item agrupado do
+professor consultado e preservar os componentes individuais de outros
+professores quando o legado faria isso. O campo ``exibirComponenteEOL`` deve
+permanecer ``false`` para esses itens de Territorio do Saber, seguindo a
+resposta observada no legado.
+
+Essa compatibilidade corresponde ao comportamento do
+``AdicionarComponentesTerritorioAsync`` no legado:
+
+* quando o professor possui agrupamento de Territorio do Saber com 2 ou mais
+  componentes, os componentes individuais agrupados sao removidos da resposta;
+* o agrupamento correspondente entra no retorno usando ``cod_agrupamento`` no
+  campo ``codigo``;
+* ``codigosTerritoriosAgrupamento`` recebe a lista de componentes do grupo;
+* atribuicoes de Territorio do Saber com componente unico continuam como
+  componentes individuais.
+
+No endpoint de componentes por funcionario sem turma, o SELECT do legado nao
+inclui RF do professor na resposta. Por compatibilidade, o MS retorna
+``professor = null`` nesse contrato.
+
+Nos endpoints
+``territorio-saber/agrupamentos-correlacionados``:
+
+* a entrada e sempre ``cod_agrupamento``. Um codigo de componente curricular
+  como ``1216`` nao deve ser usado como origem, a menos que tambem exista como
+  agrupamento;
+* a resposta inclui a linha agrupada de origem e os componentes individuais
+  derivados de ``cod_componentes_curriculares``;
+* os itens individuais retornam ``codigo`` igual ao componente e
+  ``codigosTerritoriosAgrupamento`` singleton, por exemplo ``[1216]``;
+* a vigencia considera ``dataBase``/``dataBaseTicks`` e a regra de
+  disponibilizacao compativel com o legado;
+* quando houver duplicidade fisica do mesmo ``cod_agrupamento``, a saida deve
+  ser deduplicada pelo identificador publico para manter o contrato.
+
+O endpoint ``territorio-saber/agrupamentos`` e mais restrito: ele retorna
+somente as linhas agrupadas cujos ``cod_agrupamento`` foram informados, sem
+expandir os componentes individuais correlacionados.
 
 Validacao PAP
 ~~~~~~~~~~~~~

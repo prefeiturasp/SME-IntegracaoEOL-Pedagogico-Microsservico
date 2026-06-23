@@ -116,9 +116,9 @@ curl -H "X-API-Key: dev-key-default" http://localhost:8001/api/componentes-curri
 | CC10 | GET | `/api/v1/pedagogico/componentes-curriculares/turmas/vigencia/` | Obter Vigência de Componentes por Turma e UE |
 | CC11 | GET | `/api/v1/pedagogico/componentes-curriculares/grade-curricular/{anoLetivo}/` | Listar Grade Curricular por Ano Letivo |
 | CC12 | GET | `/api/v1/pedagogico/componentes-curriculares/turmas/{codigoTurma}/sem-atribuicao/` | Listar Componentes Sem Atribuição em uma Turma |
-| CC13 | GET | `/api/v1/pedagogico/componentes-curriculares/{codigoComponente}/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados por Componente |
-| CC14 | POST | `/api/v1/pedagogico/componentes-curriculares/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados em Lote |
-| CC15 | POST | `/api/v1/pedagogico/componentes-curriculares/territorio-saber/agrupamentos/` | Obter Agrupamentos de Território do Saber por IDs |
+| CC13 | GET | `/api/v1/pedagogico/componentes-curriculares/{codigoComponente}/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados por `cod_agrupamento` |
+| CC14 | POST | `/api/v1/pedagogico/componentes-curriculares/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados em Lote por `cod_agrupamento` |
+| CC15 | POST | `/api/v1/pedagogico/componentes-curriculares/territorio-saber/agrupamentos/` | Obter Agrupamentos de Território do Saber por `cod_agrupamento` |
 
 ---
 

@@ -194,7 +194,7 @@ class GradeComponenteCurricular(ModeloBase):
 class AgrupamentoAtribuicaoTerritorioSaber(ModeloBase):
     """Representa agrupamento de território atribuído a professor."""
 
-    cod_agrupamento = models.BigIntegerField(unique=True)
+    cod_agrupamento = models.BigIntegerField()
     cod_territorio_saber = models.IntegerField()
     cod_experiencia_pedagogica = models.IntegerField(null=True, blank=True)
     dt_inicio_atribuicao = models.DateTimeField()

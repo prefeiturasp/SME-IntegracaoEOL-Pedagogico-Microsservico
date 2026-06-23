@@ -7,7 +7,7 @@ from django.test import SimpleTestCase
 
 from apps.componentes_curriculares.services import ComponentesService
 
-_REPO = "apps.componentes_curriculares.services.ComponentesRepository"
+_REPO = "apps.componentes_curriculares.services.componentes.ComponentesRepository"
 
 
 class TestComponentesService(SimpleTestCase):
@@ -79,6 +79,7 @@ class TestComponentesService(SimpleTestCase):
         self.repo.listar_por_turma_funcionario.assert_called_once_with(
             "T1",
             "f1",
+            incluir_territorios_outros_professores=False,
         )
 
     def test_ep1_agrupamento_false_nao_altera_retorno(self) -> None:
@@ -111,6 +112,34 @@ class TestComponentesService(SimpleTestCase):
             [
                 {"codigo": 1, "exibir_componente_eol": False},
                 {"codigo": 2, "exibir_componente_eol": False},
+            ],
+        )
+
+    def test_ep1_agrupamento_true_com_turma_inclui_territorios_outros_rfs(
+        self,
+    ) -> None:
+        """Solicita territórios de outros RFs quando agrupa por turma."""
+        self.repo.listar_por_turma_funcionario.return_value = [
+            {"codigo": 813071, "exibir_componente_eol": True},
+            {"codigo": 1216, "exibir_componente_eol": True},
+        ]
+
+        resultado = self.service.listar_componentes_por_funcionario(
+            "f1",
+            codigo_turma="T1",
+            agrupamento=True,
+        )
+
+        self.repo.listar_por_turma_funcionario.assert_called_once_with(
+            "T1",
+            "f1",
+            incluir_territorios_outros_professores=True,
+        )
+        self.assertEqual(
+            resultado,
+            [
+                {"codigo": 813071, "exibir_componente_eol": False},
+                {"codigo": 1216, "exibir_componente_eol": False},
             ],
         )
 
