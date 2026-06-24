@@ -104,6 +104,33 @@ class ListarTurmasView(BaseAPIView):
         return Response(dados)
 
 
+class TurmasRecorteFundMedioEjaView(BaseAPIView):
+    """Lista turmas no recorte de etapa (Fund/Médio/EJA)."""
+
+    @extend_schema(
+        tags=_TAG,
+        summary="Listar turmas no recorte de etapa (Fund/Médio/EJA)",
+        request={
+            "application/json": {"type": "array", "items": {"type": "integer"}}
+        },
+        responses={200: TurmaListSerializer(many=True)},
+        operation_id="turmas_recorte_fund_medio_eja",
+    )
+    def post(self, request: Request) -> Response:
+        """Retorna as turmas dos códigos que estão no recorte de etapa.
+
+        Args:
+            request: Requisição com a lista de códigos de turma no corpo.
+
+        Returns:
+            Turmas dos códigos cuja etapa está no recorte
+            (EJA + Fundamental + Médio).
+        """
+        codigos = request.data if isinstance(request.data, list) else []
+        dados = TurmasService().turmas_recorte_fund_medio_eja(codigos)
+        return Response(dados)
+
+
 class TurmaDadosView(BaseAPIView):
     """Retorna dados canônicos de uma turma."""
 
