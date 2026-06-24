@@ -402,6 +402,97 @@ class TestComponentesRepository(TestCase):
         )
 
     @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_inclui_atribuicao_nao_agrupada(
+        self,
+        mock_raw,
+    ) -> None:
+        """Inclui atribuição única não agrupada de território."""
+        mock_raw.return_value = _componentes_territorio(
+            [1214, 1215, 1216],
+            "RF1",
+        )
+        _make_agrupamento(
+            cod_agrupamento=810333,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_componentes_curriculares="1214,1215",
+            desc_territorio_saber="I - EDUCOMUNICAÇÃO E NOVAS LINGUAGENS",
+            desc_experiencia_pedagogica="CLUBE DA LEITURA",
+        )
+        ComponenteTurma.objects.create(
+            turma_codigo="T1",
+            componente_codigo=1216,
+            codigo_componente_territorio_saber=1216,
+            desc_territorio_saber=(
+                "III - ORIENTAÇÃO DE ESTUDOS E INVENÇÃO CRIATIVA"
+            ),
+            desc_experiencia_pedagogica="CLUBE DE CIENCIAS/INVESTIGACOES",
+        )
+        AtribuicaoComponente.objects.create(
+            turma_codigo="T1",
+            componente_codigo=1216,
+            professor="RF2",
+            atribuicao_externa=False,
+            ano_letivo=2025,
+            dt_atribuicao=datetime(2025, 2, 3, tzinfo=UTC),
+        )
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        self.assertEqual(
+            [(item["codigo"], item["professor"]) for item in resultado],
+            [(810333, "RF1"), (1216, "RF2")],
+        )
+        self.assertEqual(
+            resultado[1]["descricao"],
+            (
+                "III - ORIENTAÇÃO DE ESTUDOS E INVENÇÃO CRIATIVA - "
+                "CLUBE DE CIENCIAS/INVESTIGACOES"
+            ),
+        )
+        self.assertEqual(resultado[1]["codigos_territorios_agrupamento"], [])
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_ignora_atribuicao_agrupada(
+        self,
+        mock_raw,
+    ) -> None:
+        """Ignora atribuição que possui par no mesmo território."""
+        mock_raw.return_value = _componentes_territorio(
+            [1214, 1215, 1216],
+            "RF1",
+        )
+        _make_agrupamento(
+            cod_agrupamento=810333,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_componentes_curriculares="1214,1215",
+        )
+        for codigo in [1216, 1217]:
+            ComponenteTurma.objects.create(
+                turma_codigo="T1",
+                componente_codigo=codigo,
+                codigo_componente_territorio_saber=codigo,
+                desc_territorio_saber="TS",
+                desc_experiencia_pedagogica="EP",
+            )
+            AtribuicaoComponente.objects.create(
+                turma_codigo="T1",
+                componente_codigo=codigo,
+                professor="RF2",
+                atribuicao_externa=False,
+                ano_letivo=2025,
+                dt_atribuicao=datetime(2025, 2, 3, tzinfo=UTC),
+            )
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        self.assertEqual(
+            [(item["codigo"], item["professor"]) for item in resultado],
+            [(810333, "RF1")],
+        )
+
+    @patch("apps.componentes_curriculares.repository._raw")
     def test_listar_por_funcionario_deduplica_por_componente(
         self, mock_raw
     ) -> None:

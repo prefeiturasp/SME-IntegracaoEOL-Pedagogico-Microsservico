@@ -165,6 +165,51 @@ def atribuicao_nao_agrupada_para_dict(
     }
 
 
+def _descricao_componente_territorio(componente: ComponenteTurma) -> str:
+    """Monta descrição contextual de um componente de território.
+
+    Args:
+        componente: Vínculo turma-componente de Território do Saber.
+
+    Returns:
+        Descrição contextual do componente na turma.
+    """
+    ts = (componente.desc_territorio_saber or "").strip()
+    ep = (componente.desc_experiencia_pedagogica or "").strip()
+    return f"{ts} - {ep}" if ep else ts
+
+
+def _componente_nao_agrupado_para_dict(
+    componente: ComponenteTurma,
+    atribuicao: AtribuicaoComponente,
+) -> dict:
+    """Formata atribuição única de território para resposta da turma.
+
+    Args:
+        componente: Vínculo turma-componente de Território do Saber.
+        atribuicao: Atribuição do professor ao componente.
+
+    Returns:
+        Componente individual no formato interno de resposta.
+    """
+    return {
+        "codigo": componente.componente_codigo,
+        "codigo_componente_territorio_saber": (
+            componente.codigo_componente_territorio_saber
+            or componente.componente_codigo
+        ),
+        "codigo_componente_curricular_pai": None,
+        "descricao": _descricao_componente_territorio(componente),
+        "regencia": False,
+        "planejamento_regencia": False,
+        "territorio_saber": True,
+        "turma_codigo": componente.turma_codigo,
+        "exibir_componente_eol": False,
+        "professor": atribuicao.professor,
+        "codigos_territorios_agrupamento": [],
+    }
+
+
 def _codigos_turmas_com_territorio(componentes: list[dict]) -> set[object]:
     """Retorna turmas presentes em componentes de Território do Saber.
 
@@ -438,6 +483,133 @@ def _adicionar_agrupamentos(
     return agrupamentos_para_adicionar + componentes
 
 
+def _chave_agrupamento_atribuicao(
+    componente: ComponenteTurma,
+    atribuicao: AtribuicaoComponente,
+) -> tuple[object, ...]:
+    """Retorna chave usada para identificar atribuição única.
+
+    Args:
+        componente: Vínculo turma-componente de Território do Saber.
+        atribuicao: Atribuição do professor ao componente.
+
+    Returns:
+        Chave de agrupamento de atribuições de território.
+    """
+    return (
+        componente.turma_codigo,
+        componente.desc_territorio_saber,
+        componente.desc_experiencia_pedagogica,
+        atribuicao.professor,
+        atribuicao.dt_atribuicao,
+        (
+            atribuicao.dt_disponibilizacao.date()
+            if atribuicao.dt_disponibilizacao
+            else None
+        ),
+    )
+
+
+def _buscar_atribuicao_nao_agrupada(
+    using: str,
+    turma_codigo: object,
+    codigo_componente: int,
+) -> tuple[ComponenteTurma, AtribuicaoComponente] | None:
+    """Busca atribuição única de território para um componente.
+
+    Args:
+        using: Alias da conexão Django.
+        turma_codigo: Código da turma usada como filtro.
+        codigo_componente: Código do componente de território.
+
+    Returns:
+        Par componente/atribuição quando há atribuição única.
+    """
+    componentes = {
+        componente.componente_codigo: componente
+        for componente in ComponenteTurma.objects.using(using).filter(
+            turma_codigo=turma_codigo,
+            desc_territorio_saber__isnull=False,
+        )
+    }
+    componente_alvo = componentes.get(codigo_componente)
+    if not componente_alvo:
+        return None
+
+    atribuicoes = (
+        AtribuicaoComponente.objects.using(using)
+        .filter(
+            turma_codigo=turma_codigo,
+            componente_codigo__in=componentes,
+            dt_cancelamento__isnull=True,
+        )
+        .order_by(
+            "-dt_atribuicao",
+            F("dt_disponibilizacao").desc(nulls_first=True),
+        )
+    )
+
+    pares: list[tuple[ComponenteTurma, AtribuicaoComponente]] = []
+    contagem: dict[tuple[object, ...], int] = {}
+    for atribuicao in atribuicoes:
+        componente = componentes.get(atribuicao.componente_codigo)
+        if componente is None:
+            continue
+        chave = _chave_agrupamento_atribuicao(componente, atribuicao)
+        contagem[chave] = contagem.get(chave, 0) + 1
+        pares.append((componente, atribuicao))
+
+    for componente, atribuicao in pares:
+        if componente.componente_codigo != codigo_componente:
+            continue
+        chave = _chave_agrupamento_atribuicao(componente, atribuicao)
+        if contagem[chave] == 1:
+            return componente, atribuicao
+    return None
+
+
+def _adicionar_atribuicoes_nao_agrupadas(
+    componentes: list[dict],
+    using: str,
+    turma_codigo: object,
+    codigos_componentes: set[object],
+) -> list[dict]:
+    """Adiciona atribuições únicas de território removidas da resposta.
+
+    Args:
+        componentes: Componentes normalizados para resposta.
+        using: Alias da conexão Django.
+        turma_codigo: Código da turma usada como filtro.
+        codigos_componentes: Códigos removidos para tentar recompor.
+
+    Returns:
+        Componentes com atribuições únicas de território preservadas.
+    """
+    existentes = {
+        (item.get("turma_codigo"), item.get("codigo"), item.get("professor"))
+        for item in componentes
+    }
+    adicionados: list[dict] = []
+    codigos = sorted(
+        codigo for codigo in codigos_componentes if isinstance(codigo, int)
+    )
+    for codigo in codigos:
+        atribuicao = _buscar_atribuicao_nao_agrupada(
+            using,
+            turma_codigo,
+            codigo,
+        )
+        if atribuicao is None:
+            continue
+        item = _componente_nao_agrupado_para_dict(*atribuicao)
+        chave = (item["turma_codigo"], item["codigo"], item["professor"])
+        if chave in existentes:
+            continue
+        existentes.add(chave)
+        adicionados.append(item)
+    return componentes + adicionados
+
+
 def _atualizar_descricoes_outros_professores(
     componentes: list[dict],
     login: str,
@@ -520,6 +692,12 @@ def mesclar_agrupamentos_territorio(
             codigos_agrupados_encerrados_por_professor,
         )
         resultado = _adicionar_agrupamentos(resultado, selecionados)
+        resultado = _adicionar_atribuicoes_nao_agrupadas(
+            resultado,
+            using,
+            turma_codigo,
+            codigos_territorio_login,
+        )
         _atualizar_descricoes_outros_professores(
             resultado,
             login,
