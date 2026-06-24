@@ -26,8 +26,8 @@ class ComponentesService:
                 informado.
             planejamento: Quando True, substitui regência pelos filhos
                 de planejamento.
-            agrupamento: Quando True, desativa a exibição do componente
-                EOL.
+            agrupamento: Quando True, aplica agrupamentos de território no
+                repositório.
 
         Returns:
             Lista de componentes curriculares do funcionário.
@@ -40,13 +40,14 @@ class ComponentesService:
             )
         else:
             dados = self._repo.listar_por_turma_funcionario(
-                codigo_turma, login
+                codigo_turma,
+                login,
+                incluir_territorios_outros_professores=False,
             )
 
         if agrupamento:
-            # Componentes agrupados não devem exibir o componente EOL.
-            for c in dados:
-                c["exibir_componente_eol"] = False
+            for item in dados:
+                item["exibir_componente_eol"] = False
         return dados
 
     def listar_regencia_por_ano_turma(
@@ -242,11 +243,11 @@ class ComponentesService:
         """Retorna agrupamentos correlacionados de território do saber.
 
         Args:
-            codigo_componente: Código do componente de origem.
+            codigo_componente: `cod_agrupamento` de origem da consulta.
             data_base: Data de referência; None para sem filtro de data.
 
         Returns:
-            Lista de agrupamentos correlacionados ao componente.
+            Lista de agrupamentos e componentes correlacionados à origem.
         """
         return self._repo.listar_agrupamentos_correlacionados(
             codigo_componente, data_base
@@ -260,7 +261,7 @@ class ComponentesService:
         """Retorna agrupamentos correlacionados em lote.
 
         Args:
-            codigos: Códigos dos componentes de origem.
+            codigos: `cod_agrupamento` das origens consultadas.
             data_base: Data de referência; None para sem filtro de data.
 
         Returns:

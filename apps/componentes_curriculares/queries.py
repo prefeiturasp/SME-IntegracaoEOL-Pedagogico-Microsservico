@@ -7,15 +7,32 @@ from apps.componentes_curriculares.constants import (
 )
 
 MOTIVO_FIM_ANO = MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO
+SQL_COMPONENTE_TERRITORIO_SABER = """\
+(
+        ct.codigo_componente_territorio_saber IS NOT NULL
+        OR ct.componente_codigo BETWEEN 1214 AND 1225
+        OR ct.componente_codigo BETWEEN 1519 AND 1522
+    )"""
 
-COMPONENTE_TURMA_CAMPOS_RESPOSTA = """\
+COMPONENTE_TURMA_CAMPOS_RESPOSTA = f"""\
     ct.componente_codigo AS codigo,
     ct.codigo_componente_territorio_saber,
     cch.idcomponentecurricularpai AS codigo_componente_curricular_pai,
-    cc.descricao,
+    CASE
+        WHEN ct.codigo_componente_territorio_saber IS NOT NULL
+         AND ct.desc_territorio_saber IS NOT NULL
+        THEN
+            CASE
+                WHEN ct.desc_experiencia_pedagogica IS NOT NULL
+                THEN btrim(ct.desc_territorio_saber) || ' - ' ||
+                     btrim(ct.desc_experiencia_pedagogica)
+                ELSE btrim(ct.desc_territorio_saber)
+            END
+        ELSE cc.descricao
+    END AS descricao,
     COALESCE(cc.regencia, false) AS regencia,
     false AS planejamento_regencia,
-    (ct.codigo_componente_territorio_saber IS NOT NULL) AS territorio_saber,
+    {SQL_COMPONENTE_TERRITORIO_SABER} AS territorio_saber,
     ct.turma_codigo,
     t.ano_letivo,
     t.duracao_turno AS turno_turma,
@@ -182,7 +199,7 @@ SELECT {COMPONENTE_TURMA_CAMPOS_RESPOSTA}, ac.professor
             )
  WHERE ct.turma_codigo IN ({{placeholders}})"""
 
-SQL_COMPONENTES_TURMAS_BRUTOS = """\
+SQL_COMPONENTES_TURMAS_BRUTOS = f"""\
 SELECT DISTINCT
     ct.componente_codigo AS codigo,
     ct.codigo_componente_territorio_saber,
@@ -190,7 +207,7 @@ SELECT DISTINCT
     cc.descricao,
     COALESCE(cc.regencia, false) AS regencia,
     false AS planejamento_regencia,
-    (ct.codigo_componente_territorio_saber IS NOT NULL) AS territorio_saber,
+    {SQL_COMPONENTE_TERRITORIO_SABER} AS territorio_saber,
     ct.turma_codigo,
     t.ano_letivo,
     t.duracao_turno AS turno_turma,
@@ -206,7 +223,7 @@ SELECT DISTINCT
      LIMIT 1
   ) cch ON true
   JOIN turma t ON t.codigo::varchar = ct.turma_codigo AND t.extinta = false
- WHERE ct.turma_codigo IN ({placeholders})"""
+ WHERE ct.turma_codigo IN ({{placeholders}})"""
 
 SQL_VIGENCIA_COMPONENTES = f"""
 SELECT DISTINCT

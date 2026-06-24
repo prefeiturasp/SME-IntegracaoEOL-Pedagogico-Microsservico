@@ -50,11 +50,15 @@ line_length = 79
 
 [tool.mypy]
 python_version = "3.12"
-exclude = ".*/migrations/.*"
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+exclude = "(.*/migrations/.*|.*/tests/.*)"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
 
 [tool.coverage.run]
 source = ["apps"]

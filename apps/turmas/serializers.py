@@ -1,5 +1,8 @@
 """Serializers do domínio Turmas."""
 
+from typing import Any, cast
+
+from django.http import QueryDict
 from rest_framework import serializers
 
 
@@ -123,7 +126,7 @@ class AnosLetivosVigenteQuerySerializer(serializers.Serializer):
         required=False,
     )
 
-    def to_internal_value(self, data: dict) -> dict:
+    def to_internal_value(self, data: dict[str, Any]) -> dict[str, Any]:
         """Descarta itens vazios ou nulos antes de validar inteiros.
 
         Args:
@@ -132,10 +135,11 @@ class AnosLetivosVigenteQuerySerializer(serializers.Serializer):
         Returns:
             Dados normalizados sem entradas vazias no filtro.
         """
-        if hasattr(data, "getlist"):
+        if isinstance(data, QueryDict):
             brutos = data.getlist("anos_letivos_vigente")
             if brutos:
                 limpos = [item for item in brutos if item not in ("", None)]
-                data = data.copy()
-                data.setlist("anos_letivos_vigente", limpos)
-        return super().to_internal_value(data)
+                query_data = data.copy()
+                query_data.setlist("anos_letivos_vigente", limpos)
+                data = cast(dict[str, Any], query_data)
+        return cast(dict[str, Any], super().to_internal_value(data))

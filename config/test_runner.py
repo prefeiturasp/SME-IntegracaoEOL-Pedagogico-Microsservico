@@ -1,5 +1,7 @@
 """Test runner para criação de tabelas não gerenciadas."""
 
+from typing import Any
+
 from django.apps import apps
 from django.db import connections
 from django.test.runner import DiscoverRunner
@@ -8,7 +10,7 @@ from django.test.runner import DiscoverRunner
 class PedagogicoTestRunner(DiscoverRunner):
     """Cria tabelas não gerenciadas antes de executar os testes."""
 
-    def setup_databases(self, **kwargs):  # type: ignore[override]
+    def setup_databases(self, **kwargs: Any) -> Any:
         result = super().setup_databases(**kwargs)
         with connections["default"].schema_editor() as editor:
             created_tables = set()

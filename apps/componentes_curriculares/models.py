@@ -26,6 +26,8 @@ class ComponenteTurma(ModeloBase):
 
     componente_codigo = models.IntegerField()
     codigo_componente_territorio_saber = models.IntegerField(null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
+    desc_territorio_saber = models.CharField(max_length=200, null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
+    desc_experiencia_pedagogica = models.CharField(max_length=200, null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
     turma_codigo = models.CharField(max_length=20)
 
     class Meta:
@@ -194,7 +196,7 @@ class GradeComponenteCurricular(ModeloBase):
 class AgrupamentoAtribuicaoTerritorioSaber(ModeloBase):
     """Representa agrupamento de território atribuído a professor."""
 
-    cod_agrupamento = models.BigIntegerField(unique=True)
+    cod_agrupamento = models.BigIntegerField()
     cod_territorio_saber = models.IntegerField()
     cod_experiencia_pedagogica = models.IntegerField(null=True, blank=True)
     dt_inicio_atribuicao = models.DateTimeField()

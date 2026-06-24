@@ -41,7 +41,9 @@ class TurmasRegularesView(BaseAPIView):
         Returns:
             Turmas regulares correspondentes aos códigos.
         """
-        codigos = request.data if isinstance(request.data, list) else []
+        codigos: list[int] = (
+            request.data if isinstance(request.data, list) else []
+        )
         dados = TurmasService().turmas_regulares(codigos)
         return Response(dados)
 
@@ -67,7 +69,9 @@ class TurmasProgramaView(BaseAPIView):
         Returns:
             Turmas programa correspondentes aos códigos.
         """
-        codigos = request.data if isinstance(request.data, list) else []
+        codigos: list[int] = (
+            request.data if isinstance(request.data, list) else []
+        )
         dados = TurmasService().turmas_programa(codigos)
         return Response(dados)
 
@@ -93,7 +97,9 @@ class ListarTurmasView(BaseAPIView):
         Returns:
             Turmas correspondentes aos códigos.
         """
-        codigos = request.data if isinstance(request.data, list) else []
+        codigos: list[int] = (
+            request.data if isinstance(request.data, list) else []
+        )
         dados = TurmasService().listar_turmas(codigos)
         return Response(dados)
 

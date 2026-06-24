@@ -54,6 +54,44 @@ Acesse em: http://localhost:8001/api/docs/
 
 ---
 
+## Pre-commit
+
+O projeto usa `pre-commit` para rodar validações antes do commit:
+
+- `black` para formatação;
+- `ruff --fix` para lint e correções automáticas;
+- `mypy` para checagem de tipos.
+
+### Instalar localmente
+
+Depois de instalar as dependências de desenvolvimento:
+
+```bash
+pip install -r requirements/local.txt
+pre-commit install
+```
+
+A partir disso, os hooks rodam automaticamente a cada `git commit`.
+
+### Rodar manualmente
+
+Para validar todos os arquivos localmente:
+
+```bash
+pre-commit run --all-files
+```
+
+Ou via Docker:
+
+```bash
+./scripts/executar_precommit.sh
+```
+
+Quando `black` ou `ruff` alterarem arquivos, revise as mudanças e rode o
+comando novamente antes de commitar.
+
+---
+
 ## Executar Testes com Docker
 
 Para rodar a suíte completa de testes e gerar o relatório de cobertura:
@@ -116,9 +154,9 @@ curl -H "X-API-Key: dev-key-default" http://localhost:8001/api/componentes-curri
 | CC10 | GET | `/api/v1/pedagogico/componentes-curriculares/turmas/vigencia/` | Obter Vigência de Componentes por Turma e UE |
 | CC11 | GET | `/api/v1/pedagogico/componentes-curriculares/grade-curricular/{anoLetivo}/` | Listar Grade Curricular por Ano Letivo |
 | CC12 | GET | `/api/v1/pedagogico/componentes-curriculares/turmas/{codigoTurma}/sem-atribuicao/` | Listar Componentes Sem Atribuição em uma Turma |
-| CC13 | GET | `/api/v1/pedagogico/componentes-curriculares/{codigoComponente}/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados por Componente |
-| CC14 | POST | `/api/v1/pedagogico/componentes-curriculares/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados em Lote |
-| CC15 | POST | `/api/v1/pedagogico/componentes-curriculares/territorio-saber/agrupamentos/` | Obter Agrupamentos de Território do Saber por IDs |
+| CC13 | GET | `/api/v1/pedagogico/componentes-curriculares/{codigoComponente}/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados por `cod_agrupamento` |
+| CC14 | POST | `/api/v1/pedagogico/componentes-curriculares/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados em Lote por `cod_agrupamento` |
+| CC15 | POST | `/api/v1/pedagogico/componentes-curriculares/territorio-saber/agrupamentos/` | Obter Agrupamentos de Território do Saber por `cod_agrupamento` |
 
 ---
 

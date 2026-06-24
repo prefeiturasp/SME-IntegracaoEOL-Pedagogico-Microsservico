@@ -12,8 +12,10 @@ from apps.componentes_curriculares.constants import (
 )
 from apps.componentes_curriculares.models import (
     AgrupamentoAtribuicaoTerritorioSaber,
+    AtribuicaoComponente,
     ComponenteCurricular,
     ComponenteCurricularPlanejamentoRegencia,
+    ComponenteTurma,
     GradeComponenteCurricular,
 )
 from apps.componentes_curriculares.queries import (
@@ -27,6 +29,14 @@ from apps.componentes_curriculares.queries import (
     SQL_FILTRO_ATRIBUICAO_POR_TURMA,
     SQL_FILTRO_ATRIBUICAO_VIGENTE,
     SQL_VIGENCIA_COMPONENTES,
+)
+from apps.componentes_curriculares.services.territorio_saber import (
+    agrupamento_para_dict,
+    agrupamento_vigente_na_data,
+    atribuicao_nao_agrupada_para_dict,
+    componentes_agrupados_sao_subconjunto,
+    mesclar_agrupamentos_territorio,
+    parse_csv,
 )
 
 
@@ -133,53 +143,8 @@ def _normalizar_componente_turma(row: dict) -> dict:
     return _aplicar_regra_regencia_classe_infantil(item)
 
 
-def _agrupamento_para_dict(
-    agrupamento: AgrupamentoAtribuicaoTerritorioSaber,
-) -> dict:
-    """Formata agrupamento de território para resposta.
-
-    Args:
-        agrupamento: Agrupamento de território do saber.
-
-    Returns:
-        Agrupamento no formato interno de resposta.
-    """
-    codigos = _parse_csv(agrupamento.cod_componentes_curriculares)
-    primeiro = codigos[0] if codigos else 0
-    ts = agrupamento.desc_territorio_saber or ""
-    ep = agrupamento.desc_experiencia_pedagogica or ""
-    descricao = f"{ts} - {ep}" if ep else ts
-    return {
-        "codigo": agrupamento.cod_agrupamento,
-        "codigo_componente_territorio_saber": primeiro,
-        "codigo_componente_curricular_pai": None,
-        "descricao": descricao,
-        "regencia": False,
-        "planejamento_regencia": False,
-        "territorio_saber": True,
-        "turma_codigo": agrupamento.cod_turma,
-        "exibir_componente_eol": True,
-        "professor": agrupamento.rf_professor,
-        "codigos_territorios_agrupamento": codigos,
-    }
-
-
-def _parse_csv(csv_str: str | None) -> list[int]:
-    """Retorna códigos de componentes extraídos de CSV.
-
-    Args:
-        csv_str: Texto CSV com códigos de componentes.
-
-    Returns:
-        Lista de códigos inteiros válidos.
-    """
-    if not csv_str:
-        return []
-    return [int(c.strip()) for c in csv_str.split(",") if c.strip().isdigit()]
-
-
 def _int_or_none(value: object) -> int | None:
-    """Converte valor para inteiro quando possível.
+    """Converta valor para inteiro quando possível.
 
     Args:
         value: Valor de entrada.
@@ -190,7 +155,7 @@ def _int_or_none(value: object) -> int | None:
     if value is None:
         return None
     try:
-        return int(value)
+        return int(str(value))
     except (TypeError, ValueError):
         return None
 
@@ -298,22 +263,34 @@ class ComponentesRepository:
         self,
         codigo_turma: str,
         login: str,
+        incluir_territorios_outros_professores: bool = False,
     ) -> list[dict]:
         """Lista componentes por turma e funcionário.
 
         Args:
             codigo_turma: Código da turma.
             login: Login (RF) do funcionário.
+            incluir_territorios_outros_professores: Inclui componentes de
+                Território do Saber atribuídos a outros professores da turma.
 
         Returns:
             Lista de componentes da turma para o funcionário.
         """
+        filtro_professor = "ac.professor = %s"
+        params: list = [login, codigo_turma]
+        if incluir_territorios_outros_professores:
+            filtro_professor = (
+                "(ac.professor = %s OR "
+                "(ct.codigo_componente_territorio_saber IS NOT NULL "
+                "AND ac.professor <> %s))"
+            )
+            params = [login, login, codigo_turma]
         sql = (
             f"{SQL_COMPONENTES_TURMA_COM_ATRIBUICAO}"
-            " WHERE ac.professor = %s AND ct.turma_codigo = %s"
+            f" WHERE {filtro_professor} AND ct.turma_codigo = %s"
             f"{SQL_FILTRO_ATRIBUICAO_POR_TURMA}"
         )
-        rows = _raw(sql, [login, codigo_turma], self._DB)
+        rows = _raw(sql, params, self._DB)
         resultado: list[dict] = []
         vistos: set[tuple[object, object, object]] = set()
         for row in rows:
@@ -326,7 +303,7 @@ class ComponentesRepository:
             if key not in vistos:
                 vistos.add(key)
                 resultado.append(item)
-        return resultado
+        return mesclar_agrupamentos_territorio(resultado, self._DB, login)
 
     def listar_por_funcionario(
         self,
@@ -377,14 +354,12 @@ class ComponentesRepository:
         seen: set[object] = set()
         result: list[dict] = []
         for item in componentes:
-            key = item.get("codigo_componente_curricular_pai") or item[
-                "codigo"
-            ]
+            key = (
+                item.get("codigo_componente_curricular_pai") or item["codigo"]
+            )
 
             if key not in seen:
                 seen.add(key)
-                # Alinhado ao legado: o SELECT não inclui o RF do professor
-                # nesse endpoint; o campo retorna sempre null.
                 item["professor"] = None
                 result.append(item)
 
@@ -412,7 +387,8 @@ class ComponentesRepository:
         rows = _raw(sql, [login, codigo_turma], self._DB)
         for row in rows:
             row["exibir_componente_eol"] = False
-        return _expandir_planejamento_regencia(rows, self._DB)
+        componentes = _expandir_planejamento_regencia(rows, self._DB)
+        return mesclar_agrupamentos_territorio(componentes, self._DB, login)
 
     def listar_regencia_por_ano_turma(
         self,
@@ -426,10 +402,8 @@ class ComponentesRepository:
         Returns:
             Lista de componentes de regência no formato de resposta.
         """
-        filtro = (
-            {"ano__isnull": True}
-            if ano_turma <= 0
-            else {"ano": ano_turma}
+        filtro: dict[str, object] = (
+            {"ano__isnull": True} if ano_turma <= 0 else {"ano": ano_turma}
         )
         codigos = list(
             ComponenteCurricularPlanejamentoRegencia.objects.using(self._DB)
@@ -657,9 +631,8 @@ class ComponentesRepository:
         for row in rows:
             row["professor"] = None
             item = _normalizar_componente_turma(row)
-            key = (
-                item.get("codigo_componente_curricular_pai")
-                or item.get("codigo")
+            key = item.get("codigo_componente_curricular_pai") or item.get(
+                "codigo"
             )
             if key not in vistos:
                 vistos.add(key)
@@ -672,11 +645,14 @@ class ComponentesRepository:
         Returns:
             Lista completa de componentes curriculares.
         """
-        return list(
-            ComponenteCurricular.objects.using(self._DB)
-            .values("codigo", "descricao")
-            .order_by("codigo")
-        )
+        return [
+            {"codigo": codigo, "descricao": descricao}
+            for codigo, descricao in (
+                ComponenteCurricular.objects.using(self._DB)
+                .values_list("codigo", "descricao")
+                .order_by("codigo")
+            )
+        ]
 
     def listar_vigencia_componentes(
         self,
@@ -724,10 +700,10 @@ class ComponentesRepository:
         Returns:
             Linhas da grade curricular do ano letivo.
         """
-        rows = list(
+        rows = (
             GradeComponenteCurricular.objects.using(self._DB)
             .filter(ano_letivo=ano_letivo)
-            .values(
+            .values_list(
                 "codigo_componente_curricular",
                 "descricao_componente_curricular",
                 "codigo_ano_turma",
@@ -737,7 +713,24 @@ class ComponentesRepository:
             )
             .distinct()
         )
-        return rows
+        return [
+            {
+                "codigo_componente_curricular": codigo,
+                "descricao_componente_curricular": descricao,
+                "codigo_ano_turma": codigo_ano_turma,
+                "descricao_serie_ensino": descricao_serie_ensino,
+                "codigo_serie_ensino": codigo_serie_ensino,
+                "modalidade": modalidade,
+            }
+            for (
+                codigo,
+                descricao,
+                codigo_ano_turma,
+                descricao_serie_ensino,
+                codigo_serie_ensino,
+                modalidade,
+            ) in rows
+        ]
 
     def listar_componentes_sem_atribuicao(
         self,
@@ -768,40 +761,165 @@ class ComponentesRepository:
         """Retorna agrupamentos correlacionados de território do saber.
 
         Args:
-            codigo_componente: Código do componente de origem.
+            codigo_componente: `cod_agrupamento` de origem da consulta.
             data_base: Data de referência; None para sem filtro de data.
 
         Returns:
-            Lista de agrupamentos correlacionados ao componente.
+            Lista de agrupamentos e componentes correlacionados à origem.
         """
         origem = (
             AgrupamentoAtribuicaoTerritorioSaber.objects.using(self._DB)
             .filter(cod_agrupamento=codigo_componente)
             .order_by(
-                F("dt_fim_atribuicao").asc(nulls_first=True),
                 "-dt_inicio_atribuicao",
+                F("dt_fim_atribuicao").desc(nulls_first=True),
             )
             .first()
         )
         if origem is None:
             return []
 
-        qs = AgrupamentoAtribuicaoTerritorioSaber.objects.using(
-            self._DB
-        ).filter(
-            cod_turma=origem.cod_turma,
-            cod_territorio_saber=origem.cod_territorio_saber,
+        resultado, vistos = self._agrupamentos_correlacionados_da_origem(
+            origem,
+            data_base,
         )
-        if data_base is not None:
-            qs = qs.filter(dt_inicio_atribuicao__date__lte=data_base)
-
-        codigos_origem = set(_parse_csv(origem.cod_componentes_curriculares))
-        resultado: list[dict] = []
-        for ag in qs:
-            codigos_ag = set(_parse_csv(ag.cod_componentes_curriculares))
-            if codigos_ag and codigos_ag.issubset(codigos_origem):
-                resultado.append(_agrupamento_para_dict(ag))
+        resultado.extend(
+            self._componentes_individuais_correlacionados(
+                origem,
+                vistos,
+                data_base,
+            )
+        )
         return resultado
+
+    def _agrupamentos_correlacionados_da_origem(
+        self,
+        origem: AgrupamentoAtribuicaoTerritorioSaber,
+        data_base: date | None,
+    ) -> tuple[list[dict], set[int]]:
+        """Lista agrupamentos correlacionados de uma origem.
+
+        Args:
+            origem: Agrupamento de origem da consulta.
+            data_base: Data de referência; None para sem filtro de data.
+
+        Returns:
+            Lista de agrupamentos formatados e códigos já incluídos.
+        """
+        qs = (
+            AgrupamentoAtribuicaoTerritorioSaber.objects.using(self._DB)
+            .filter(
+                cod_turma=origem.cod_turma,
+                cod_territorio_saber=origem.cod_territorio_saber,
+                cod_experiencia_pedagogica=origem.cod_experiencia_pedagogica,
+            )
+            .order_by(
+                "-dt_inicio_atribuicao",
+                F("dt_fim_atribuicao").desc(nulls_first=True),
+            )
+        )
+
+        resultado: list[dict] = []
+        vistos: set[int] = set()
+        for ag in qs:
+            if not agrupamento_vigente_na_data(ag, data_base):
+                continue
+            if not componentes_agrupados_sao_subconjunto(ag, origem):
+                continue
+            if ag.cod_agrupamento in vistos:
+                continue
+            vistos.add(ag.cod_agrupamento)
+            resultado.append(agrupamento_para_dict(ag))
+        return resultado, vistos
+
+    def _componentes_individuais_correlacionados(
+        self,
+        origem: AgrupamentoAtribuicaoTerritorioSaber,
+        vistos: set[int],
+        data_base: date | None,
+    ) -> list[dict]:
+        """Lista componentes individuais correlacionados de uma origem.
+
+        Args:
+            origem: Agrupamento de origem da consulta.
+            vistos: Códigos já incluídos no resultado.
+            data_base: Data de referência; None para sem filtro de data.
+
+        Returns:
+            Lista de componentes individuais formatados.
+        """
+        resultado: list[dict] = []
+        for codigo in parse_csv(origem.cod_componentes_curriculares):
+            if codigo in vistos:
+                continue
+            atribuicao = self._atribuicao_do_componente(origem, codigo)
+            componente = self._componente_territorio_da_turma(origem, codigo)
+            if atribuicao is None or componente is None:
+                continue
+            if (
+                data_base
+                and atribuicao.dt_atribuicao
+                and atribuicao.dt_atribuicao.date() > data_base
+            ):
+                continue
+            resultado.append(
+                atribuicao_nao_agrupada_para_dict(
+                    componente,
+                    atribuicao,
+                    origem,
+                )
+            )
+            vistos.add(codigo)
+        return resultado
+
+    def _atribuicao_do_componente(
+        self,
+        origem: AgrupamentoAtribuicaoTerritorioSaber,
+        codigo: int,
+    ) -> AtribuicaoComponente | None:
+        """Busca atribuição ativa de um componente da origem.
+
+        Args:
+            origem: Agrupamento de origem da consulta.
+            codigo: Código do componente curricular.
+
+        Returns:
+            Atribuição encontrada, ou None.
+        """
+        return (
+            AtribuicaoComponente.objects.using(self._DB)
+            .filter(
+                turma_codigo=origem.cod_turma,
+                componente_codigo=codigo,
+                dt_cancelamento__isnull=True,
+            )
+            .order_by("-dt_atribuicao")
+            .first()
+        )
+
+    def _componente_territorio_da_turma(
+        self,
+        origem: AgrupamentoAtribuicaoTerritorioSaber,
+        codigo: int,
+    ) -> ComponenteTurma | None:
+        """Busca componente de território da turma da origem.
+
+        Args:
+            origem: Agrupamento de origem da consulta.
+            codigo: Código do componente curricular.
+
+        Returns:
+            Componente da turma encontrado, ou None.
+        """
+        return (
+            ComponenteTurma.objects.using(self._DB)
+            .filter(
+                turma_codigo=origem.cod_turma,
+                componente_codigo=codigo,
+                codigo_componente_territorio_saber__isnull=False,
+            )
+            .first()
+        )
 
     def listar_agrupamentos_correlacionados_lote(
         self,
@@ -811,21 +929,21 @@ class ComponentesRepository:
         """Retorna agrupamentos correlacionados em lote.
 
         Args:
-            codigos_agrupamentos: Códigos dos componentes de origem.
+            codigos_agrupamentos: `cod_agrupamento` das origens consultadas.
             data_base: Data de referência; None para sem filtro de data.
 
         Returns:
             Lista de agrupamentos correlacionados sem duplicatas.
         """
         resultado: list[dict] = []
-        vistos: set[int] = set()
+        vistos: set[tuple[object, object]] = set()
         for cod in codigos_agrupamentos:
             for item in self.listar_agrupamentos_correlacionados(
                 cod, data_base
             ):
-                ag_cod = item["codigo"]
-                if ag_cod not in vistos:
-                    vistos.add(ag_cod)
+                chave = (item["codigo"], item.get("professor"))
+                if chave not in vistos:
+                    vistos.add(chave)
                     resultado.append(item)
         return resultado
 
@@ -845,8 +963,8 @@ class ComponentesRepository:
             AgrupamentoAtribuicaoTerritorioSaber.objects.using(self._DB)
             .filter(cod_agrupamento__in=codigos_agrupamentos)
             .order_by(
-                F("dt_fim_atribuicao").asc(nulls_first=True),
                 "-dt_inicio_atribuicao",
+                F("dt_fim_atribuicao").desc(nulls_first=True),
             )
         )
         vistos: set[int] = set()
@@ -854,5 +972,5 @@ class ComponentesRepository:
         for ag in agrupamentos:
             if ag.cod_agrupamento not in vistos:
                 vistos.add(ag.cod_agrupamento)
-                resultado.append(_agrupamento_para_dict(ag))
+                resultado.append(agrupamento_para_dict(ag))
         return resultado
