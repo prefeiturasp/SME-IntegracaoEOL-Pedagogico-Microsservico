@@ -46,6 +46,7 @@ ETL pedagogico, principalmente:
 * ``componente_curricular``;
 * ``componente_turma``;
 * ``atribuicao_componente``;
+* ``atribuicao_territorio_saber``;
 * ``grade_componente_curricular``;
 * ``componente_curricular_hierarquia``;
 * ``componente_curricular_pap``;
@@ -59,6 +60,12 @@ turma e componente curricular. Ela deve carregar vinculos SME, externos,
 regulares, de programa e os casos historicos/disponibilizados necessarios aos
 endpoints. A decisao sobre quais registros existem nessa tabela pertence ao
 ETL; o MS apenas aplica filtros de consulta compativeis com o legado.
+
+A tabela ``atribuicao_territorio_saber`` representa as atribuicoes individuais
+de componentes de Territorio do Saber. Ela e usada principalmente para montar
+os componentes filhos nos endpoints de agrupamentos correlacionados, incluindo
+o RF do professor e as descricoes contextuais quando o componente existe na
+turma.
 
 Regras de compatibilidade
 -------------------------
@@ -145,9 +152,9 @@ distintos.
 No endpoint de componentes por turma/funcionario, quando
 ``agrupaComponenteCurricular=true``, o MS deve retornar o item agrupado do
 professor consultado e preservar os componentes individuais de outros
-professores quando o legado faria isso. O campo ``exibirComponenteEOL`` deve
-permanecer ``false`` para esses itens de Territorio do Saber, seguindo a
-resposta observada no legado.
+professores quando a regra de atribuicao exigir. O campo
+``exibirComponenteEOL`` deve permanecer ``false`` para esses itens de
+Territorio do Saber.
 
 A descricao dos componentes de Territorio do Saber e contextual da turma. Para
 componentes individuais, a query prioriza ``componente_turma.desc_territorio_saber``
@@ -156,11 +163,6 @@ preenchidos pelo ETL. A descricao final fica no formato
 ``desc_territorio_saber - desc_experiencia_pedagogica``; se a experiencia nao
 existir, usa apenas ``desc_territorio_saber``. Apenas quando esses dados nao
 existem o MS usa a descricao generica de ``componente_curricular``.
-
-Essa diferenca explica casos em que um componente como ``1216`` deixa de
-retornar a descricao generica ``TERRIT SABER / EXP PEDAG 3`` e passa a retornar
-a descricao contextual da grade, como ``III - ORIENTACAO DE ESTUDOS E INVENCAO
-CRIATIVA - CLUBE DE CIENCIAS/INVESTIGACOES``.
 
 Essa compatibilidade corresponde ao comportamento do
 ``AdicionarComponentesTerritorioAsync`` no legado:
@@ -187,6 +189,15 @@ Nos endpoints
   derivados de ``cod_componentes_curriculares``;
 * os itens individuais retornam ``codigo`` igual ao componente e
   ``codigosTerritoriosAgrupamento`` singleton, por exemplo ``[1216]``;
+* o professor do item agrupado vem de
+  ``agrupamento_atribuicao_territorio_saber.rf_professor``;
+* o professor de cada item individual prioriza uma atribuicao propria do
+  componente na turma em ``atribuicao_territorio_saber``;
+* se o componente individual nao tiver atribuicao propria, o MS sintetiza o
+  professor a partir das atribuicoes individuais da mesma correlacao do
+  agrupamento. Se tambem nao houver atribuicao individual, usa o historico do
+  proprio agrupamento: primeiro a ultima atribuicao encerrada real, depois
+  casos encerrados no mesmo instante e, por fim, o professor da origem;
 * a vigencia considera ``dataBase``/``dataBaseTicks`` e a regra de
   disponibilizacao compativel com o legado;
 * quando houver duplicidade fisica do mesmo ``cod_agrupamento``, a saida deve
