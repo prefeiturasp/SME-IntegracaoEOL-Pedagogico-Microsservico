@@ -11,7 +11,7 @@ from apps.componentes_curriculares.constants import (
 )
 from apps.componentes_curriculares.models import (
     AgrupamentoAtribuicaoTerritorioSaber,
-    AtribuicaoComponente,
+    AtribuicaoTerritorioSaber,
     ComponenteTurma,
 )
 
@@ -65,6 +65,8 @@ def agrupamento_para_dict(
     ts = (agrupamento.desc_territorio_saber or "").strip()
     ep = (agrupamento.desc_experiencia_pedagogica or "").strip()
     descricao = f"{ts} - {ep}" if ep else ts
+    if not descricao:
+        descricao = " - "
     return {
         "codigo": agrupamento.cod_agrupamento,
         "codigo_componente_territorio_saber": primeiro,
@@ -84,33 +86,18 @@ def agrupamento_vigente_na_data(
     agrupamento: AgrupamentoAtribuicaoTerritorioSaber,
     data_base: date | None,
 ) -> bool:
-    """Verifica se o agrupamento está vigente na data informada.
+    """Verifica se o agrupamento iniciou até a data informada.
 
     Args:
         agrupamento: Agrupamento de Território do Saber avaliado.
         data_base: Data de referência; None ignora o filtro de data.
 
     Returns:
-        True quando o agrupamento deve ser considerado vigente na data.
+        True quando o agrupamento pode ser considerado na data.
     """
     if data_base is None:
         return True
-    if (
-        agrupamento.cod_motivo_disponibilizacao
-        == MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO
-    ):
-        return True
-
-    data_fim = agrupamento.dt_fim_atribuicao or agrupamento.dt_fim_turma
-    if agrupamento.dt_inicio_atribuicao.date() <= data_base and (
-        data_fim is None or data_fim.date() >= data_base
-    ):
-        return True
-    return bool(
-        data_fim
-        and agrupamento.dt_fim_turma
-        and data_fim.date() >= agrupamento.dt_fim_turma.date()
-    )
+    return agrupamento.dt_inicio_atribuicao.date() <= data_base
 
 
 def componentes_agrupados_sao_subconjunto(
@@ -133,7 +120,7 @@ def componentes_agrupados_sao_subconjunto(
 
 def atribuicao_nao_agrupada_para_dict(
     componente: ComponenteTurma,
-    atribuicao: AtribuicaoComponente,
+    atribuicao: AtribuicaoTerritorioSaber,
     origem: AgrupamentoAtribuicaoTerritorioSaber,
 ) -> dict:
     """Formata atribuição única de território como componente.
@@ -146,7 +133,7 @@ def atribuicao_nao_agrupada_para_dict(
     Returns:
         Componente individual no formato interno de resposta.
     """
-    descricao = agrupamento_para_dict(origem)["descricao"]
+    descricao = _descricao_componente_territorio(componente)
     return {
         "codigo": componente.componente_codigo,
         "codigo_componente_territorio_saber": (
@@ -165,6 +152,48 @@ def atribuicao_nao_agrupada_para_dict(
     }
 
 
+def componente_sintetico_agrupado_para_dict(
+    origem: AgrupamentoAtribuicaoTerritorioSaber,
+    codigo_componente: int,
+    componente: ComponenteTurma | None = None,
+    atribuicao: AtribuicaoTerritorioSaber | None = None,
+    professor: str | None = None,
+) -> dict:
+    """Formata componente filho criado a partir de um agrupamento.
+
+    Args:
+        origem: Agrupamento usado como origem da consulta.
+        codigo_componente: Código do componente filho.
+        componente: Vínculo turma-componente, quando disponível.
+        atribuicao: Atribuição individual do componente, quando disponível.
+        professor: Professor usado quando não há atribuição individual.
+
+    Returns:
+        Componente individual no formato interno de resposta.
+    """
+    descricao = (
+        _descricao_componente_territorio(componente) if componente else " - "
+    )
+    professor_resposta = (
+        atribuicao.professor
+        if atribuicao
+        else professor or origem.rf_professor
+    )
+    return {
+        "codigo": codigo_componente,
+        "codigo_componente_territorio_saber": codigo_componente,
+        "codigo_componente_curricular_pai": None,
+        "descricao": descricao,
+        "regencia": False,
+        "planejamento_regencia": False,
+        "territorio_saber": True,
+        "turma_codigo": origem.cod_turma,
+        "exibir_componente_eol": False,
+        "professor": professor_resposta,
+        "codigos_territorios_agrupamento": [codigo_componente],
+    }
+
+
 def _descricao_componente_territorio(componente: ComponenteTurma) -> str:
     """Monta descrição contextual de um componente de território.
 
@@ -174,14 +203,16 @@ def _descricao_componente_territorio(componente: ComponenteTurma) -> str:
     Returns:
         Descrição contextual do componente na turma.
     """
-    ts = (componente.desc_territorio_saber or "").strip()
-    ep = (componente.desc_experiencia_pedagogica or "").strip()
-    return f"{ts} - {ep}" if ep else ts
+    ts = componente.desc_territorio_saber or ""
+    ep = componente.desc_experiencia_pedagogica or ""
+    # Espelha o legado (DescricaoAgrupamentoTerritorioSaber): sempre
+    # "{territorio} - {experiencia}", inclusive " - " quando ambos vazios.
+    return f"{ts} - {ep}"
 
 
 def _componente_nao_agrupado_para_dict(
     componente: ComponenteTurma,
-    atribuicao: AtribuicaoComponente,
+    atribuicao: AtribuicaoTerritorioSaber,
 ) -> dict:
     """Formata atribuição única de território para resposta da turma.
 
@@ -241,10 +272,13 @@ def _codigos_territorio_do_login(
     Returns:
         Códigos dos componentes de território do professor na turma.
     """
+    # Território não informado ou não utilizável permanece como componente
+    # comum e não entra no merge.
     return {
         item["codigo"]
         for item in componentes
         if item.get("territorio_saber")
+        and item.get("codigo_componente_territorio_saber")
         and item.get("turma_codigo") == turma_codigo
         and item.get("professor") == login
     }
@@ -307,11 +341,15 @@ def _buscar_componentes_agrupados_encerrados_por_professor(
 
 def _selecionar_agrupamentos(
     agrupamentos: Iterable[AgrupamentoAtribuicaoTerritorioSaber],
+    codigos_territorio_login: set[object] | None = None,
 ) -> AgrupamentosTerritorioSelecionados:
     """Seleciona agrupamentos e consolida seus metadados.
 
     Args:
         agrupamentos: Agrupamentos candidatos a entrar no retorno.
+        codigos_territorio_login: Componentes de território presentes na
+            listagem do professor. Quando informado, apenas agrupamentos com
+            ao menos um componente presente são selecionados.
 
     Returns:
         Agrupamentos selecionados e índices auxiliares.
@@ -322,6 +360,11 @@ def _selecionar_agrupamentos(
     for agrupamento in agrupamentos:
         codigos = parse_csv(agrupamento.cod_componentes_curriculares)
         if len(codigos) < 2:
+            continue
+        if (
+            codigos_territorio_login is not None
+            and not set(codigos) & codigos_territorio_login
+        ):
             continue
         if agrupamento.cod_componentes_curriculares in chaves_vistas:
             continue
@@ -485,7 +528,7 @@ def _adicionar_agrupamentos(
 
 def _chave_agrupamento_atribuicao(
     componente: ComponenteTurma,
-    atribuicao: AtribuicaoComponente,
+    atribuicao: AtribuicaoTerritorioSaber,
 ) -> tuple[object, ...]:
     """Retorna chave usada para identificar atribuição única.
 
@@ -498,8 +541,8 @@ def _chave_agrupamento_atribuicao(
     """
     return (
         componente.turma_codigo,
-        componente.desc_territorio_saber,
-        componente.desc_experiencia_pedagogica,
+        atribuicao.codigo_territorio_saber,
+        atribuicao.codigo_experiencia_pedagogica,
         atribuicao.professor,
         atribuicao.dt_atribuicao,
         (
@@ -514,7 +557,7 @@ def _buscar_atribuicao_nao_agrupada(
     using: str,
     turma_codigo: object,
     codigo_componente: int,
-) -> tuple[ComponenteTurma, AtribuicaoComponente] | None:
+) -> tuple[ComponenteTurma, AtribuicaoTerritorioSaber] | None:
     """Busca atribuição única de território para um componente.
 
     Args:
@@ -537,11 +580,10 @@ def _buscar_atribuicao_nao_agrupada(
         return None
 
     atribuicoes = (
-        AtribuicaoComponente.objects.using(using)
+        AtribuicaoTerritorioSaber.objects.using(using)
         .filter(
             turma_codigo=turma_codigo,
             componente_codigo__in=componentes,
-            dt_cancelamento__isnull=True,
         )
         .order_by(
             "-dt_atribuicao",
@@ -549,7 +591,7 @@ def _buscar_atribuicao_nao_agrupada(
         )
     )
 
-    pares: list[tuple[ComponenteTurma, AtribuicaoComponente]] = []
+    pares: list[tuple[ComponenteTurma, AtribuicaoTerritorioSaber]] = []
     contagem: dict[tuple[object, ...], int] = {}
     for atribuicao in atribuicoes:
         componente = componentes.get(atribuicao.componente_codigo)
@@ -559,13 +601,19 @@ def _buscar_atribuicao_nao_agrupada(
         contagem[chave] = contagem.get(chave, 0) + 1
         pares.append((componente, atribuicao))
 
+    duplicados: dict[
+        tuple[object, ...],
+        tuple[ComponenteTurma, AtribuicaoTerritorioSaber],
+    ] = {}
     for componente, atribuicao in pares:
         if componente.componente_codigo != codigo_componente:
             continue
         chave = _chave_agrupamento_atribuicao(componente, atribuicao)
         if contagem[chave] == 1:
             return componente, atribuicao
-    return None
+        duplicados.setdefault(chave, (componente, atribuicao))
+
+    return next(iter(duplicados.values()), None)
 
 
 def _adicionar_atribuicoes_nao_agrupadas(
@@ -589,6 +637,15 @@ def _adicionar_atribuicoes_nao_agrupadas(
         (item.get("turma_codigo"), item.get("codigo"), item.get("professor"))
         for item in componentes
     }
+    descricoes_existentes = {
+        (
+            item.get("turma_codigo"),
+            item.get("professor"),
+            item.get("descricao"),
+        )
+        for item in componentes
+        if item.get("territorio_saber")
+    }
     adicionados: list[dict] = []
     codigos = sorted(
         codigo for codigo in codigos_componentes if isinstance(codigo, int)
@@ -603,9 +660,15 @@ def _adicionar_atribuicoes_nao_agrupadas(
             continue
         item = _componente_nao_agrupado_para_dict(*atribuicao)
         chave = (item["turma_codigo"], item["codigo"], item["professor"])
-        if chave in existentes:
+        chave_descricao = (
+            item["turma_codigo"],
+            item["professor"],
+            item["descricao"],
+        )
+        if chave in existentes or chave_descricao in descricoes_existentes:
             continue
         existentes.add(chave)
+        descricoes_existentes.add(chave_descricao)
         adicionados.append(item)
     return componentes + adicionados
 
@@ -654,20 +717,23 @@ def mesclar_agrupamentos_territorio(
 
     resultado = list(componentes)
     for turma_codigo in turmas:
-        agrupamentos = _buscar_agrupamentos_da_turma(
-            using,
-            turma_codigo,
-            login,
-        )
-        selecionados = _selecionar_agrupamentos(agrupamentos)
-        if not selecionados.agrupamentos:
-            continue
-
         codigos_territorio_login = _codigos_territorio_do_login(
             resultado,
             turma_codigo,
             login,
         )
+        agrupamentos = _buscar_agrupamentos_da_turma(
+            using,
+            turma_codigo,
+            login,
+        )
+        selecionados = _selecionar_agrupamentos(
+            agrupamentos,
+            codigos_territorio_login,
+        )
+        if not selecionados.agrupamentos:
+            continue
+
         primeiros_codigos_outros_professores = (
             _primeiros_codigos_outros_professores(
                 resultado,
