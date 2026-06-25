@@ -121,14 +121,12 @@ def componentes_agrupados_sao_subconjunto(
 def atribuicao_nao_agrupada_para_dict(
     componente: ComponenteTurma,
     atribuicao: AtribuicaoTerritorioSaber,
-    origem: AgrupamentoAtribuicaoTerritorioSaber,
 ) -> dict:
     """Formata atribuição única de território como componente.
 
     Args:
         componente: Vínculo turma-componente de Território do Saber.
         atribuicao: Atribuição do professor ao componente.
-        origem: Agrupamento usado para compor a descrição da resposta.
 
     Returns:
         Componente individual no formato interno de resposta.

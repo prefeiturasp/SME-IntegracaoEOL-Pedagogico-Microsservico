@@ -1000,7 +1000,6 @@ class ComponentesRepository:
                 item = atribuicao_nao_agrupada_para_dict(
                     componente,
                     atribuicao,
-                    origem,
                 )
             else:
                 item = componente_sintetico_agrupado_para_dict(
@@ -1718,7 +1717,6 @@ class ComponentesRepository:
                 item = atribuicao_nao_agrupada_para_dict(
                     componente,
                     atribuicao,
-                    origem,
                 )
             else:
                 item = componente_sintetico_agrupado_para_dict(
