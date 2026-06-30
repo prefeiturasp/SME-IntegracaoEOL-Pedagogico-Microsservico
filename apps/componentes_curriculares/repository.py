@@ -1,9 +1,10 @@
 """Repositório de componentes curriculares."""
 
-from datetime import date
+from collections.abc import Iterable
+from datetime import date, datetime
 
 from django.db import connections
-from django.db.models import F
+from django.db.models import F, Q, QuerySet
 
 from apps.componentes_curriculares.constants import (
     CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL,
@@ -12,8 +13,10 @@ from apps.componentes_curriculares.constants import (
 )
 from apps.componentes_curriculares.models import (
     AgrupamentoAtribuicaoTerritorioSaber,
+    AtribuicaoTerritorioSaber,
     ComponenteCurricular,
     ComponenteCurricularPlanejamentoRegencia,
+    ComponenteTurma,
     GradeComponenteCurricular,
 )
 from apps.componentes_curriculares.queries import (
@@ -27,6 +30,15 @@ from apps.componentes_curriculares.queries import (
     SQL_FILTRO_ATRIBUICAO_POR_TURMA,
     SQL_FILTRO_ATRIBUICAO_VIGENTE,
     SQL_VIGENCIA_COMPONENTES,
+)
+from apps.componentes_curriculares.services.territorio_saber import (
+    agrupamento_para_dict,
+    agrupamento_vigente_na_data,
+    atribuicao_nao_agrupada_para_dict,
+    componente_sintetico_agrupado_para_dict,
+    componentes_agrupados_sao_subconjunto,
+    mesclar_agrupamentos_territorio,
+    parse_csv,
 )
 
 
@@ -133,53 +145,8 @@ def _normalizar_componente_turma(row: dict) -> dict:
     return _aplicar_regra_regencia_classe_infantil(item)
 
 
-def _agrupamento_para_dict(
-    agrupamento: AgrupamentoAtribuicaoTerritorioSaber,
-) -> dict:
-    """Formata agrupamento de território para resposta.
-
-    Args:
-        agrupamento: Agrupamento de território do saber.
-
-    Returns:
-        Agrupamento no formato interno de resposta.
-    """
-    codigos = _parse_csv(agrupamento.cod_componentes_curriculares)
-    primeiro = codigos[0] if codigos else 0
-    ts = agrupamento.desc_territorio_saber or ""
-    ep = agrupamento.desc_experiencia_pedagogica or ""
-    descricao = f"{ts} - {ep}" if ep else ts
-    return {
-        "codigo": agrupamento.cod_agrupamento,
-        "codigo_componente_territorio_saber": primeiro,
-        "codigo_componente_curricular_pai": None,
-        "descricao": descricao,
-        "regencia": False,
-        "planejamento_regencia": False,
-        "territorio_saber": True,
-        "turma_codigo": agrupamento.cod_turma,
-        "exibir_componente_eol": True,
-        "professor": agrupamento.rf_professor,
-        "codigos_territorios_agrupamento": codigos,
-    }
-
-
-def _parse_csv(csv_str: str | None) -> list[int]:
-    """Retorna códigos de componentes extraídos de CSV.
-
-    Args:
-        csv_str: Texto CSV com códigos de componentes.
-
-    Returns:
-        Lista de códigos inteiros válidos.
-    """
-    if not csv_str:
-        return []
-    return [int(c.strip()) for c in csv_str.split(",") if c.strip().isdigit()]
-
-
 def _int_or_none(value: object) -> int | None:
-    """Converte valor para inteiro quando possível.
+    """Converta valor para inteiro quando possível.
 
     Args:
         value: Valor de entrada.
@@ -190,7 +157,7 @@ def _int_or_none(value: object) -> int | None:
     if value is None:
         return None
     try:
-        return int(value)
+        return int(str(value))
     except (TypeError, ValueError):
         return None
 
@@ -294,26 +261,168 @@ class ComponentesRepository:
 
     _DB = "default"
 
+    @staticmethod
+    def _ordenar_agrupamentos_legado(
+        queryset: QuerySet[AgrupamentoAtribuicaoTerritorioSaber],
+    ) -> QuerySet[AgrupamentoAtribuicaoTerritorioSaber]:
+        """Ordena agrupamentos para seleção determinística.
+
+        Args:
+            queryset: QuerySet de agrupamentos.
+
+        Returns:
+            QuerySet ordenado.
+        """
+        return queryset.order_by(
+            "-dt_inicio_atribuicao",
+            F("dt_fim_atribuicao").desc(nulls_first=True),
+            "-id",
+        )
+
+    @staticmethod
+    def _tem_empate_perfeito_agrupamento(
+        candidatos: list[AgrupamentoAtribuicaoTerritorioSaber],
+    ) -> bool:
+        """Indica se os candidatos diferem apenas pelo professor.
+
+        Args:
+            candidatos: Agrupamentos candidatos ao mesmo código.
+
+        Returns:
+            True quando todos compartilham os mesmos metadados de vigência e
+            agrupamento.
+        """
+        if len(candidatos) < 2:
+            return False
+        referencia = candidatos[0]
+        return all(
+            candidato.cod_turma == referencia.cod_turma
+            and candidato.cod_territorio_saber
+            == referencia.cod_territorio_saber
+            and candidato.cod_experiencia_pedagogica
+            == referencia.cod_experiencia_pedagogica
+            and candidato.cod_componentes_curriculares
+            == referencia.cod_componentes_curriculares
+            and candidato.dt_inicio_atribuicao
+            == referencia.dt_inicio_atribuicao
+            and candidato.dt_fim_atribuicao == referencia.dt_fim_atribuicao
+            and candidato.cod_motivo_disponibilizacao
+            == referencia.cod_motivo_disponibilizacao
+            for candidato in candidatos[1:]
+        )
+
+    def _professores_atribuicoes_agrupamento(
+        self,
+        agrupamento: AgrupamentoAtribuicaoTerritorioSaber,
+        atribuicoes_por_chave: (
+            dict[tuple[str, int], AtribuicaoTerritorioSaber] | None
+        ) = None,
+    ) -> set[str]:
+        """Retorna professores com atribuição individual no agrupamento.
+
+        Args:
+            agrupamento: Agrupamento avaliado.
+            atribuicoes_por_chave: Atribuições pré-carregadas por turma e
+                componente.
+
+        Returns:
+            RFs de professores encontrados nas atribuições individuais.
+        """
+        if not agrupamento.cod_turma:
+            return set()
+
+        componentes = parse_csv(agrupamento.cod_componentes_curriculares)
+        if not componentes:
+            return set()
+
+        if atribuicoes_por_chave is not None:
+            return {
+                atribuicao.professor
+                for codigo in componentes
+                if (
+                    atribuicao := atribuicoes_por_chave.get(
+                        (agrupamento.cod_turma, codigo)
+                    )
+                )
+                and atribuicao.professor
+            }
+
+        professores = (
+            AtribuicaoTerritorioSaber.objects.using(self._DB)
+            .filter(
+                turma_codigo=agrupamento.cod_turma,
+                componente_codigo__in=componentes,
+            )
+            .exclude(professor__isnull=True)
+            .values_list("professor", flat=True)
+        )
+        return {professor for professor in professores if professor}
+
+    def _selecionar_agrupamento_resposta(
+        self,
+        candidatos: list[AgrupamentoAtribuicaoTerritorioSaber],
+        atribuicoes_por_chave: (
+            dict[tuple[str, int], AtribuicaoTerritorioSaber] | None
+        ) = None,
+    ) -> AgrupamentoAtribuicaoTerritorioSaber | None:
+        """Seleciona a linha que representa o agrupamento na resposta.
+
+        Args:
+            candidatos: Linhas candidatas do mesmo `cod_agrupamento`.
+            atribuicoes_por_chave: Atribuições individuais pré-carregadas.
+
+        Returns:
+            Agrupamento selecionado ou None.
+        """
+        if not candidatos:
+            return None
+
+        if self._tem_empate_perfeito_agrupamento(candidatos):
+            professores_atribuicoes = (
+                self._professores_atribuicoes_agrupamento(
+                    candidatos[0],
+                    atribuicoes_por_chave,
+                )
+            )
+            if professores_atribuicoes:
+                for candidato in candidatos:
+                    if candidato.rf_professor not in professores_atribuicoes:
+                        return candidato
+
+        return candidatos[0]
+
     def listar_por_turma_funcionario(
         self,
         codigo_turma: str,
         login: str,
+        incluir_territorios_outros_professores: bool = False,
     ) -> list[dict]:
         """Lista componentes por turma e funcionário.
 
         Args:
             codigo_turma: Código da turma.
             login: Login (RF) do funcionário.
+            incluir_territorios_outros_professores: Inclui componentes de
+                Território do Saber atribuídos a outros professores da turma.
 
         Returns:
             Lista de componentes da turma para o funcionário.
         """
+        filtro_professor = "ac.professor = %s"
+        params: list = [login, codigo_turma]
+        if incluir_territorios_outros_professores:
+            filtro_professor = (
+                "(ac.professor = %s OR "
+                "(ct.codigo_componente_territorio_saber IS NOT NULL "
+                "AND ac.professor <> %s))"
+            )
+            params = [login, login, codigo_turma]
         sql = (
             f"{SQL_COMPONENTES_TURMA_COM_ATRIBUICAO}"
-            " WHERE ac.professor = %s AND ct.turma_codigo = %s"
+            f" WHERE {filtro_professor} AND ct.turma_codigo = %s"
             f"{SQL_FILTRO_ATRIBUICAO_POR_TURMA}"
         )
-        rows = _raw(sql, [login, codigo_turma], self._DB)
+        rows = _raw(sql, params, self._DB)
         resultado: list[dict] = []
         vistos: set[tuple[object, object, object]] = set()
         for row in rows:
@@ -326,7 +435,7 @@ class ComponentesRepository:
             if key not in vistos:
                 vistos.add(key)
                 resultado.append(item)
-        return resultado
+        return mesclar_agrupamentos_territorio(resultado, self._DB, login)
 
     def listar_por_funcionario(
         self,
@@ -377,14 +486,12 @@ class ComponentesRepository:
         seen: set[object] = set()
         result: list[dict] = []
         for item in componentes:
-            key = item.get("codigo_componente_curricular_pai") or item[
-                "codigo"
-            ]
+            key = (
+                item.get("codigo_componente_curricular_pai") or item["codigo"]
+            )
 
             if key not in seen:
                 seen.add(key)
-                # Alinhado ao legado: o SELECT não inclui o RF do professor
-                # nesse endpoint; o campo retorna sempre null.
                 item["professor"] = None
                 result.append(item)
 
@@ -412,7 +519,8 @@ class ComponentesRepository:
         rows = _raw(sql, [login, codigo_turma], self._DB)
         for row in rows:
             row["exibir_componente_eol"] = False
-        return _expandir_planejamento_regencia(rows, self._DB)
+        componentes = _expandir_planejamento_regencia(rows, self._DB)
+        return mesclar_agrupamentos_territorio(componentes, self._DB, login)
 
     def listar_regencia_por_ano_turma(
         self,
@@ -426,10 +534,8 @@ class ComponentesRepository:
         Returns:
             Lista de componentes de regência no formato de resposta.
         """
-        filtro = (
-            {"ano__isnull": True}
-            if ano_turma <= 0
-            else {"ano": ano_turma}
+        filtro: dict[str, object] = (
+            {"ano__isnull": True} if ano_turma <= 0 else {"ano": ano_turma}
         )
         codigos = list(
             ComponenteCurricularPlanejamentoRegencia.objects.using(self._DB)
@@ -657,9 +763,8 @@ class ComponentesRepository:
         for row in rows:
             row["professor"] = None
             item = _normalizar_componente_turma(row)
-            key = (
-                item.get("codigo_componente_curricular_pai")
-                or item.get("codigo")
+            key = item.get("codigo_componente_curricular_pai") or item.get(
+                "codigo"
             )
             if key not in vistos:
                 vistos.add(key)
@@ -672,11 +777,14 @@ class ComponentesRepository:
         Returns:
             Lista completa de componentes curriculares.
         """
-        return list(
-            ComponenteCurricular.objects.using(self._DB)
-            .values("codigo", "descricao")
-            .order_by("codigo")
-        )
+        return [
+            {"codigo": codigo, "descricao": descricao}
+            for codigo, descricao in (
+                ComponenteCurricular.objects.using(self._DB)
+                .values_list("codigo", "descricao")
+                .order_by("codigo")
+            )
+        ]
 
     def listar_vigencia_componentes(
         self,
@@ -724,10 +832,10 @@ class ComponentesRepository:
         Returns:
             Linhas da grade curricular do ano letivo.
         """
-        rows = list(
+        rows = (
             GradeComponenteCurricular.objects.using(self._DB)
             .filter(ano_letivo=ano_letivo)
-            .values(
+            .values_list(
                 "codigo_componente_curricular",
                 "descricao_componente_curricular",
                 "codigo_ano_turma",
@@ -737,7 +845,24 @@ class ComponentesRepository:
             )
             .distinct()
         )
-        return rows
+        return [
+            {
+                "codigo_componente_curricular": codigo,
+                "descricao_componente_curricular": descricao,
+                "codigo_ano_turma": codigo_ano_turma,
+                "descricao_serie_ensino": descricao_serie_ensino,
+                "codigo_serie_ensino": codigo_serie_ensino,
+                "modalidade": modalidade,
+            }
+            for (
+                codigo,
+                descricao,
+                codigo_ano_turma,
+                descricao_serie_ensino,
+                codigo_serie_ensino,
+                modalidade,
+            ) in rows
+        ]
 
     def listar_componentes_sem_atribuicao(
         self,
@@ -768,40 +893,448 @@ class ComponentesRepository:
         """Retorna agrupamentos correlacionados de território do saber.
 
         Args:
-            codigo_componente: Código do componente de origem.
+            codigo_componente: `cod_agrupamento` de origem da consulta.
             data_base: Data de referência; None para sem filtro de data.
 
         Returns:
-            Lista de agrupamentos correlacionados ao componente.
+            Lista de agrupamentos e componentes correlacionados à origem.
         """
-        origem = (
+        origem = self._ordenar_agrupamentos_legado(
+            AgrupamentoAtribuicaoTerritorioSaber.objects.using(
+                self._DB
+            ).filter(cod_agrupamento=codigo_componente)
+        ).first()
+        if origem is None:
+            return []
+        if not agrupamento_vigente_na_data(origem, data_base):
+            return []
+
+        resultado, vistos = self._agrupamentos_correlacionados_da_origem(
+            origem,
+            data_base,
+        )
+        resultado.extend(
+            self._componentes_individuais_correlacionados(
+                origem,
+                vistos,
+                data_base,
+            )
+        )
+        return resultado
+
+    def _agrupamentos_correlacionados_da_origem(
+        self,
+        origem: AgrupamentoAtribuicaoTerritorioSaber,
+        data_base: date | None,
+    ) -> tuple[list[dict], set[int]]:
+        """Lista agrupamentos correlacionados de uma origem.
+
+        Args:
+            origem: Agrupamento de origem da consulta.
+            data_base: Data de referência; None para sem filtro de data.
+
+        Returns:
+            Lista de agrupamentos formatados e códigos já incluídos.
+        """
+        qs = self._ordenar_agrupamentos_legado(
+            AgrupamentoAtribuicaoTerritorioSaber.objects.using(
+                self._DB
+            ).filter(
+                cod_turma=origem.cod_turma,
+                cod_territorio_saber=origem.cod_territorio_saber,
+                cod_experiencia_pedagogica=origem.cod_experiencia_pedagogica,
+            )
+        )
+
+        grupos: dict[int, list[AgrupamentoAtribuicaoTerritorioSaber]] = {}
+        for ag in qs:
+            if not agrupamento_vigente_na_data(ag, data_base):
+                continue
+            if not componentes_agrupados_sao_subconjunto(ag, origem):
+                continue
+            grupos.setdefault(ag.cod_agrupamento, []).append(ag)
+
+        resultado: list[dict] = []
+        vistos: set[int] = set()
+        for cod_agrupamento, candidatos in grupos.items():
+            escolhido = self._selecionar_agrupamento_resposta(candidatos)
+            if escolhido is None:
+                continue
+            vistos.add(cod_agrupamento)
+            resultado.append(agrupamento_para_dict(escolhido))
+        return resultado, vistos
+
+    def _componentes_individuais_correlacionados(
+        self,
+        origem: AgrupamentoAtribuicaoTerritorioSaber,
+        vistos: set[int],
+        data_base: date | None,
+    ) -> list[dict]:
+        """Lista componentes individuais correlacionados de uma origem.
+
+        Args:
+            origem: Agrupamento de origem da consulta.
+            vistos: Códigos já incluídos no resultado.
+            data_base: Data de referência; None para sem filtro de data.
+
+        Returns:
+            Lista de componentes individuais formatados.
+        """
+        resultado: list[dict] = []
+        atribuicoes_origem = list(self._atribuicoes_da_origem(origem))
+        professor_sintetico = self._professor_filho_sintetico(
+            origem,
+            atribuicoes_origem,
+            data_base,
+        )
+        for codigo in parse_csv(origem.cod_componentes_curriculares):
+            if codigo in vistos:
+                continue
+            atribuicao = self._atribuicao_do_componente(
+                origem,
+                codigo,
+                data_base,
+            )
+            componente = self._componente_territorio_da_turma(origem, codigo)
+            if atribuicao is not None and componente is not None:
+                item = atribuicao_nao_agrupada_para_dict(
+                    componente,
+                    atribuicao,
+                )
+            else:
+                item = componente_sintetico_agrupado_para_dict(
+                    origem,
+                    codigo,
+                    componente,
+                    atribuicao,
+                    professor_sintetico,
+                )
+            resultado.append(item)
+            vistos.add(codigo)
+        return resultado
+
+    def _atribuicoes_da_origem(
+        self,
+        origem: AgrupamentoAtribuicaoTerritorioSaber,
+    ) -> QuerySet[AtribuicaoTerritorioSaber]:
+        """Busca atribuições individuais relacionadas à origem.
+
+        Args:
+            origem: Agrupamento de origem da consulta.
+
+        Returns:
+            QuerySet com atribuições individuais da mesma correlação.
+        """
+        componentes = parse_csv(origem.cod_componentes_curriculares)
+        if not origem.cod_turma or not componentes:
+            return AtribuicaoTerritorioSaber.objects.using(self._DB).none()
+
+        return AtribuicaoTerritorioSaber.objects.using(self._DB).filter(
+            turma_codigo=origem.cod_turma,
+            codigo_territorio_saber=origem.cod_territorio_saber,
+            codigo_experiencia_pedagogica=origem.cod_experiencia_pedagogica,
+            componente_codigo__in=componentes,
+        )
+
+    def _atribuicao_do_componente(
+        self,
+        origem: AgrupamentoAtribuicaoTerritorioSaber,
+        codigo: int,
+        data_base: date | None,
+    ) -> AtribuicaoTerritorioSaber | None:
+        """Busca atribuição individual do componente na turma.
+
+        Args:
+            origem: Agrupamento de origem da consulta.
+            codigo: Código do componente curricular.
+            data_base: Data de referência; None para sem filtro de data.
+
+        Returns:
+            Atribuição selecionada, ou None.
+        """
+        if not origem.cod_turma:
+            return None
+
+        atribuicoes = AtribuicaoTerritorioSaber.objects.using(self._DB).filter(
+            turma_codigo=origem.cod_turma,
+            componente_codigo=codigo,
+        )
+        return self._selecionar_atribuicao_nao_agrupada(
+            atribuicoes,
+            codigo,
+            data_base,
+        )
+
+    @staticmethod
+    def _chave_atribuicao_nao_agrupada(
+        atribuicao: AtribuicaoTerritorioSaber,
+    ) -> tuple[
+        str,
+        int,
+        int | None,
+        str | None,
+        datetime | None,
+        date | None,
+    ]:
+        """Retorna a chave de agrupamento da atribuição individual.
+
+        Args:
+            atribuicao: Atribuição individual de Território do Saber.
+
+        Returns:
+            Chave usada para identificar atribuições duplicadas.
+        """
+        return (
+            atribuicao.turma_codigo,
+            atribuicao.codigo_territorio_saber,
+            atribuicao.codigo_experiencia_pedagogica,
+            atribuicao.professor,
+            atribuicao.dt_atribuicao,
+            (
+                atribuicao.dt_disponibilizacao.date()
+                if atribuicao.dt_disponibilizacao
+                else None
+            ),
+        )
+
+    @classmethod
+    def _selecionar_atribuicao_nao_agrupada(
+        cls,
+        atribuicoes: Iterable[AtribuicaoTerritorioSaber],
+        codigo: int,
+        data_base: date | None,
+    ) -> AtribuicaoTerritorioSaber | None:
+        """Seleciona a atribuição individual aplicável ao componente.
+
+        Args:
+            atribuicoes: Atribuições candidatas da mesma correlação.
+            codigo: Código do componente curricular solicitado.
+            data_base: Data de referência; None para sem filtro de data.
+
+        Returns:
+            Atribuição selecionada, ou None.
+        """
+        grupos: dict[
+            tuple[
+                str,
+                int,
+                int | None,
+                str | None,
+                datetime | None,
+                date | None,
+            ],
+            list[AtribuicaoTerritorioSaber],
+        ] = {}
+        for atribuicao in atribuicoes:
+            chave = cls._chave_atribuicao_nao_agrupada(atribuicao)
+            grupos.setdefault(chave, []).append(atribuicao)
+
+        candidatos: list[AtribuicaoTerritorioSaber] = []
+        for grupo in grupos.values():
+            if len(grupo) == 1:
+                candidatos.extend(grupo)
+                continue
+
+            candidatos.append(
+                next(
+                    (
+                        atribuicao
+                        for atribuicao in grupo
+                        if atribuicao.componente_codigo == codigo
+                    ),
+                    grupo[0],
+                )
+            )
+
+        candidatos.sort(
+            key=lambda atribuicao: (
+                atribuicao.dt_atribuicao is not None,
+                atribuicao.dt_atribuicao,
+                atribuicao.dt_disponibilizacao is None,
+            ),
+            reverse=True,
+        )
+        for atribuicao in candidatos:
+            if atribuicao.componente_codigo != codigo:
+                continue
+            if (
+                data_base
+                and atribuicao.dt_atribuicao
+                and atribuicao.dt_atribuicao.date() > data_base
+            ):
+                continue
+            return atribuicao
+        return None
+
+    def _professor_filho_sintetico(
+        self,
+        origem: AgrupamentoAtribuicaoTerritorioSaber,
+        atribuicoes: Iterable[AtribuicaoTerritorioSaber],
+        data_base: date | None,
+    ) -> str | None:
+        """Retorna professor para filho sem atribuição individual.
+
+        Args:
+            origem: Agrupamento usado como origem da consulta.
+            atribuicoes: Atribuições individuais da mesma correlação.
+            data_base: Data de referência; None para sem filtro de data.
+
+        Returns:
+            RF do professor selecionado.
+        """
+        professor_atribuicao = self._professor_atribuicao_sintetica(
+            atribuicoes,
+            data_base,
+        )
+        if professor_atribuicao:
+            return professor_atribuicao
+
+        candidatos = list(
             AgrupamentoAtribuicaoTerritorioSaber.objects.using(self._DB)
-            .filter(cod_agrupamento=codigo_componente)
-            .order_by(
-                F("dt_fim_atribuicao").asc(nulls_first=True),
-                "-dt_inicio_atribuicao",
+            .filter(
+                cod_agrupamento=origem.cod_agrupamento,
+                cod_turma=origem.cod_turma,
+                cod_componentes_curriculares=origem.cod_componentes_curriculares,
+            )
+            .order_by("-dt_inicio_atribuicao", "-id")
+        )
+        return self._selecionar_professor_filho_sintetico(
+            candidatos,
+            origem.rf_professor,
+        )
+
+    @staticmethod
+    def _professor_atribuicao_sintetica(
+        atribuicoes: Iterable[AtribuicaoTerritorioSaber],
+        data_base: date | None,
+    ) -> str | None:
+        """Seleciona professor a partir de atribuições individuais.
+
+        Args:
+            atribuicoes: Atribuições individuais candidatas.
+            data_base: Data de referência; None para sem filtro de data.
+
+        Returns:
+            RF do professor mais recente, ou None.
+        """
+        candidatos = [
+            atribuicao
+            for atribuicao in atribuicoes
+            if atribuicao.professor
+            and (
+                data_base is None
+                or not atribuicao.dt_atribuicao
+                or atribuicao.dt_atribuicao.date() <= data_base
+            )
+        ]
+        if not candidatos:
+            return None
+
+        escolhido = max(
+            candidatos,
+            key=lambda atribuicao: (
+                atribuicao.dt_atribuicao is not None,
+                atribuicao.dt_atribuicao,
+                atribuicao.dt_disponibilizacao is None,
+            ),
+        )
+        return escolhido.professor
+
+    @classmethod
+    def _selecionar_professor_filho_sintetico(
+        cls,
+        candidatos: list[AgrupamentoAtribuicaoTerritorioSaber],
+        padrao: str | None,
+    ) -> str | None:
+        """Seleciona professor para filho sintético.
+
+        Args:
+            candidatos: Agrupamentos candidatos.
+            padrao: Professor usado quando não há candidato específico.
+
+        Returns:
+            RF do professor selecionado.
+        """
+        abertos = [
+            candidato
+            for candidato in candidatos
+            if candidato.dt_fim_atribuicao is None
+        ]
+        encerrados = [
+            candidato
+            for candidato in candidatos
+            if candidato.dt_fim_atribuicao is not None
+            and candidato.dt_inicio_atribuicao == candidato.dt_fim_atribuicao
+        ]
+        encerrados_reais = [
+            candidato
+            for candidato in candidatos
+            if candidato.dt_fim_atribuicao is not None
+            and candidato.dt_inicio_atribuicao != candidato.dt_fim_atribuicao
+        ]
+
+        aberto_recente = max(
+            abertos,
+            key=lambda candidato: (
+                candidato.dt_inicio_atribuicao,
+                candidato.id,
+            ),
+            default=None,
+        )
+        encerrado_real_recente = max(
+            encerrados_reais,
+            key=lambda candidato: (
+                candidato.dt_fim_atribuicao,
+                candidato.dt_inicio_atribuicao,
+                candidato.id,
+            ),
+            default=None,
+        )
+        if (
+            aberto_recente
+            and encerrado_real_recente
+            and aberto_recente.dt_inicio_atribuicao
+            == encerrado_real_recente.dt_fim_atribuicao
+        ):
+            return aberto_recente.rf_professor
+
+        if encerrado_real_recente:
+            return encerrado_real_recente.rf_professor
+
+        if encerrados:
+            escolhido = max(
+                encerrados,
+                key=lambda candidato: (
+                    candidato.dt_inicio_atribuicao,
+                    candidato.id,
+                ),
+            )
+            return escolhido.rf_professor
+        return padrao
+
+    def _componente_territorio_da_turma(
+        self,
+        origem: AgrupamentoAtribuicaoTerritorioSaber,
+        codigo: int,
+    ) -> ComponenteTurma | None:
+        """Busca componente de território da turma da origem.
+
+        Args:
+            origem: Agrupamento de origem da consulta.
+            codigo: Código do componente curricular.
+
+        Returns:
+            Componente da turma encontrado, ou None.
+        """
+        return (
+            ComponenteTurma.objects.using(self._DB)
+            .filter(
+                turma_codigo=origem.cod_turma,
+                componente_codigo=codigo,
+                codigo_componente_territorio_saber__isnull=False,
             )
             .first()
         )
-        if origem is None:
-            return []
-
-        qs = AgrupamentoAtribuicaoTerritorioSaber.objects.using(
-            self._DB
-        ).filter(
-            cod_turma=origem.cod_turma,
-            cod_territorio_saber=origem.cod_territorio_saber,
-        )
-        if data_base is not None:
-            qs = qs.filter(dt_inicio_atribuicao__date__lte=data_base)
-
-        codigos_origem = set(_parse_csv(origem.cod_componentes_curriculares))
-        resultado: list[dict] = []
-        for ag in qs:
-            codigos_ag = set(_parse_csv(ag.cod_componentes_curriculares))
-            if codigos_ag and codigos_ag.issubset(codigos_origem):
-                resultado.append(_agrupamento_para_dict(ag))
-        return resultado
 
     def listar_agrupamentos_correlacionados_lote(
         self,
@@ -811,22 +1344,390 @@ class ComponentesRepository:
         """Retorna agrupamentos correlacionados em lote.
 
         Args:
-            codigos_agrupamentos: Códigos dos componentes de origem.
+            codigos_agrupamentos: `cod_agrupamento` das origens consultadas.
             data_base: Data de referência; None para sem filtro de data.
 
         Returns:
             Lista de agrupamentos correlacionados sem duplicatas.
         """
+        if not codigos_agrupamentos:
+            return []
+
+        origens = self._origens_agrupamentos_lote(codigos_agrupamentos)
+        correlacionados_por_chave = self._correlacionados_por_chave_lote(
+            origens.values()
+        )
+        componentes_por_chave = self._componentes_territorio_lote(
+            origens.values()
+        )
+        (
+            atribuicoes_por_chave,
+            atribuicoes_por_componente,
+            atribuicoes_por_correlacao,
+        ) = self._atribuicoes_territorio_lote(origens.values())
+
+        resultado: list[dict] = []
+        vistos: set[object] = set()
+        for cod in codigos_agrupamentos:
+            origem = origens.get(cod)
+            if origem is None or not agrupamento_vigente_na_data(
+                origem,
+                data_base,
+            ):
+                continue
+
+            itens, vistos_origem = self._agrupamentos_correlacionados_lote(
+                origem,
+                data_base,
+                correlacionados_por_chave,
+                atribuicoes_por_chave,
+            )
+            itens.extend(
+                self._componentes_individuais_lote(
+                    origem,
+                    vistos_origem,
+                    data_base,
+                    correlacionados_por_chave,
+                    componentes_por_chave,
+                    atribuicoes_por_componente,
+                    atribuicoes_por_correlacao,
+                )
+            )
+
+            for item in itens:
+                chave = item["codigo"]
+                if chave in vistos:
+                    continue
+                vistos.add(chave)
+                resultado.append(item)
+        return resultado
+
+    def _origens_agrupamentos_lote(
+        self,
+        codigos_agrupamentos: list[int],
+    ) -> dict[int, AgrupamentoAtribuicaoTerritorioSaber]:
+        """Busca as origens de agrupamentos do lote.
+
+        Args:
+            codigos_agrupamentos: `cod_agrupamento` das origens consultadas.
+
+        Returns:
+            Agrupamentos de origem indexados por código.
+        """
+        origens: dict[int, AgrupamentoAtribuicaoTerritorioSaber] = {}
+        agrupamentos = self._ordenar_agrupamentos_legado(
+            AgrupamentoAtribuicaoTerritorioSaber.objects.using(
+                self._DB
+            ).filter(cod_agrupamento__in=codigos_agrupamentos)
+        )
+        for agrupamento in agrupamentos:
+            origens.setdefault(agrupamento.cod_agrupamento, agrupamento)
+        return origens
+
+    @staticmethod
+    def _chave_correlacionados(
+        agrupamento: AgrupamentoAtribuicaoTerritorioSaber,
+    ) -> tuple[str | None, int, int | None]:
+        """Retorna a chave de correlação de agrupamentos.
+
+        Args:
+            agrupamento: Agrupamento de Território do Saber.
+
+        Returns:
+            Chave composta por turma, território e experiência pedagógica.
+        """
+        return (
+            agrupamento.cod_turma,
+            agrupamento.cod_territorio_saber,
+            agrupamento.cod_experiencia_pedagogica,
+        )
+
+    def _correlacionados_por_chave_lote(
+        self,
+        origens: Iterable[AgrupamentoAtribuicaoTerritorioSaber],
+    ) -> dict[
+        tuple[str | None, int, int | None],
+        list[AgrupamentoAtribuicaoTerritorioSaber],
+    ]:
+        """Busca agrupamentos correlacionados das origens em bloco.
+
+        Args:
+            origens: Agrupamentos de origem do lote.
+
+        Returns:
+            Agrupamentos correlacionados indexados pela chave de correlação.
+        """
+        chaves = {self._chave_correlacionados(origem) for origem in origens}
+        if not chaves:
+            return {}
+
+        filtros = Q()
+        for turma, territorio, experiencia in chaves:
+            filtros |= Q(
+                cod_turma=turma,
+                cod_territorio_saber=territorio,
+                cod_experiencia_pedagogica=experiencia,
+            )
+
+        resultado: dict[
+            tuple[str | None, int, int | None],
+            list[AgrupamentoAtribuicaoTerritorioSaber],
+        ] = {chave: [] for chave in chaves}
+        agrupamentos = self._ordenar_agrupamentos_legado(
+            AgrupamentoAtribuicaoTerritorioSaber.objects.using(
+                self._DB
+            ).filter(filtros)
+        )
+        for agrupamento in agrupamentos:
+            chave = self._chave_correlacionados(agrupamento)
+            resultado.setdefault(chave, []).append(agrupamento)
+        return resultado
+
+    @staticmethod
+    def _codigos_componentes_origens(
+        origens: Iterable[AgrupamentoAtribuicaoTerritorioSaber],
+    ) -> tuple[set[str], set[int]]:
+        """Retorna turmas e componentes presentes nas origens.
+
+        Args:
+            origens: Agrupamentos de origem do lote.
+
+        Returns:
+            Tupla com turmas e componentes curriculares das origens.
+        """
+        turmas: set[str] = set()
+        componentes: set[int] = set()
+        for origem in origens:
+            if origem.cod_turma:
+                turmas.add(origem.cod_turma)
+            componentes.update(parse_csv(origem.cod_componentes_curriculares))
+        return turmas, componentes
+
+    def _componentes_territorio_lote(
+        self,
+        origens: Iterable[AgrupamentoAtribuicaoTerritorioSaber],
+    ) -> dict[tuple[str, int], ComponenteTurma]:
+        """Busca componentes de território das origens em bloco.
+
+        Args:
+            origens: Agrupamentos de origem do lote.
+
+        Returns:
+            Componentes indexados por turma e código.
+        """
+        turmas, componentes = self._codigos_componentes_origens(origens)
+        if not turmas or not componentes:
+            return {}
+
+        resultado: dict[tuple[str, int], ComponenteTurma] = {}
+        queryset = (
+            ComponenteTurma.objects.using(self._DB)
+            .filter(
+                turma_codigo__in=turmas,
+                componente_codigo__in=componentes,
+                codigo_componente_territorio_saber__isnull=False,
+            )
+            .order_by("turma_codigo", "componente_codigo")
+        )
+        for componente in queryset:
+            chave = (componente.turma_codigo, componente.componente_codigo)
+            resultado.setdefault(chave, componente)
+        return resultado
+
+    def _atribuicoes_territorio_lote(
+        self,
+        origens: Iterable[AgrupamentoAtribuicaoTerritorioSaber],
+    ) -> tuple[
+        dict[tuple[str, int], AtribuicaoTerritorioSaber],
+        dict[tuple[str, int], list[AtribuicaoTerritorioSaber]],
+        dict[
+            tuple[str | None, int, int | None],
+            list[AtribuicaoTerritorioSaber],
+        ],
+    ]:
+        """Busca atribuições de território das origens em bloco.
+
+        Args:
+            origens: Agrupamentos de origem do lote.
+
+        Returns:
+            Atribuições indexadas por turma/componente e por correlação.
+        """
+        turmas, componentes = self._codigos_componentes_origens(origens)
+        if not turmas or not componentes:
+            return {}, {}, {}
+
+        por_componente: dict[tuple[str, int], AtribuicaoTerritorioSaber] = {}
+        lista_por_componente: dict[
+            tuple[str, int], list[AtribuicaoTerritorioSaber]
+        ] = {}
+        por_correlacao: dict[
+            tuple[str | None, int, int | None],
+            list[AtribuicaoTerritorioSaber],
+        ] = {}
+        atribuicoes = (
+            AtribuicaoTerritorioSaber.objects.using(self._DB)
+            .filter(
+                turma_codigo__in=turmas,
+                componente_codigo__in=componentes,
+            )
+            .order_by(
+                "turma_codigo",
+                "componente_codigo",
+                "-dt_atribuicao",
+                "id",
+            )
+        )
+        for atribuicao in atribuicoes:
+            chave_componente = (
+                atribuicao.turma_codigo,
+                atribuicao.componente_codigo,
+            )
+            por_componente.setdefault(chave_componente, atribuicao)
+            lista_por_componente.setdefault(chave_componente, []).append(
+                atribuicao
+            )
+
+            chave_correlacao = (
+                atribuicao.turma_codigo,
+                atribuicao.codigo_territorio_saber,
+                atribuicao.codigo_experiencia_pedagogica,
+            )
+            por_correlacao.setdefault(chave_correlacao, []).append(atribuicao)
+        return por_componente, lista_por_componente, por_correlacao
+
+    def _agrupamentos_correlacionados_lote(
+        self,
+        origem: AgrupamentoAtribuicaoTerritorioSaber,
+        data_base: date | None,
+        correlacionados_por_chave: dict[
+            tuple[str | None, int, int | None],
+            list[AgrupamentoAtribuicaoTerritorioSaber],
+        ],
+        atribuicoes_por_chave: dict[
+            tuple[str, int], AtribuicaoTerritorioSaber
+        ],
+    ) -> tuple[list[dict], set[int]]:
+        """Lista agrupamentos correlacionados usando dados pré-carregados.
+
+        Args:
+            origem: Agrupamento de origem da consulta.
+            data_base: Data de referência; None para sem filtro de data.
+            correlacionados_por_chave: Agrupamentos agrupados por chave.
+            atribuicoes_por_chave: Atribuições indexadas por turma e código.
+
+        Returns:
+            Lista de agrupamentos formatados e códigos incluídos.
+        """
+        grupos: dict[int, list[AgrupamentoAtribuicaoTerritorioSaber]] = {}
+        chave = self._chave_correlacionados(origem)
+        for ag in correlacionados_por_chave.get(chave, []):
+            if not agrupamento_vigente_na_data(ag, data_base):
+                continue
+            if not componentes_agrupados_sao_subconjunto(ag, origem):
+                continue
+            grupos.setdefault(ag.cod_agrupamento, []).append(ag)
+
         resultado: list[dict] = []
         vistos: set[int] = set()
-        for cod in codigos_agrupamentos:
-            for item in self.listar_agrupamentos_correlacionados(
-                cod, data_base
-            ):
-                ag_cod = item["codigo"]
-                if ag_cod not in vistos:
-                    vistos.add(ag_cod)
-                    resultado.append(item)
+        for cod_agrupamento, candidatos in grupos.items():
+            escolhido = self._selecionar_agrupamento_resposta(
+                candidatos,
+                atribuicoes_por_chave,
+            )
+            if escolhido is None:
+                continue
+            vistos.add(cod_agrupamento)
+            resultado.append(agrupamento_para_dict(escolhido))
+        return resultado, vistos
+
+    def _componentes_individuais_lote(
+        self,
+        origem: AgrupamentoAtribuicaoTerritorioSaber,
+        vistos: set[int],
+        data_base: date | None,
+        correlacionados_por_chave: dict[
+            tuple[str | None, int, int | None],
+            list[AgrupamentoAtribuicaoTerritorioSaber],
+        ],
+        componentes_por_chave: dict[tuple[str, int], ComponenteTurma],
+        atribuicoes_por_componente: dict[
+            tuple[str, int],
+            list[AtribuicaoTerritorioSaber],
+        ],
+        atribuicoes_por_correlacao: dict[
+            tuple[str | None, int, int | None],
+            list[AtribuicaoTerritorioSaber],
+        ],
+    ) -> list[dict]:
+        """Lista componentes individuais usando dados pré-carregados.
+
+        Args:
+            origem: Agrupamento de origem da consulta.
+            vistos: Códigos já incluídos no resultado.
+            data_base: Data de referência; None para sem filtro de data.
+            correlacionados_por_chave: Agrupamentos agrupados por chave.
+            componentes_por_chave: Componentes indexados por turma e código.
+            atribuicoes_por_componente: Atribuições indexadas por componente.
+            atribuicoes_por_correlacao: Atribuições indexadas por correlação.
+
+        Returns:
+            Lista de componentes individuais formatados.
+        """
+        resultado: list[dict] = []
+        if origem.cod_turma is None:
+            return resultado
+
+        atribuicoes_origem = atribuicoes_por_correlacao.get(
+            self._chave_correlacionados(origem),
+            [],
+        )
+        professor_atribuicao = self._professor_atribuicao_sintetica(
+            atribuicoes_origem,
+            data_base,
+        )
+        professor_sintetico = self._selecionar_professor_filho_sintetico(
+            [
+                agrupamento
+                for agrupamento in correlacionados_por_chave.get(
+                    self._chave_correlacionados(origem),
+                    [],
+                )
+                if agrupamento.cod_agrupamento == origem.cod_agrupamento
+                and agrupamento.cod_turma == origem.cod_turma
+                and agrupamento.cod_componentes_curriculares
+                == origem.cod_componentes_curriculares
+            ],
+            origem.rf_professor,
+        )
+        professor_sintetico = professor_atribuicao or professor_sintetico
+
+        for codigo in parse_csv(origem.cod_componentes_curriculares):
+            if codigo in vistos:
+                continue
+
+            chave = (origem.cod_turma, codigo)
+            atribuicao = self._selecionar_atribuicao_nao_agrupada(
+                atribuicoes_por_componente.get(chave, []),
+                codigo,
+                data_base,
+            )
+            componente = componentes_por_chave.get(chave)
+            if atribuicao is not None and componente is not None:
+                item = atribuicao_nao_agrupada_para_dict(
+                    componente,
+                    atribuicao,
+                )
+            else:
+                item = componente_sintetico_agrupado_para_dict(
+                    origem,
+                    codigo,
+                    componente,
+                    atribuicao,
+                    professor_sintetico,
+                )
+            resultado.append(item)
+            vistos.add(codigo)
         return resultado
 
     def listar_agrupamentos_territorio(
@@ -841,18 +1742,19 @@ class ComponentesRepository:
         Returns:
             Lista de agrupamentos de Território do Saber.
         """
-        agrupamentos = (
-            AgrupamentoAtribuicaoTerritorioSaber.objects.using(self._DB)
-            .filter(cod_agrupamento__in=codigos_agrupamentos)
-            .order_by(
-                F("dt_fim_atribuicao").asc(nulls_first=True),
-                "-dt_inicio_atribuicao",
-            )
+        agrupamentos = self._ordenar_agrupamentos_legado(
+            AgrupamentoAtribuicaoTerritorioSaber.objects.using(
+                self._DB
+            ).filter(cod_agrupamento__in=codigos_agrupamentos)
         )
-        vistos: set[int] = set()
-        resultado: list[dict] = []
+        grupos: dict[int, list[AgrupamentoAtribuicaoTerritorioSaber]] = {}
         for ag in agrupamentos:
-            if ag.cod_agrupamento not in vistos:
-                vistos.add(ag.cod_agrupamento)
-                resultado.append(_agrupamento_para_dict(ag))
+            grupos.setdefault(ag.cod_agrupamento, []).append(ag)
+
+        resultado: list[dict] = []
+        for candidatos in grupos.values():
+            escolhido = self._selecionar_agrupamento_resposta(candidatos)
+            if escolhido is None:
+                continue
+            resultado.append(agrupamento_para_dict(escolhido))
         return resultado

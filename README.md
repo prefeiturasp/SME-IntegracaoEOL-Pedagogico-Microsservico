@@ -54,6 +54,44 @@ Acesse em: http://localhost:8001/api/docs/
 
 ---
 
+## Pre-commit
+
+O projeto usa `pre-commit` para rodar validações antes do commit:
+
+- `black` para formatação;
+- `ruff --fix` para lint e correções automáticas;
+- `mypy` para checagem de tipos.
+
+### Instalar localmente
+
+Depois de instalar as dependências de desenvolvimento:
+
+```bash
+pip install -r requirements/local.txt
+pre-commit install
+```
+
+A partir disso, os hooks rodam automaticamente a cada `git commit`.
+
+### Rodar manualmente
+
+Para validar todos os arquivos localmente:
+
+```bash
+pre-commit run --all-files
+```
+
+Ou via Docker:
+
+```bash
+./scripts/executar_precommit.sh
+```
+
+Quando `black` ou `ruff` alterarem arquivos, revise as mudanças e rode o
+comando novamente antes de commitar.
+
+---
+
 ## Executar Testes com Docker
 
 Para rodar a suíte completa de testes e gerar o relatório de cobertura:
@@ -95,9 +133,9 @@ curl -H "X-API-Key: dev-key-default" http://localhost:8001/api/componentes-curri
 | T02 | POST | `/api/v1/pedagogico/turmas/turmas-programa/` | Filtrar turmas programa por lista de códigos |
 | T03 | POST | `/api/v1/pedagogico/turmas/listar-turmas/` | Listar turmas por lista de códigos (sem filtro de tipo) |
 | T04 | GET | `/api/v1/pedagogico/turmas/{codigoTurma}/dados/` | Dados cadastrais de uma turma |
-| T05 | GET | `/api/v1/pedagogico/turmas/ues/{ueCodigo}/turmas/{turmaCodigo}/sincronizacoes-institucionais/` | Sincronizações institucionais de uma turma por UE |
-| T06 | GET | `/api/v1/pedagogico/turmas/ue/{ueCodigo}/sincronizacoes-institucionais/anosLetivos/` | Anos letivos com turmas na UE |
-| T07 | GET | `/api/v1/pedagogico/turmas/anos-letivos/{anoLetivo}/professor/{professorRf}/turmas-historicas-geral/` | Turmas históricas do professor por ano letivo |
+| T05 | GET | `/api/v1/pedagogico/turmas/ues/{ueCodigo}/turmas/{turmaCodigo}/sincronizacoes-institucionais/` | Sincronizações institucionais de uma turma. `ueCodigo` é obrigatório na rota mas não filtra a consulta (a turma é buscada apenas pelo `turmaCodigo`); turma não encontrada retorna `400` com a mensagem "Houve um comportamento inesperado do sistema. Por favor, contate a SME." |
+| T06 | GET | `/api/v1/pedagogico/turmas/ue/{ueCodigo}/sincronizacoes-institucionais/anosLetivos/` | Códigos de turma da UE (tipo_turma <> 4), filtráveis por `anos_letivos_vigente`; ausente/vazio lista todos da UE, `0` retorna `[]` |
+| T07 | GET | `/api/v1/pedagogico/turmas/anos-letivos/{anoLetivo}/professor/{professorRf}/turmas-historicas-geral/` | Turmas do professor por ano letivo com atribuição válida. Resposta no contrato legado de 7 campos (`ano`, `ano_letivo`, `codigo`, `modalidade`, `codigo_modalidade`, `nome_turma`, `semestre`); sem resultado retorna `200 []` |
 | T08 | GET | `/api/v1/pedagogico/turmas/itinerario/ensino-medio/` | Itinerários do Ensino Médio (fixture local) |
 
 ### Componentes Curriculares
@@ -116,10 +154,33 @@ curl -H "X-API-Key: dev-key-default" http://localhost:8001/api/componentes-curri
 | CC10 | GET | `/api/v1/pedagogico/componentes-curriculares/turmas/vigencia/` | Obter Vigência de Componentes por Turma e UE |
 | CC11 | GET | `/api/v1/pedagogico/componentes-curriculares/grade-curricular/{anoLetivo}/` | Listar Grade Curricular por Ano Letivo |
 | CC12 | GET | `/api/v1/pedagogico/componentes-curriculares/turmas/{codigoTurma}/sem-atribuicao/` | Listar Componentes Sem Atribuição em uma Turma |
-| CC13 | GET | `/api/v1/pedagogico/componentes-curriculares/{codigoComponente}/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados por Componente |
-| CC14 | POST | `/api/v1/pedagogico/componentes-curriculares/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados em Lote |
-| CC15 | POST | `/api/v1/pedagogico/componentes-curriculares/territorio-saber/agrupamentos/` | Obter Agrupamentos de Território do Saber por IDs |
+| CC13 | GET | `/api/v1/pedagogico/componentes-curriculares/{codigoComponente}/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados por `cod_agrupamento` |
+| CC14 | POST | `/api/v1/pedagogico/componentes-curriculares/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados em Lote por `cod_agrupamento` |
+| CC15 | POST | `/api/v1/pedagogico/componentes-curriculares/territorio-saber/agrupamentos/` | Obter Agrupamentos de Território do Saber por `cod_agrupamento` |
+
+---
+
+## Documentação (Sphinx)
+
+Gera a documentação HTML a partir dos arquivos em `docs/`.
+
+Via Docker:
+
+```bash
+docker compose -f docker-compose-dev.yml run --rm pedagogico \
+  sphinx-build -b html docs docs/_build
+```
+
+Via venv (requer `pip install -r requirements/local.txt`):
+
+```bash
+sphinx-build -b html docs docs/_build
+```
+
+O resultado fica em `docs/_build/index.html` (acessível no host via volume
+quando gerado pelo Docker).
 
 ---
 
 ## Referências
+- Projeto ETL de referência: `../SME-SGP-MS-ETL/`

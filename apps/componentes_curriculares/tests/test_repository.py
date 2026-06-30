@@ -7,8 +7,10 @@ from django.test import TestCase
 
 from apps.componentes_curriculares.models import (
     AgrupamentoAtribuicaoTerritorioSaber,
+    AtribuicaoTerritorioSaber,
     ComponenteCurricular,
     ComponenteCurricularPlanejamentoRegencia,
+    ComponenteTurma,
     GradeComponenteCurricular,
 )
 from apps.componentes_curriculares.queries import (
@@ -16,9 +18,11 @@ from apps.componentes_curriculares.queries import (
 )
 from apps.componentes_curriculares.repository import (
     ComponentesRepository,
-    _agrupamento_para_dict,
     _grade_para_componente,
-    _parse_csv,
+)
+from apps.componentes_curriculares.services.territorio_saber import (
+    agrupamento_para_dict,
+    parse_csv,
 )
 
 
@@ -39,22 +43,89 @@ def _make_agrupamento(**kwargs):
     return AgrupamentoAtribuicaoTerritorioSaber.objects.create(**defaults)
 
 
+def _make_atribuicao_territorio(**kwargs):
+    """Cria atribuição individual de Território do Saber."""
+    defaults = {
+        "turma_codigo": "T1",
+        "componente_codigo": 100,
+        "professor": "RF1",
+        "codigo_territorio_saber": 10,
+        "codigo_experiencia_pedagogica": 20,
+        "desc_territorio_saber": "TS",
+        "desc_experiencia_pedagogica": "EP",
+        "atribuicao_externa": False,
+        "ano_letivo": 2024,
+        "dt_atribuicao": datetime(2024, 2, 1, tzinfo=UTC),
+    }
+    defaults.update(kwargs)
+    return AtribuicaoTerritorioSaber.objects.create(**defaults)
+
+
+_DESCRICOES_TERRITORIO = {
+    1214: "TERRIT SABER / EXP PEDAG 1",
+    1215: "TERRIT SABER / EXP PEDAG 2",
+    1216: "TERRIT SABER / EXP PEDAG 3",
+    1217: "TERRIT SABER / EXP PEDAG 4",
+    1520: "TERRIT SABER / ARTE",
+}
+
+
+def _componente_territorio(
+    codigo: int,
+    professor: str,
+    turma_codigo: str = "T1",
+    descricao: str | None = None,
+) -> dict:
+    """Cria linha normalizada de componente de território.
+
+    Args:
+        codigo: Código do componente curricular.
+        professor: RF do professor atribuído.
+        turma_codigo: Código da turma.
+        descricao: Descrição alternativa para o componente.
+
+    Returns:
+        Dicionário no formato retornado pela consulta raw do repository.
+    """
+    return {
+        "codigo": codigo,
+        "descricao": descricao or _DESCRICOES_TERRITORIO[codigo],
+        "codigo_componente_territorio_saber": codigo,
+        "territorio_saber": True,
+        "turma_codigo": turma_codigo,
+        "professor": professor,
+    }
+
+
+def _componentes_territorio(codigos: list[int], professor: str) -> list[dict]:
+    """Cria linhas normalizadas de componentes de território.
+
+    Args:
+        codigos: Códigos dos componentes curriculares.
+        professor: RF do professor atribuído.
+
+    Returns:
+        Lista de dicionários no formato retornado pela consulta raw.
+    """
+    return [_componente_territorio(codigo, professor) for codigo in codigos]
+
+
 class TestHelpersRepository(TestCase):
     """Valida funções auxiliares do repository."""
 
     def test_parse_csv_vazio(self) -> None:
         """Retorna lista vazia para CSV ausente."""
-        self.assertEqual(_parse_csv(None), [])
-        self.assertEqual(_parse_csv(""), [])
+        self.assertEqual(parse_csv(None), [])
+        self.assertEqual(parse_csv(""), [])
 
     def test_parse_csv_valido(self) -> None:
         """Valida conversão de CSV de inteiros."""
-        self.assertEqual(_parse_csv("1,2,3"), [1, 2, 3])
-        self.assertEqual(_parse_csv("100, 200 "), [100, 200])
+        self.assertEqual(parse_csv("1,2,3"), [1, 2, 3])
+        self.assertEqual(parse_csv("100, 200 "), [100, 200])
 
     def test_parse_csv_ignora_nao_numericos(self) -> None:
         """Ignora tokens não numéricos no CSV."""
-        self.assertEqual(_parse_csv("1,abc,3"), [1, 3])
+        self.assertEqual(parse_csv("1,abc,3"), [1, 3])
 
     def test_grade_para_componente(self) -> None:
         """Valida conversão de grade em componente."""
@@ -99,7 +170,7 @@ class TestHelpersRepository(TestCase):
             cod_componentes_curriculares="10,20",
         )
 
-        resultado = _agrupamento_para_dict(agrupamento)
+        resultado = agrupamento_para_dict(agrupamento)
 
         self.assertEqual(resultado["codigo"], 9999)
         self.assertEqual(resultado["descricao"], "TS X - EP Y")
@@ -116,9 +187,20 @@ class TestHelpersRepository(TestCase):
             desc_experiencia_pedagogica=None,
         )
 
-        resultado = _agrupamento_para_dict(agrupamento)
+        resultado = agrupamento_para_dict(agrupamento)
 
         self.assertEqual(resultado["descricao"], "TS Z")
+
+    def test_agrupamento_para_dict_sem_descricoes(self) -> None:
+        """Valida descrição de agrupamento sem textos contextuais."""
+        agrupamento = _make_agrupamento(
+            desc_territorio_saber=None,
+            desc_experiencia_pedagogica=None,
+        )
+
+        resultado = agrupamento_para_dict(agrupamento)
+
+        self.assertEqual(resultado["descricao"], " - ")
 
     def test_agrupamento_para_dict_csv_vazio(self) -> None:
         """Valida agrupamento sem componentes curriculares."""
@@ -126,7 +208,7 @@ class TestHelpersRepository(TestCase):
             cod_componentes_curriculares=None,
         )
 
-        resultado = _agrupamento_para_dict(agrupamento)
+        resultado = agrupamento_para_dict(agrupamento)
 
         self.assertEqual(resultado["codigo_componente_territorio_saber"], 0)
         self.assertEqual(resultado["codigos_territorios_agrupamento"], [])
@@ -196,6 +278,320 @@ class TestComponentesRepository(TestCase):
         )
         self.assertTrue(resultado[0]["regencia"])
         self.assertEqual(resultado[0]["professor"], "RF1")
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_mescla_agrupamento_territorio(
+        self,
+        mock_raw,
+    ) -> None:
+        """Substitui componentes agrupados pelo agrupamento de território."""
+        mock_raw.return_value = _componentes_territorio([1216, 1217], "RF1")
+        _make_agrupamento(
+            cod_agrupamento=813071,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_componentes_curriculares="1216,1217",
+        )
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        codigos = {item["codigo"] for item in resultado}
+        self.assertEqual(codigos, {813071})
+        agrupamento = resultado[0]
+        self.assertTrue(agrupamento["territorio_saber"])
+        self.assertEqual(
+            agrupamento["codigos_territorios_agrupamento"], [1216, 1217]
+        )
+        self.assertEqual(agrupamento["professor"], "RF1")
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_mantem_territorio_nao_utilizado(
+        self,
+        mock_raw,
+    ) -> None:
+        """Mantém como comum território não utilizado (cTS=0) com agrupamento.
+
+        Componentes marcados como território por faixa mas com
+        codigo_componente_territorio_saber=0 (não utilizado) devem permanecer
+        na resposta como componentes comuns, mesmo havendo agrupamento para os
+        demais componentes.
+        """
+        mock_raw.return_value = [
+            *_componentes_territorio([1216, 1217], "RF1"),
+            # 1218/1219: território por faixa, porém não utilizados (cTS=0).
+            {
+                "codigo": 1218,
+                "descricao": "TERRIT SABER / EXP PEDAG 5",
+                "codigo_componente_territorio_saber": 0,
+                "territorio_saber": True,
+                "turma_codigo": "T1",
+                "professor": "RF1",
+            },
+            {
+                "codigo": 1219,
+                "descricao": "TERRIT SABER / EXP PEDAG 6",
+                "codigo_componente_territorio_saber": 0,
+                "territorio_saber": True,
+                "turma_codigo": "T1",
+                "professor": "RF1",
+            },
+        ]
+        _make_agrupamento(
+            cod_agrupamento=813071,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_componentes_curriculares="1216,1217",
+        )
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        codigos = {item["codigo"] for item in resultado}
+        self.assertEqual(codigos, {813071, 1218, 1219})
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_mantem_territorio_nao_agrupado(
+        self,
+        mock_raw,
+    ) -> None:
+        """Mantém território de componente único (sem agrupamento)."""
+        mock_raw.return_value = [_componente_territorio(1216, "RF1")]
+        # Agrupamento de componente único não deve agrupar (len < 2).
+        _make_agrupamento(
+            cod_agrupamento=813090,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_componentes_curriculares="1216",
+        )
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        codigos = {item["codigo"] for item in resultado}
+        self.assertEqual(codigos, {1216})
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_ignora_agrupamento_outro_professor(
+        self,
+        mock_raw,
+    ) -> None:
+        """Não aplica agrupamento de território de outro professor."""
+        mock_raw.return_value = _componentes_territorio([1216, 1217], "RF1")
+        _make_agrupamento(
+            cod_agrupamento=813099,
+            cod_turma="T1",
+            rf_professor="RF2",
+            cod_componentes_curriculares="1216,1217",
+        )
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        codigos = {item["codigo"] for item in resultado}
+        self.assertEqual(codigos, {1216, 1217})
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_ignora_agrupamento_fora_da_listagem(
+        self,
+        mock_raw,
+    ) -> None:
+        """Não inclui agrupamento sem componente presente na listagem."""
+        # O professor leciona apenas o território 1520 (sem agrupamento).
+        mock_raw.return_value = [_componente_territorio(1520, "RF1")]
+        # Há agrupamento do professor na turma, mas de outros componentes
+        # (1214,1215) que não estão na atribuição atual.
+        _make_agrupamento(
+            cod_agrupamento=813100,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_componentes_curriculares="1214,1215",
+        )
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        codigos = {item["codigo"] for item in resultado}
+        self.assertEqual(codigos, {1520})
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_preserva_componente_outro_professor(
+        self,
+        mock_raw,
+    ) -> None:
+        """Preserva território de outro RF sem agrupamento próprio."""
+        mock_raw.return_value = [
+            *_componentes_territorio([1216, 1217], "RF1"),
+            _componente_territorio(1216, "RF2"),
+            _componente_territorio(1520, "RF3"),
+        ]
+        _make_agrupamento(
+            cod_agrupamento=813071,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_componentes_curriculares="1216,1217",
+        )
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        self.assertEqual(
+            {(item["codigo"], item["professor"]) for item in resultado},
+            {(813071, "RF1"), (1216, "RF2")},
+        )
+        self.assertEqual(
+            [item["codigo"] for item in resultado], [813071, 1216]
+        )
+        self.assertEqual(resultado[1]["descricao"], "TS - EP")
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_remove_outro_professor_agrupado(
+        self,
+        mock_raw,
+    ) -> None:
+        """Remove territórios de outro RF quando já existe agrupamento."""
+        mock_raw.return_value = [
+            *_componentes_territorio([1216, 1217], "RF1"),
+            *_componentes_territorio([1216, 1217], "RF2"),
+        ]
+        _make_agrupamento(
+            cod_agrupamento=813071,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_componentes_curriculares="1216,1217",
+        )
+        _make_agrupamento(
+            cod_agrupamento=813071,
+            cod_turma="T1",
+            rf_professor="RF2",
+            cod_componentes_curriculares="1216,1217",
+        )
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        self.assertEqual(
+            [(item["codigo"], item["professor"]) for item in resultado],
+            [(813071, "RF1")],
+        )
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_remove_territorios_soltos_do_login(
+        self,
+        mock_raw,
+    ) -> None:
+        """Não mantém territórios soltos do login quando há agrupamento."""
+        mock_raw.return_value = [
+            *_componentes_territorio([1214, 1215, 1216, 1217], "RF1"),
+            *_componentes_territorio([1216, 1217], "RF2"),
+        ]
+        _make_agrupamento(
+            cod_agrupamento=810333,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_componentes_curriculares="1214,1215",
+            cod_territorio_saber=1,
+            cod_experiencia_pedagogica=2,
+            desc_territorio_saber="I - EDUCOMUNICAÇÃO E NOVAS LINGUAGENS",
+            desc_experiencia_pedagogica="CLUBE DA LEITURA",
+        )
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        self.assertEqual(
+            [(item["codigo"], item["professor"]) for item in resultado],
+            [(810333, "RF1"), (1216, "RF2")],
+        )
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_inclui_atribuicao_nao_agrupada(
+        self,
+        mock_raw,
+    ) -> None:
+        """Inclui atribuição única não agrupada de território."""
+        mock_raw.return_value = _componentes_territorio(
+            [1214, 1215, 1216],
+            "RF1",
+        )
+        _make_agrupamento(
+            cod_agrupamento=810333,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_componentes_curriculares="1214,1215",
+            desc_territorio_saber="I - EDUCOMUNICAÇÃO E NOVAS LINGUAGENS",
+            desc_experiencia_pedagogica="CLUBE DA LEITURA",
+        )
+        ComponenteTurma.objects.create(
+            turma_codigo="T1",
+            componente_codigo=1216,
+            codigo_componente_territorio_saber=1216,
+            desc_territorio_saber=(
+                "III - ORIENTAÇÃO DE ESTUDOS E INVENÇÃO CRIATIVA"
+            ),
+            desc_experiencia_pedagogica="CLUBE DE CIENCIAS/INVESTIGACOES",
+        )
+        _make_atribuicao_territorio(
+            turma_codigo="T1",
+            componente_codigo=1216,
+            professor="RF2",
+            ano_letivo=2025,
+            codigo_territorio_saber=4,
+            codigo_experiencia_pedagogica=116,
+            desc_territorio_saber=(
+                "III - ORIENTAÇÃO DE ESTUDOS E INVENÇÃO CRIATIVA"
+            ),
+            desc_experiencia_pedagogica="CLUBE DE CIENCIAS/INVESTIGACOES",
+            dt_atribuicao=datetime(2025, 2, 3, tzinfo=UTC),
+        )
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        self.assertEqual(
+            [(item["codigo"], item["professor"]) for item in resultado],
+            [(810333, "RF1"), (1216, "RF2")],
+        )
+        self.assertEqual(
+            resultado[1]["descricao"],
+            (
+                "III - ORIENTAÇÃO DE ESTUDOS E INVENÇÃO CRIATIVA - "
+                "CLUBE DE CIENCIAS/INVESTIGACOES"
+            ),
+        )
+        self.assertEqual(resultado[1]["codigos_territorios_agrupamento"], [])
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_ignora_atribuicao_agrupada(
+        self,
+        mock_raw,
+    ) -> None:
+        """Inclui componente alvo mesmo quando há par no mesmo território."""
+        mock_raw.return_value = _componentes_territorio(
+            [1214, 1215, 1216],
+            "RF1",
+        )
+        _make_agrupamento(
+            cod_agrupamento=810333,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_componentes_curriculares="1214,1215",
+        )
+        for codigo in [1216, 1217]:
+            ComponenteTurma.objects.create(
+                turma_codigo="T1",
+                componente_codigo=codigo,
+                codigo_componente_territorio_saber=codigo,
+                desc_territorio_saber="TS",
+                desc_experiencia_pedagogica="EP",
+            )
+            _make_atribuicao_territorio(
+                turma_codigo="T1",
+                componente_codigo=codigo,
+                professor="RF2",
+                ano_letivo=2025,
+                codigo_territorio_saber=10,
+                codigo_experiencia_pedagogica=20,
+                dt_atribuicao=datetime(2025, 2, 3, tzinfo=UTC),
+            )
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        self.assertEqual(
+            [(item["codigo"], item["professor"]) for item in resultado],
+            [(810333, "RF1"), (1216, "RF2")],
+        )
 
     @patch("apps.componentes_curriculares.repository._raw")
     def test_listar_por_funcionario_deduplica_por_componente(
@@ -469,7 +865,7 @@ class TestComponentesRepository(TestCase):
                 "codigo_componente_curricular_pai": 1,
                 "descricao_componente_curricular": "Pai C1",
                 "regencia": True,
-            }
+            },
         ]
 
         resultado = self.repo.listar_turma_programa_por_ue_modalidade_ano(
@@ -743,7 +1139,319 @@ class TestComponentesRepository(TestCase):
 
         resultado = self.repo.listar_agrupamentos_correlacionados(1001, None)
 
-        self.assertEqual([item["codigo"] for item in resultado], [1001, 1002])
+        self.assertEqual(
+            [item["codigo"] for item in resultado],
+            [1002, 1001, 100, 200, 300],
+        )
+
+    def test_listar_agrupamentos_correlacionados_filtra_por_data_base(
+        self,
+    ) -> None:
+        """Aplica vigência como o legado: dt_inicio_atribuicao <= data_base."""
+        _make_agrupamento(
+            cod_agrupamento=1001,
+            cod_turma="T1",
+            cod_territorio_saber=10,
+            cod_componentes_curriculares="100,200",
+            dt_inicio_atribuicao=datetime(2024, 1, 1, tzinfo=UTC),
+        )
+
+        # Data anterior ao início da atribuição: não vigente -> vazio.
+        anterior = self.repo.listar_agrupamentos_correlacionados(
+            1001,
+            date(2020, 6, 1),
+        )
+        self.assertEqual(anterior, [])
+
+        # Data igual/posterior ao início: vigente -> inclui o agrupamento.
+        vigente = self.repo.listar_agrupamentos_correlacionados(
+            1001,
+            date(2024, 6, 1),
+        )
+        self.assertEqual(
+            [item["codigo"] for item in vigente],
+            [1001, 100, 200],
+        )
+
+    def test_listar_agrupamentos_correlacionados_deduplica_por_codigo(
+        self,
+    ) -> None:
+        """Mantém uma ocorrência por código de agrupamento como no legado."""
+        _make_agrupamento(
+            cod_agrupamento=1001,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_territorio_saber=10,
+            cod_experiencia_pedagogica=20,
+            cod_componentes_curriculares="100,200",
+        )
+        _make_agrupamento(
+            cod_agrupamento=1001,
+            cod_turma="T1",
+            rf_professor="RF2",
+            cod_territorio_saber=10,
+            cod_experiencia_pedagogica=20,
+            cod_componentes_curriculares="100,200",
+        )
+
+        resultado = self.repo.listar_agrupamentos_correlacionados(1001, None)
+
+        self.assertEqual(
+            [item["codigo"] for item in resultado],
+            [1001, 100, 200],
+        )
+
+    def test_listar_agrupamentos_correlacionados_inclui_nao_agrupado(
+        self,
+    ) -> None:
+        """Inclui componente de território com atribuição não agrupada."""
+        _make_agrupamento(
+            cod_agrupamento=1001,
+            cod_turma="T1",
+            cod_territorio_saber=10,
+            cod_experiencia_pedagogica=20,
+            cod_componentes_curriculares="100,200",
+        )
+        ComponenteTurma.objects.create(
+            turma_codigo="T1",
+            componente_codigo=100,
+            codigo_componente_territorio_saber=100,
+        )
+        _make_atribuicao_territorio(
+            turma_codigo="T1",
+            componente_codigo=100,
+            professor="RF9",
+            ano_letivo=2024,
+            dt_atribuicao=datetime(2024, 2, 1, tzinfo=UTC),
+        )
+
+        resultado = self.repo.listar_agrupamentos_correlacionados(1001, None)
+
+        self.assertEqual(
+            {(item["codigo"], item["professor"]) for item in resultado},
+            {(1001, None), (100, "RF9"), (200, "RF9")},
+        )
+
+    def test_listar_agrupamentos_correlacionados_inclui_componentes_do_grupo(
+        self,
+    ) -> None:
+        """Inclui cada componente agrupado também como item individual."""
+        _make_agrupamento(
+            cod_agrupamento=1001,
+            cod_turma="T1",
+            cod_territorio_saber=10,
+            cod_experiencia_pedagogica=20,
+            cod_componentes_curriculares="100,200",
+        )
+        for codigo in [100, 200]:
+            ComponenteTurma.objects.create(
+                turma_codigo="T1",
+                componente_codigo=codigo,
+                codigo_componente_territorio_saber=codigo,
+            )
+            _make_atribuicao_territorio(
+                turma_codigo="T1",
+                componente_codigo=codigo,
+                professor="RF9",
+                ano_letivo=2024,
+                dt_atribuicao=datetime(2024, 2, 1, tzinfo=UTC),
+            )
+
+        resultado = self.repo.listar_agrupamentos_correlacionados(1001, None)
+
+        self.assertEqual(
+            [item["codigo"] for item in resultado], [1001, 100, 200]
+        )
+        self.assertEqual(
+            [item["codigos_territorios_agrupamento"] for item in resultado],
+            [[100, 200], [100], [200]],
+        )
+
+    def test_listar_agrupamentos_correlacionados_preserva_rf_do_filho(
+        self,
+    ) -> None:
+        """Usa atribuição individual do componente quando há par agrupado."""
+        _make_agrupamento(
+            cod_agrupamento=1001,
+            cod_turma="T1",
+            cod_territorio_saber=10,
+            cod_experiencia_pedagogica=20,
+            cod_componentes_curriculares="100,200",
+            rf_professor="RF_GRUPO",
+        )
+        for codigo in [100, 200]:
+            ComponenteTurma.objects.create(
+                turma_codigo="T1",
+                componente_codigo=codigo,
+                codigo_componente_territorio_saber=codigo,
+            )
+            _make_atribuicao_territorio(
+                turma_codigo="T1",
+                componente_codigo=codigo,
+                professor="RF_FILHO",
+                codigo_territorio_saber=10,
+                codigo_experiencia_pedagogica=20,
+                dt_atribuicao=datetime(2024, 2, 1, tzinfo=UTC),
+            )
+
+        resultado = self.repo.listar_agrupamentos_correlacionados(1001, None)
+        filhos = {
+            item["codigo"]: item["professor"]
+            for item in resultado
+            if item["codigo"] in {100, 200}
+        }
+
+        self.assertEqual(filhos, {100: "RF_FILHO", 200: "RF_FILHO"})
+
+    def test_listar_agrupamentos_correlacionados_cria_filho_sintetico(
+        self,
+    ) -> None:
+        """Cria filhos do agrupamento mesmo sem atribuição individual."""
+        _make_agrupamento(
+            cod_agrupamento=1001,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_componentes_curriculares="100,200",
+        )
+
+        resultado = self.repo.listar_agrupamentos_correlacionados(1001, None)
+
+        self.assertEqual(
+            [item["codigo"] for item in resultado],
+            [1001, 100, 200],
+        )
+        self.assertEqual(
+            [item["professor"] for item in resultado],
+            ["RF1", "RF1", "RF1"],
+        )
+        self.assertEqual(
+            [item["descricao"] for item in resultado[1:]],
+            [" - ", " - "],
+        )
+
+    def test_listar_agrupamentos_correlacionados_filho_usa_aberto_na_troca(
+        self,
+    ) -> None:
+        """Usa professor aberto quando a troca ocorre no mesmo dia."""
+        _make_agrupamento(
+            cod_agrupamento=1001,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_componentes_curriculares="100,200",
+            dt_inicio_atribuicao=datetime(2025, 2, 1, tzinfo=UTC),
+            dt_fim_atribuicao=datetime(2025, 9, 12, tzinfo=UTC),
+            cod_motivo_disponibilizacao=4,
+        )
+        _make_agrupamento(
+            cod_agrupamento=1001,
+            cod_turma="T1",
+            rf_professor="RF2",
+            cod_componentes_curriculares="100,200",
+            dt_inicio_atribuicao=datetime(2025, 9, 12, tzinfo=UTC),
+            dt_fim_atribuicao=None,
+        )
+
+        resultado = self.repo.listar_agrupamentos_correlacionados(1001, None)
+
+        self.assertEqual(
+            [item["professor"] for item in resultado],
+            ["RF2", "RF2", "RF2"],
+        )
+
+    def test_listar_agrupamentos_correlacionados_filho_usa_encerrado(
+        self,
+    ) -> None:
+        """Usa professor encerrado quando encerramento tem duração zero."""
+        _make_agrupamento(
+            cod_agrupamento=1001,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_componentes_curriculares="100,200",
+            dt_inicio_atribuicao=datetime(2025, 2, 1, tzinfo=UTC),
+            dt_fim_atribuicao=datetime(2025, 2, 1, tzinfo=UTC),
+            cod_motivo_disponibilizacao=15,
+        )
+        _make_agrupamento(
+            cod_agrupamento=1001,
+            cod_turma="T1",
+            rf_professor="RF2",
+            cod_componentes_curriculares="100,200",
+            dt_inicio_atribuicao=datetime(2025, 2, 1, tzinfo=UTC),
+            dt_fim_atribuicao=None,
+        )
+
+        resultado = self.repo.listar_agrupamentos_correlacionados(1001, None)
+
+        self.assertEqual(
+            [item["professor"] for item in resultado],
+            ["RF2", "RF1", "RF1"],
+        )
+
+    def test_listar_agrupamentos_correlacionados_filho_usa_ultimo_encerrado(
+        self,
+    ) -> None:
+        """Usa professor encerrado quando não há atribuição individual."""
+        _make_agrupamento(
+            cod_agrupamento=1001,
+            cod_turma="T1",
+            rf_professor="RF_ATUAL",
+            cod_componentes_curriculares="100,200",
+            dt_inicio_atribuicao=datetime(2025, 8, 21, tzinfo=UTC),
+            dt_fim_atribuicao=None,
+        )
+        _make_agrupamento(
+            cod_agrupamento=1001,
+            cod_turma="T1",
+            rf_professor="RF_ANTERIOR",
+            cod_componentes_curriculares="100,200",
+            dt_inicio_atribuicao=datetime(2025, 5, 31, tzinfo=UTC),
+            dt_fim_atribuicao=datetime(2025, 8, 19, tzinfo=UTC),
+        )
+        _make_agrupamento(
+            cod_agrupamento=1001,
+            cod_turma="T1",
+            rf_professor="RF_ZERO",
+            cod_componentes_curriculares="100,200",
+            dt_inicio_atribuicao=datetime(2024, 12, 17, tzinfo=UTC),
+            dt_fim_atribuicao=datetime(2024, 12, 17, tzinfo=UTC),
+        )
+
+        resultado = self.repo.listar_agrupamentos_correlacionados(1001, None)
+
+        self.assertEqual(
+            [item["professor"] for item in resultado],
+            ["RF_ATUAL", "RF_ANTERIOR", "RF_ANTERIOR"],
+        )
+
+    def test_listar_agrupamentos_correlacionados_usa_descricao_do_filho(
+        self,
+    ) -> None:
+        """Usa descrição contextual do componente filho."""
+        _make_agrupamento(
+            cod_agrupamento=1001,
+            cod_turma="T1",
+            cod_territorio_saber=10,
+            cod_experiencia_pedagogica=20,
+            cod_componentes_curriculares="100,200",
+        )
+        ComponenteTurma.objects.create(
+            turma_codigo="T1",
+            componente_codigo=100,
+            codigo_componente_territorio_saber=100,
+            desc_territorio_saber="TS Filho",
+            desc_experiencia_pedagogica="EP Filho",
+        )
+        _make_atribuicao_territorio(
+            turma_codigo="T1",
+            componente_codigo=100,
+            professor="RF9",
+        )
+
+        resultado = self.repo.listar_agrupamentos_correlacionados(1001, None)
+
+        filho = next(item for item in resultado if item["codigo"] == 100)
+        self.assertEqual(filho["descricao"], "TS Filho - EP Filho")
+        self.assertEqual(filho["professor"], "RF9")
 
     def test_listar_agrupamentos_correlacionados_com_data_base(self) -> None:
         """Aplica filtro de data base."""
@@ -758,7 +1466,7 @@ class TestComponentesRepository(TestCase):
             date(2024, 7, 1),
         )
 
-        self.assertEqual(len(resultado), 1)
+        self.assertEqual([item["codigo"] for item in resultado], [2001, 50])
 
     def test_listar_agrupamentos_correlacionados_data_exclui(self) -> None:
         """Exclui agrupamento iniciado após a data base."""
@@ -779,15 +1487,50 @@ class TestComponentesRepository(TestCase):
         """Retorna agrupamentos correlacionados sem duplicar."""
         _make_agrupamento(
             cod_agrupamento=3001,
-            cod_componentes_curriculares="70",
+            cod_componentes_curriculares="70,80",
+            cod_turma="T1",
+            cod_territorio_saber=10,
+            cod_experiencia_pedagogica=20,
         )
-
-        resultado = self.repo.listar_agrupamentos_correlacionados_lote(
-            [3001, 3001],
-            None,
+        _make_agrupamento(
+            cod_agrupamento=3002,
+            cod_componentes_curriculares="70,90",
+            cod_turma="T1",
+            cod_territorio_saber=10,
+            cod_experiencia_pedagogica=20,
         )
+        for codigo in [70, 80, 90]:
+            ComponenteTurma.objects.create(
+                turma_codigo="T1",
+                componente_codigo=codigo,
+                codigo_componente_territorio_saber=codigo,
+            )
+        for codigo in [70, 80]:
+            _make_atribuicao_territorio(
+                turma_codigo="T1",
+                componente_codigo=codigo,
+                professor="RF_FILHO",
+                codigo_territorio_saber=10,
+                codigo_experiencia_pedagogica=20,
+                dt_atribuicao=datetime(2024, 2, 1, tzinfo=UTC),
+            )
 
-        self.assertEqual(len(resultado), 1)
+        with self.assertNumQueries(4):
+            resultado = self.repo.listar_agrupamentos_correlacionados_lote(
+                [3001, 3002],
+                None,
+            )
+
+        self.assertEqual(
+            [item["codigo"] for item in resultado],
+            [3001, 70, 80, 3002, 90],
+        )
+        filhos = {
+            item["codigo"]: item["professor"]
+            for item in resultado
+            if item["codigo"] in {70, 80}
+        }
+        self.assertEqual(filhos, {70: "RF_FILHO", 80: "RF_FILHO"})
 
     def test_listar_agrupamentos_correlacionados_lote_vazio(self) -> None:
         """Retorna vazio quando lista de códigos está vazia."""

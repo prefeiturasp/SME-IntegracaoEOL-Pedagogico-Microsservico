@@ -36,6 +36,12 @@ class Turma(ModeloBase):
     ensino_especial = models.BooleanField(default=False)
     data_atualizacao = models.DateTimeField(null=True, blank=True)
     data_status_turma_escola = models.DateTimeField(null=True, blank=True)
+    tipo_escola = models.IntegerField(null=True, blank=True)
+    codigo_grade_programa = models.IntegerField(null=True, blank=True)
+    descricao_grade_programa = models.CharField(
+        max_length=300, null=True, blank=True
+    )
+    tipo_grade_programa = models.IntegerField(default=0)
 
     class Meta:
         db_table = "turma"

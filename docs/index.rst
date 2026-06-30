@@ -9,3 +9,9 @@ com o legado usadas pelo microsservico pedagogico.
    :caption: Dominios
 
    dominios/pedagogico/index
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Referencia de codigo
+
+   api

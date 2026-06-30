@@ -6,7 +6,9 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.core.views import BaseAPIView
+from apps.turmas.constants import MENSAGEM_COMPORTAMENTO_INESPERADO
 from apps.turmas.serializers import (
+    AnosLetivosVigenteQuerySerializer,
     TurmaDadosSerializer,
     TurmaHistoricaSerializer,
     TurmaItinerarioSerializer,
@@ -39,7 +41,9 @@ class TurmasRegularesView(BaseAPIView):
         Returns:
             Turmas regulares correspondentes aos códigos.
         """
-        codigos = request.data if isinstance(request.data, list) else []
+        codigos: list[int] = (
+            request.data if isinstance(request.data, list) else []
+        )
         dados = TurmasService().turmas_regulares(codigos)
         return Response(dados)
 
@@ -65,7 +69,9 @@ class TurmasProgramaView(BaseAPIView):
         Returns:
             Turmas programa correspondentes aos códigos.
         """
-        codigos = request.data if isinstance(request.data, list) else []
+        codigos: list[int] = (
+            request.data if isinstance(request.data, list) else []
+        )
         dados = TurmasService().turmas_programa(codigos)
         return Response(dados)
 
@@ -91,8 +97,37 @@ class ListarTurmasView(BaseAPIView):
         Returns:
             Turmas correspondentes aos códigos.
         """
-        codigos = request.data if isinstance(request.data, list) else []
+        codigos: list[int] = (
+            request.data if isinstance(request.data, list) else []
+        )
         dados = TurmasService().listar_turmas(codigos)
+        return Response(dados)
+
+
+class TurmasRecorteFundMedioEjaView(BaseAPIView):
+    """Lista turmas no recorte de etapa (Fund/Médio/EJA)."""
+
+    @extend_schema(
+        tags=_TAG,
+        summary="Listar turmas no recorte de etapa (Fund/Médio/EJA)",
+        request={
+            "application/json": {"type": "array", "items": {"type": "integer"}}
+        },
+        responses={200: TurmaListSerializer(many=True)},
+        operation_id="turmas_recorte_fund_medio_eja",
+    )
+    def post(self, request: Request) -> Response:
+        """Retorna as turmas dos códigos que estão no recorte de etapa.
+
+        Args:
+            request: Requisição com a lista de códigos de turma no corpo.
+
+        Returns:
+            Turmas dos códigos cuja etapa está no recorte
+            (EJA + Fundamental + Médio).
+        """
+        codigos = request.data if isinstance(request.data, list) else []
+        dados = TurmasService().turmas_recorte_fund_medio_eja(codigos)
         return Response(dados)
 
 
@@ -134,7 +169,7 @@ class TurmaSincronizacoesInstitucionaisView(BaseAPIView):
             OpenApiParameter("ue_codigo", str, OpenApiParameter.PATH),
             OpenApiParameter("turma_codigo", int, OpenApiParameter.PATH),
         ],
-        responses={200: TurmaSincronizacaoSerializer, 404: dict},
+        responses={200: TurmaSincronizacaoSerializer, 400: dict},
         operation_id="turma_sincronizacoes_institucionais",
     )
     def get(
@@ -146,44 +181,71 @@ class TurmaSincronizacoesInstitucionaisView(BaseAPIView):
         """Retorna os dados de sincronização institucional da turma.
 
         Args:
-            ue_codigo: Código da unidade educacional.
+            ue_codigo: Código da unidade educacional, obrigatório no
+                contrato mas não usado na consulta.
             turma_codigo: Código da turma consultada.
 
         Returns:
-            Dados de sincronização institucional da turma, ou ausência de
-            conteúdo quando não encontrada.
+            Dados de sincronização institucional da turma, ou erro 400
+            quando a turma não é encontrada.
         """
         dados = TurmasService().sincronizacoes_institucionais(
             ue_codigo, turma_codigo
         )
         if dados is None:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": MENSAGEM_COMPORTAMENTO_INESPERADO},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(dados)
 
 
 class AnosLetivosUEView(BaseAPIView):
-    """Lista anos letivos com turmas na UE."""
+    """Lista códigos de turma da UE."""
 
     @extend_schema(
         tags=_TAG,
-        summary="Anos letivos de sincronizações institucionais por UE",
+        summary="Códigos de turma da UE por anos letivos vigentes",
         parameters=[
             OpenApiParameter("ue_codigo", str, OpenApiParameter.PATH),
+            OpenApiParameter(
+                "anos_letivos_vigente",
+                {"type": "array", "items": {"type": "integer"}},
+                OpenApiParameter.QUERY,
+                required=False,
+                explode=True,
+            ),
         ],
         responses={200: {"type": "array", "items": {"type": "integer"}}},
         operation_id="anos_letivos_ue",
     )
-    def get(self, _request: Request, ue_codigo: str) -> Response:
-        """Lista os anos letivos com turmas na UE.
+    def get(self, request: Request, ue_codigo: str) -> Response:
+        """Lista os códigos de turma da UE.
 
         Args:
+            request: Requisição com os anos letivos em anos_letivos_vigente.
             ue_codigo: Código da unidade educacional.
 
         Returns:
-            Anos letivos com turmas na UE.
+            Códigos de turma da UE: todos quando o filtro é ausente, filtrados
+            pelos anos informados, ou lista vazia quando o filtro é informado
+            sem ano válido.
         """
-        anos = TurmasService().anos_letivos_por_ue(ue_codigo)
-        return Response(anos)
+        serializer = AnosLetivosVigenteQuerySerializer(
+            data=request.query_params
+        )
+        serializer.is_valid(raise_exception=True)
+        informados = serializer.validated_data.get("anos_letivos_vigente")
+        if not informados:
+            codigos = TurmasService().codigos_turmas_por_ue(ue_codigo, None)
+            return Response(codigos)
+        anos_letivos = [ano for ano in informados if ano > 0]
+        if not anos_letivos:
+            return Response([])
+        codigos = TurmasService().codigos_turmas_por_ue(
+            ue_codigo, anos_letivos
+        )
+        return Response(codigos)
 
 
 class TurmasHistoricasProfessorView(BaseAPIView):
@@ -196,7 +258,7 @@ class TurmasHistoricasProfessorView(BaseAPIView):
             OpenApiParameter("ano_letivo", int, OpenApiParameter.PATH),
             OpenApiParameter("professor_rf", str, OpenApiParameter.PATH),
         ],
-        responses={200: TurmaHistoricaSerializer(many=True), 404: dict},
+        responses={200: TurmaHistoricaSerializer(many=True)},
         operation_id="turmas_historicas_professor",
     )
     def get(
@@ -212,14 +274,11 @@ class TurmasHistoricasProfessorView(BaseAPIView):
             professor_rf: Registro funcional do professor.
 
         Returns:
-            Turmas históricas do professor, ou ausência de conteúdo quando não
-            há turmas.
+            Turmas históricas do professor.
         """
         dados = TurmasService().turmas_historicas_professor(
             ano_letivo, professor_rf
         )
-        if not dados:
-            return Response(status=status.HTTP_404_NOT_FOUND)
         return Response(dados)
 
 

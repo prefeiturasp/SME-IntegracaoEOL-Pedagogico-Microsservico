@@ -42,24 +42,6 @@ _TURMA_DADOS = {
 }
 
 _TURMA_SINC = {
-    "codigo": 2112345,
-    "ue_codigo": "000532",
-    "ano_letivo": 2024,
-    "data_inicio_turma": None,
-    "data_fim": None,
-    "data_atualizacao": None,
-    "data_status_turma_escola": None,
-    "situacao": "A",
-    "extinta": False,
-    "codigo_modalidade": 5,
-    "modalidade": "Ensino Fundamental",
-    "semestre": 0,
-    "ensino_especial": False,
-    "codigo_serie_ensino": 3,
-    "serie_ensino": "3º Ano",
-}
-
-_TURMA_HISTORICA = {
     "ano": "3",
     "ano_letivo": 2024,
     "codigo": 2112345,
@@ -68,17 +50,44 @@ _TURMA_HISTORICA = {
     "codigo_modalidade": 5,
     "nome_turma": "3A EF",
     "semestre": 0,
-    "duracao_turno": 2,
+    "duracao_turno": 6,
     "tipo_turno": 1,
-    "data_fim": None,
-    "ehistorico": False,
+    "data_fim_turma": None,
     "ensino_especial": False,
     "etapa_eja": 0,
     "serie_ensino": "3º Ano",
+    "codigo_serie_ensino": 3,
     "data_inicio_turma": None,
     "extinta": False,
     "situacao": "A",
     "ue_codigo": "000532",
+    "data_atualizacao": None,
+    "data_status_turma_escola": None,
+    "etapa_ensino": 5,
+    "ciclo_ensino": 3,
+    "tipo_escola": 4,
+    "descricao_grade_programa": "GRADE EMEI",
+    "tipo_grade_programa": 1,
+    "codigo_grade_programa": 10,
+    "nome_filtro": "3A EF - 3º Ano",
+    "componentes": [
+        {
+            "nome_componente_curricular": "ED.INF. EMEI 4 HS",
+            "componente_curricular_codigo": 512,
+            "registro_funcional": "1234567",
+            "data_disponibizacao": None,
+        }
+    ],
+}
+
+_TURMA_HISTORICA = {
+    "ano": "3",
+    "ano_letivo": 2024,
+    "codigo": 2112345,
+    "modalidade": "Ensino Fundamental",
+    "codigo_modalidade": 5,
+    "nome_turma": "3A EF",
+    "semestre": 0,
 }
 
 
@@ -200,6 +209,34 @@ class TestTurmasViews(TestCase):
         self.assert_401("/listar-turmas/", method="post", payload=[1])
 
     @patch(_SVC)
+    def test_recorte_fund_medio_eja_retorna_200(self, mock_svc):
+        """Verifica se a view retorna 200 e delega ao service com os códigos informados."""
+        mock_svc.return_value.turmas_recorte_fund_medio_eja.return_value = [
+            _TURMA
+        ]
+        res = self.post("/recorte-fund-medio-eja/", [2112345])
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        (
+            mock_svc.return_value.turmas_recorte_fund_medio_eja
+        ).assert_called_once_with([2112345])
+
+    @patch(_SVC)
+    def test_recorte_fund_medio_eja_corpo_invalido_usa_lista_vazia(
+        self, mock_svc
+    ):
+        """Verifica se corpo fora de lista resulta em chamada ao service com lista vazia."""
+        mock_svc.return_value.turmas_recorte_fund_medio_eja.return_value = []
+        res = self.post("/recorte-fund-medio-eja/", {"codigo": 123})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        (
+            mock_svc.return_value.turmas_recorte_fund_medio_eja
+        ).assert_called_once_with([])
+
+    def test_recorte_fund_medio_eja_sem_api_key_retorna_401(self):
+        """Verifica se requisição sem autenticação é rejeitada."""
+        self.assert_401("/recorte-fund-medio-eja/", method="post", payload=[1])
+
+    @patch(_SVC)
     def test_turma_dados_retorna_200(self, mock_svc):
         mock_svc.return_value.dados_turma.return_value = _TURMA_DADOS
         res = self.get("/2112345/dados/")
@@ -251,12 +288,30 @@ class TestTurmasViews(TestCase):
         )
 
     @patch(_SVC)
-    def test_sincronizacoes_nao_encontrada_retorna_404(self, mock_svc):
+    def test_sincronizacoes_ue_qualquer_valor_retorna_200(self, mock_svc):
+        """UE com qualquer valor retorna 200 e delega o valor recebido."""
+        mock_svc.return_value.sincronizacoes_institucionais.return_value = (
+            _TURMA_SINC
+        )
+        res = self.get("/ues/0/turmas/2112345/sincronizacoes-institucionais/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        mock_svc.return_value.sincronizacoes_institucionais.assert_called_once_with(
+            "0", 2112345
+        )
+
+    @patch(_SVC)
+    def test_sincronizacoes_nao_encontrada_retorna_400(self, mock_svc):
+        """Sem turma para os parâmetros, retorna 400 com a mensagem."""
         mock_svc.return_value.sincronizacoes_institucionais.return_value = None
         res = self.get(
             "/ues/999999/turmas/9999999/sincronizacoes-institucionais/"
         )
-        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            res.data["detail"],
+            "Houve um comportamento inesperado do sistema. "
+            "Por favor, contate a SME.",
+        )
 
     def test_sincronizacoes_sem_api_key_retorna_401(self):
         self.assert_401(
@@ -272,45 +327,128 @@ class TestTurmasViews(TestCase):
             "/ues/000532/turmas/2112345/sincronizacoes-institucionais/"
         )
         campos = (
-            "codigo",
-            "ue_codigo",
+            "ano",
             "ano_letivo",
+            "codigo",
+            "tipo_turma",
+            "modalidade",
+            "codigo_modalidade",
+            "nome_turma",
+            "semestre",
+            "duracao_turno",
+            "tipo_turno",
+            "data_fim_turma",
+            "ensino_especial",
+            "etapa_eja",
+            "serie_ensino",
+            "codigo_serie_ensino",
             "data_inicio_turma",
-            "data_fim",
+            "extinta",
+            "situacao",
+            "ue_codigo",
             "data_atualizacao",
             "data_status_turma_escola",
-            "situacao",
-            "extinta",
-            "codigo_modalidade",
-            "modalidade",
-            "semestre",
-            "ensino_especial",
-            "codigo_serie_ensino",
-            "serie_ensino",
+            "etapa_ensino",
+            "ciclo_ensino",
+            "tipo_escola",
+            "descricao_grade_programa",
+            "tipo_grade_programa",
+            "codigo_grade_programa",
+            "nome_filtro",
+            "componentes",
         )
         for campo in campos:
             self.assertIn(campo, res.data, f"campo ausente: {campo}")
 
     @patch(_SVC)
-    def test_anos_letivos_retorna_200(self, mock_svc):
-        mock_svc.return_value.anos_letivos_por_ue.return_value = [2023, 2024]
+    def test_anos_letivos_com_filtro_delega_anos(self, mock_svc):
+        """Com anos_letivos_vigente válidos, delega a lista de inteiros."""
+        mock_svc.return_value.codigos_turmas_por_ue.return_value = [
+            3036225,
+            3082921,
+        ]
         res = self.get(
-            "/ue/000532/sincronizacoes-institucionais/anos-letivos/"
+            "/ue/019437/sincronizacoes-institucionais/anos-letivos/"
+            "?anos_letivos_vigente=2025&anos_letivos_vigente=2026"
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data, [2023, 2024])
-        mock_svc.return_value.anos_letivos_por_ue.assert_called_once_with(
-            "000532"
+        self.assertEqual(res.data, [3036225, 3082921])
+        mock_svc.return_value.codigos_turmas_por_ue.assert_called_once_with(
+            "019437", [2025, 2026]
+        )
+
+    @patch(_SVC)
+    def test_anos_letivos_sem_filtro_lista_todos(self, mock_svc):
+        """Sem ano informado, delega com None e lista todos da UE."""
+        mock_svc.return_value.codigos_turmas_por_ue.return_value = [
+            3036225,
+            3082921,
+        ]
+        res = self.get(
+            "/ue/019437/sincronizacoes-institucionais/anos-letivos/"
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, [3036225, 3082921])
+        mock_svc.return_value.codigos_turmas_por_ue.assert_called_once_with(
+            "019437", None
         )
 
     @patch(_SVC)
     def test_anos_letivos_sem_turmas_retorna_lista_vazia(self, mock_svc):
-        mock_svc.return_value.anos_letivos_por_ue.return_value = []
+        mock_svc.return_value.codigos_turmas_por_ue.return_value = []
         res = self.get(
             "/ue/999999/sincronizacoes-institucionais/anos-letivos/"
+            "?anos_letivos_vigente=2025"
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data, [])
+
+    @patch(_SVC)
+    def test_anos_letivos_vigente_invalido_retorna_400(self, mock_svc):
+        """Valor não inteiro em anos_letivos_vigente retorna 400."""
+        res = self.get(
+            "/ue/019437/sincronizacoes-institucionais/anos-letivos/"
+            "?anos_letivos_vigente=abc"
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        mock_svc.return_value.codigos_turmas_por_ue.assert_not_called()
+
+    @patch(_SVC)
+    def test_anos_letivos_vigente_zero_retorna_vazio(self, mock_svc):
+        """Ano 0 explícito retorna [] sem consultar o service."""
+        res = self.get(
+            "/ue/019437/sincronizacoes-institucionais/anos-letivos/"
+            "?anos_letivos_vigente=0"
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, [])
+        mock_svc.return_value.codigos_turmas_por_ue.assert_not_called()
+
+    @patch(_SVC)
+    def test_anos_letivos_vigente_item_vazio_lista_todos(self, mock_svc):
+        """Item vazio enviado pelo Swagger é descartado e lista todos."""
+        mock_svc.return_value.codigos_turmas_por_ue.return_value = [3036225]
+        res = self.get(
+            "/ue/019437/sincronizacoes-institucionais/anos-letivos/"
+            "?anos_letivos_vigente="
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        mock_svc.return_value.codigos_turmas_por_ue.assert_called_once_with(
+            "019437", None
+        )
+
+    @patch(_SVC)
+    def test_anos_letivos_vigente_zero_e_ano_valido_filtra(self, mock_svc):
+        """Ano 0 é descartado mas o ano válido permanece no filtro."""
+        mock_svc.return_value.codigos_turmas_por_ue.return_value = [3036225]
+        res = self.get(
+            "/ue/019437/sincronizacoes-institucionais/anos-letivos/"
+            "?anos_letivos_vigente=0&anos_letivos_vigente=2025"
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        mock_svc.return_value.codigos_turmas_por_ue.assert_called_once_with(
+            "019437", [2025]
+        )
 
     def test_anos_letivos_sem_api_key_retorna_401(self):
         self.assert_401(
@@ -331,12 +469,15 @@ class TestTurmasViews(TestCase):
         )
 
     @patch(_SVC)
-    def test_turmas_historicas_sem_resultado_retorna_404(self, mock_svc):
+    def test_turmas_historicas_sem_resultado_retorna_lista_vazia(
+        self, mock_svc
+    ):
         mock_svc.return_value.turmas_historicas_professor.return_value = []
         res = self.get(
             "/anos-letivos/2099/professor/0000000/turmas-historicas-geral/"
         )
-        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, [])
 
     def test_turmas_historicas_sem_api_key_retorna_401(self):
         self.assert_401(
@@ -356,11 +497,14 @@ class TestTurmasViews(TestCase):
             "ano",
             "ano_letivo",
             "codigo",
-            "tipo_turma",
             "modalidade",
             "codigo_modalidade",
             "nome_turma",
             "semestre",
+        )
+        self.assertEqual(set(item.keys()), set(campos))
+        removidos = (
+            "tipo_turma",
             "duracao_turno",
             "tipo_turno",
             "data_fim",
@@ -373,8 +517,8 @@ class TestTurmasViews(TestCase):
             "situacao",
             "ue_codigo",
         )
-        for campo in campos:
-            self.assertIn(campo, item, f"campo ausente no TurmaDTO: {campo}")
+        for campo in removidos:
+            self.assertNotIn(campo, item, f"campo legado removido: {campo}")
 
     @patch(_SVC)
     def test_itinerario_ensino_medio_retorna_200(self, mock_svc):

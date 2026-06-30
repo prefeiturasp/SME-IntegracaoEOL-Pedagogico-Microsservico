@@ -35,6 +35,16 @@ class TestTurmasService(TestCase):
         self.assertEqual(self.service.listar_turmas([3]), [{"codigo": 3}])
         self.repo.listar_turmas.assert_called_once_with([3])
 
+    def test_turmas_recorte_fund_medio_eja(self) -> None:
+        """Verifica se o service delega ao repository com os códigos recebidos."""
+        self.repo.turmas_recorte_fund_medio_eja.return_value = [{"codigo": 6}]
+
+        self.assertEqual(
+            self.service.turmas_recorte_fund_medio_eja([6]),
+            [{"codigo": 6}],
+        )
+        self.repo.turmas_recorte_fund_medio_eja.assert_called_once_with([6])
+
     def test_dados_turma(self) -> None:
         self.repo.dados_turma.return_value = {"codigo": 4}
 
@@ -52,14 +62,25 @@ class TestTurmasService(TestCase):
             "000532", 5
         )
 
-    def test_anos_letivos_por_ue(self) -> None:
-        self.repo.anos_letivos_por_ue.return_value = [2023, 2024]
+    def test_codigos_turmas_por_ue_com_anos(self) -> None:
+        self.repo.codigos_turmas_por_ue.return_value = [3036225, 3082921]
 
         self.assertEqual(
-            self.service.anos_letivos_por_ue("000532"),
-            [2023, 2024],
+            self.service.codigos_turmas_por_ue("019437", [2025, 2026]),
+            [3036225, 3082921],
         )
-        self.repo.anos_letivos_por_ue.assert_called_once_with("000532")
+        self.repo.codigos_turmas_por_ue.assert_called_once_with(
+            "019437", [2025, 2026]
+        )
+
+    def test_codigos_turmas_por_ue_sem_anos(self) -> None:
+        self.repo.codigos_turmas_por_ue.return_value = [3036225]
+
+        self.assertEqual(
+            self.service.codigos_turmas_por_ue("019437", None),
+            [3036225],
+        )
+        self.repo.codigos_turmas_por_ue.assert_called_once_with("019437", None)
 
     def test_turmas_historicas_professor(self) -> None:
         self.repo.turmas_historicas_professor.return_value = [{"codigo": 6}]

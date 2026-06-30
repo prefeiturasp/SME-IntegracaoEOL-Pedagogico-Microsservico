@@ -26,6 +26,8 @@ class ComponenteTurma(ModeloBase):
 
     componente_codigo = models.IntegerField()
     codigo_componente_territorio_saber = models.IntegerField(null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
+    desc_territorio_saber = models.CharField(max_length=200, null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
+    desc_experiencia_pedagogica = models.CharField(max_length=200, null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
     turma_codigo = models.CharField(max_length=20)
 
     class Meta:
@@ -95,6 +97,59 @@ class AtribuicaoComponente(ModeloBase):
                     "ano_letivo",
                 ],
                 name="idx_ac_turma_prof_comp_ano",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return (
+            f"{self.componente_codigo} turma={self.turma_codigo}"
+            f" professor={self.professor}"
+        )
+
+
+class AtribuicaoTerritorioSaber(ModeloBase):
+    """Representa atribuição individual de Território do Saber."""
+
+    turma_codigo = models.CharField(max_length=20)
+    componente_codigo = models.IntegerField()
+    professor = models.CharField(max_length=20, null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
+    codigo_territorio_saber = models.IntegerField()
+    codigo_experiencia_pedagogica = models.IntegerField(null=True, blank=True)
+    desc_territorio_saber = models.CharField(max_length=200, null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
+    desc_experiencia_pedagogica = models.CharField(max_length=200, null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
+    atribuicao_externa = models.BooleanField(default=False)
+    ano_letivo = models.IntegerField()
+    dt_atribuicao = models.DateTimeField(null=True, blank=True)
+    dt_disponibilizacao = models.DateTimeField(null=True, blank=True)
+    cd_motivo_disponibilizacao = models.IntegerField(null=True, blank=True)
+    dt_fim_turma = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "atribuicao_territorio_saber"
+        verbose_name = "atribuição território saber"
+        verbose_name_plural = "atribuições território saber"
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "turma_codigo",
+                    "componente_codigo",
+                    "professor",
+                    "codigo_territorio_saber",
+                    "codigo_experiencia_pedagogica",
+                    "dt_atribuicao",
+                    "dt_disponibilizacao",
+                ],
+                name="uq_atribuicao_territorio_saber",
+                nulls_distinct=False,
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["turma_codigo"], name="idx_ats_turma"),
+            models.Index(fields=["professor"], name="idx_ats_professor"),
+            models.Index(fields=["ano_letivo"], name="idx_ats_ano_letivo"),
+            models.Index(
+                fields=["turma_codigo", "componente_codigo"],
+                name="idx_ats_turma_comp",
             ),
         ]
 
@@ -194,7 +249,7 @@ class GradeComponenteCurricular(ModeloBase):
 class AgrupamentoAtribuicaoTerritorioSaber(ModeloBase):
     """Representa agrupamento de território atribuído a professor."""
 
-    cod_agrupamento = models.BigIntegerField(unique=True)
+    cod_agrupamento = models.BigIntegerField()
     cod_territorio_saber = models.IntegerField()
     cod_experiencia_pedagogica = models.IntegerField(null=True, blank=True)
     dt_inicio_atribuicao = models.DateTimeField()

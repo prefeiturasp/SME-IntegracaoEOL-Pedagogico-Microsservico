@@ -42,6 +42,17 @@ class TurmasService:
         """
         return self._repo.listar_turmas(codigos)
 
+    def turmas_recorte_fund_medio_eja(self, codigos: list[int]) -> list[dict]:
+        """Retorna turmas no recorte de etapa (Fund/Médio/EJA).
+
+        Args:
+            codigos: Códigos das turmas a consultar.
+
+        Returns:
+            Lista de turmas no recorte de etapa encontradas.
+        """
+        return self._repo.turmas_recorte_fund_medio_eja(codigos)
+
     def dados_turma(self, codigo: int) -> dict | None:
         """Retorna dados canônicos de uma turma.
 
@@ -58,10 +69,11 @@ class TurmasService:
         ue_codigo: str,
         turma_codigo: int,
     ) -> dict | None:
-        """Retorna dados de sincronização institucional da turma por UE.
+        """Retorna dados de sincronização institucional da turma.
 
         Args:
-            ue_codigo: Código da unidade educacional.
+            ue_codigo: Código da unidade educacional, obrigatório no
+                contrato mas não usado na consulta.
             turma_codigo: Código da turma.
 
         Returns:
@@ -71,16 +83,21 @@ class TurmasService:
             ue_codigo, turma_codigo
         )
 
-    def anos_letivos_por_ue(self, ue_codigo: str) -> list[int]:
-        """Retorna anos letivos com turmas na UE.
+    def codigos_turmas_por_ue(
+        self,
+        ue_codigo: str,
+        anos_letivos: list[int] | None,
+    ) -> list[int]:
+        """Retorna códigos de turma da UE.
 
         Args:
             ue_codigo: Código da unidade educacional.
+            anos_letivos: Anos letivos a filtrar; quando vazio, lista todos.
 
         Returns:
-            Anos letivos com turmas na UE, em ordem crescente.
+            Códigos de turma da UE, em ordem crescente.
         """
-        return self._repo.anos_letivos_por_ue(ue_codigo)
+        return self._repo.codigos_turmas_por_ue(ue_codigo, anos_letivos)
 
     def turmas_historicas_professor(
         self,
@@ -99,7 +116,7 @@ class TurmasService:
         return self._repo.turmas_historicas_professor(ano_letivo, professor_rf)
 
     def itinerarios_ensino_medio(self) -> list[dict]:
-        """Retorna itinerários do Ensino Médio ordenados por nome.
+        """Retorna itinerários do Ensino Médio ordenados por id.
 
         Returns:
             Lista de itinerários do Ensino Médio.
