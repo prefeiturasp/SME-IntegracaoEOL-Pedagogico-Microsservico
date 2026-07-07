@@ -20,6 +20,7 @@ from apps.turmas.constants import (
     DESCRICOES_GRADE_PROGRAMA_ITINERARIO,
     ETAPA_ENSINO_MAGISTERIO,
     ETAPAS_ENSINO_TURMAS_HISTORICAS_PROFESSOR,
+    PERIODICIDADES_POR_SEMESTRE,
     TIPO_GRADE_PROGRAMA_ITINERARIO,
     TIPOS_ESCOLA_TURMAS_HISTORICAS_PROFESSOR,
 )
@@ -255,6 +256,42 @@ class TurmasRepository:
             codigo_etapa_ensino__in=_ETAPAS_RECORTE_FUND_MEDIO_EJA,
         )
         return [_turma_para_lista(t) for t in turmas]
+
+    def turmas_recorte_por_tipo(
+        self,
+        codigos: list[int],
+        tipos_turma: list[int] | None = None,
+        ue_codigo: str | None = None,
+        semestre: int | None = None,
+    ) -> list[int]:
+        """Filtra os códigos de turma por tipo de turma, UE e semestre.
+
+        Um semestre fora do mapeamento ``PERIODICIDADES_POR_SEMESTRE`` não aplica
+        filtro de periodicidade.
+
+        Args:
+            codigos: Códigos de turma candidatos.
+            tipos_turma: Tipos de turma aceitos; sem filtro quando vazio.
+            ue_codigo: Código da UE; sem filtro quando ausente.
+            semestre: Semestre da turma; sem filtro quando ausente.
+
+        Returns:
+            Subconjunto dos códigos informados que atende ao recorte.
+        """
+        if not codigos:
+            return []
+        consulta = Turma.objects.using(self._DB).filter(codigo__in=codigos)
+        if tipos_turma:
+            consulta = consulta.filter(tipo_turma__in=tipos_turma)
+        if ue_codigo:
+            consulta = consulta.filter(ue_codigo=ue_codigo)
+        if semestre is not None:
+            periodicidades = PERIODICIDADES_POR_SEMESTRE.get(semestre)
+            if periodicidades:
+                consulta = consulta.filter(
+                    codigo_tipo_periodicidade__in=periodicidades
+                )
+        return list(consulta.values_list("codigo", flat=True).distinct())
 
     def dados_turma(self, codigo: int) -> dict | None:
         """Retorna dados cadastrais de uma turma.

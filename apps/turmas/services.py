@@ -53,6 +53,28 @@ class TurmasService:
         """
         return self._repo.turmas_recorte_fund_medio_eja(codigos)
 
+    def turmas_recorte_por_tipo(
+        self,
+        codigos: list[int],
+        tipos_turma: list[int] | None = None,
+        ue_codigo: str | None = None,
+        semestre: int | None = None,
+    ) -> list[int]:
+        """Filtra códigos de turma por tipo de turma, UE e semestre.
+
+        Args:
+            codigos: Códigos de turma candidatos.
+            tipos_turma: Tipos de turma aceitos; sem filtro quando vazio.
+            ue_codigo: Código da UE; sem filtro quando ausente.
+            semestre: Semestre da turma; sem filtro quando ausente.
+
+        Returns:
+            Subconjunto dos códigos que atende ao recorte.
+        """
+        return self._repo.turmas_recorte_por_tipo(
+            codigos, tipos_turma, ue_codigo, semestre
+        )
+
     def dados_turma(self, codigo: int) -> dict | None:
         """Retorna dados canônicos de uma turma.
 

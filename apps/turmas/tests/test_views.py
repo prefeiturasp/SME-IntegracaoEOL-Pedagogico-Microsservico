@@ -232,6 +232,49 @@ class TestTurmasViews(TestCase):
             mock_svc.return_value.turmas_recorte_fund_medio_eja
         ).assert_called_once_with([])
 
+    @patch(_SVC)
+    def test_recorte_por_tipo_repassa_codigos_e_filtros(self, mock_svc):
+        """Lê códigos do corpo e tipo/UE/semestre da query string."""
+        mock_svc.return_value.turmas_recorte_por_tipo.return_value = [2112345]
+        res = self.client.post(
+            f"{_BASE}/recorte-por-tipo/"
+            "?tipos_turma=1&tipos_turma=5&ue_codigo=000532&semestre=1",
+            [2112345, 9],
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, [2112345])
+        (
+            mock_svc.return_value.turmas_recorte_por_tipo
+        ).assert_called_once_with([2112345, 9], [1, 5], "000532", 1)
+
+    @patch(_SVC)
+    def test_recorte_por_tipo_sem_filtros(self, mock_svc):
+        """Sem query string, os filtros opcionais vão vazios/None."""
+        mock_svc.return_value.turmas_recorte_por_tipo.return_value = []
+        res = self.post("/recorte-por-tipo/", [2112345])
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        (
+            mock_svc.return_value.turmas_recorte_por_tipo
+        ).assert_called_once_with([2112345], [], None, None)
+
+    @patch(_SVC)
+    def test_recorte_por_tipo_aceita_camelcase(self, mock_svc):
+        """Aceita os filtros em camelCase (tiposTurma/ueCodigo)."""
+        mock_svc.return_value.turmas_recorte_por_tipo.return_value = []
+        res = self.client.post(
+            f"{_BASE}/recorte-por-tipo/?tiposTurma=3&ueCodigo=000999",
+            [2112345],
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        (
+            mock_svc.return_value.turmas_recorte_por_tipo
+        ).assert_called_once_with([2112345], [3], "000999", None)
+
+    def test_recorte_por_tipo_sem_api_key_retorna_401(self):
+        self.assert_401("/recorte-por-tipo/", method="post", payload=[1])
+
     def test_recorte_fund_medio_eja_sem_api_key_retorna_401(self):
         """Verifica se requisição sem autenticação é rejeitada."""
         self.assert_401("/recorte-fund-medio-eja/", method="post", payload=[1])

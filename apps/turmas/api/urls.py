@@ -11,6 +11,7 @@ from apps.turmas.api.views import (
     TurmaSincronizacoesInstitucionaisView,
     TurmasProgramaView,
     TurmasRecorteFundMedioEjaView,
+    TurmasRecortePorTipoView,
     TurmasRegularesView,
 )
 
@@ -34,6 +35,11 @@ urlpatterns = [
         "recorte-fund-medio-eja/",
         TurmasRecorteFundMedioEjaView.as_view(),
         name="turmas-recorte-fund-medio-eja",
+    ),
+    path(
+        "recorte-por-tipo/",
+        TurmasRecortePorTipoView.as_view(),
+        name="turmas-recorte-por-tipo",
     ),
     path(
         "<int:codigo_turma>/dados/",
