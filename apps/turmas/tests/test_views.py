@@ -90,6 +90,33 @@ _TURMA_HISTORICA = {
     "semestre": 0,
 }
 
+_TURMA_ATRIBUIDA = {
+    "codigo_escola": "019362",
+    "codigo_turma": 3011229,
+    "ano_letivo": 2026,
+    "modalidade": "Fundamental",
+    "semestre": 0,
+    "codigo_modalidade": 5,
+    "codigo_dre": "108900",
+    "dre": "DRE PENHA",
+    "dre_abreviacao": "P",
+    "ue": "EMEF TESTE",
+    "ue_abreviacao": "EMEF TESTE",
+    "nome_turma": "5A",
+    "ano": "5",
+    "tipo_ue": "DIRETA",
+    "codigo_tipo_ue": 1,
+    "codigo_tipo_escola": 1,
+    "tipo_escola": "EMEF",
+    "duracao_turno": 6,
+    "tipo_turno": 1,
+}
+
+_TURMA_ELEGIVEL = {
+    "cod_turma": 3011229,
+    "nome_turma": "5A",
+}
+
 
 class TestTurmasViews(TestCase):
     """Valida views do domínio Turmas."""
@@ -207,6 +234,79 @@ class TestTurmasViews(TestCase):
 
     def test_listar_turmas_sem_api_key_retorna_401(self):
         self.assert_401("/listar-turmas/", method="post", payload=[1])
+
+    @patch(_SVC)
+    def test_turmas_atribuidas_dre_ue_retorna_200(self, mock_svc):
+        mock_svc.return_value.turmas_atribuidas_dre_ue.return_value = [
+            _TURMA_ATRIBUIDA
+        ]
+
+        res = self.post("/turmas-atribuidas-dre-ue/", ["019362"])
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data[0]["codigo_turma"], 3011229)
+        mock_svc.return_value.turmas_atribuidas_dre_ue.assert_called_once_with(
+            ["019362"]
+        )
+
+    @patch(_SVC)
+    def test_turmas_atribuidas_dre_ue_corpo_invalido_usa_lista_vazia(
+        self,
+        mock_svc,
+    ):
+        mock_svc.return_value.turmas_atribuidas_dre_ue.return_value = []
+
+        res = self.post("/turmas-atribuidas-dre-ue/", {"codigo": "019362"})
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, [])
+        mock_svc.return_value.turmas_atribuidas_dre_ue.assert_called_once_with(
+            []
+        )
+
+    def test_turmas_atribuidas_dre_ue_sem_api_key_retorna_401(self):
+        self.assert_401(
+            "/turmas-atribuidas-dre-ue/",
+            method="post",
+            payload=["019362"],
+        )
+
+    @patch(_SVC)
+    def test_turmas_elegiveis_retorna_200(self, mock_svc):
+        mock_svc.return_value.turmas_elegiveis.return_value = [_TURMA_ELEGIVEL]
+        payload = {
+            "codigo_rf": "1234567",
+            "codigo_turma": 3011228,
+            "componente_curricular": 138,
+        }
+
+        res = self.post("/turmas-elegiveis/", payload)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, [_TURMA_ELEGIVEL])
+        mock_svc.return_value.turmas_elegiveis.assert_called_once_with(
+            "1234567",
+            3011228,
+            138,
+        )
+
+    @patch(_SVC)
+    def test_turmas_elegiveis_payload_invalido_retorna_400(self, mock_svc):
+        res = self.post("/turmas-elegiveis/", {"codigo_rf": "1234567"})
+
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        mock_svc.return_value.turmas_elegiveis.assert_not_called()
+
+    def test_turmas_elegiveis_sem_api_key_retorna_401(self):
+        self.assert_401(
+            "/turmas-elegiveis/",
+            method="post",
+            payload={
+                "codigo_rf": "1234567",
+                "codigo_turma": 3011228,
+                "componente_curricular": 138,
+            },
+        )
 
     @patch(_SVC)
     def test_recorte_fund_medio_eja_retorna_200(self, mock_svc):
