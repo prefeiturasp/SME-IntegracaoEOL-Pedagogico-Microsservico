@@ -7,6 +7,8 @@ from apps.turmas.api.views import (
     ItinerarioEnsinoMedioView,
     ListarTurmasView,
     TurmaDadosView,
+    TurmasAtribuidasDreUeView,
+    TurmasElegiveisView,
     TurmasHistoricasProfessorView,
     TurmaSincronizacoesInstitucionaisView,
     TurmasProgramaView,
@@ -29,6 +31,16 @@ urlpatterns = [
         "listar-turmas/",
         ListarTurmasView.as_view(),
         name="listar-turmas",
+    ),
+    path(
+        "turmas-atribuidas-dre-ue/",
+        TurmasAtribuidasDreUeView.as_view(),
+        name="turmas-atribuidas-dre-ue",
+    ),
+    path(
+        "turmas-elegiveis/",
+        TurmasElegiveisView.as_view(),
+        name="turmas-elegiveis",
     ),
     path(
         "recorte-fund-medio-eja/",

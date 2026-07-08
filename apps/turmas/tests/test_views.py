@@ -210,7 +210,7 @@ class TestTurmasViews(TestCase):
 
     @patch(_SVC)
     def test_recorte_fund_medio_eja_retorna_200(self, mock_svc):
-        """Verifica se a view retorna 200 e delega ao service com os códigos informados."""
+        """Verifica retorno 200 e delegação ao service."""
         mock_svc.return_value.turmas_recorte_fund_medio_eja.return_value = [
             _TURMA
         ]
@@ -224,7 +224,7 @@ class TestTurmasViews(TestCase):
     def test_recorte_fund_medio_eja_corpo_invalido_usa_lista_vazia(
         self, mock_svc
     ):
-        """Verifica se corpo fora de lista resulta em chamada ao service com lista vazia."""
+        """Verifica corpo inválido como lista vazia."""
         mock_svc.return_value.turmas_recorte_fund_medio_eja.return_value = []
         res = self.post("/recorte-fund-medio-eja/", {"codigo": 123})
         self.assertEqual(res.status_code, status.HTTP_200_OK)

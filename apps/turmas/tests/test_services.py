@@ -36,7 +36,7 @@ class TestTurmasService(TestCase):
         self.repo.listar_turmas.assert_called_once_with([3])
 
     def test_turmas_recorte_fund_medio_eja(self) -> None:
-        """Verifica se o service delega ao repository com os códigos recebidos."""
+        """Verifica delegação ao repository."""
         self.repo.turmas_recorte_fund_medio_eja.return_value = [{"codigo": 6}]
 
         self.assertEqual(

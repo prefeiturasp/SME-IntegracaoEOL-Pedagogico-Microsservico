@@ -90,6 +90,11 @@ class AtribuicaoComponente(ModeloBase):
                 ),
             ),
             models.Index(
+                fields=["professor", "ano_letivo", "componente_codigo"],
+                name="idx_ac_prof_ano_comp_vig",
+                condition=models.Q(dt_cancelamento__isnull=True),
+            ),
+            models.Index(
                 fields=[
                     "turma_codigo",
                     "professor",

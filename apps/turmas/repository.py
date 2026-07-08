@@ -23,7 +23,11 @@ from apps.turmas.constants import (
     TIPO_GRADE_PROGRAMA_ITINERARIO,
     TIPOS_ESCOLA_TURMAS_HISTORICAS_PROFESSOR,
 )
-from apps.turmas.models import Turma, TurmaItinerarioEnsinoMedio
+from apps.turmas.models import (
+    Turma,
+    TurmaAtribuidaDreUe,
+    TurmaItinerarioEnsinoMedio,
+)
 
 # (EOL cd_etapa_ensino): EJA (2,3,7,11) + Fundamental (4,5,12,13)
 # + Médio (6,7,8,14,17). Exclui Infantil (1,10).
@@ -174,6 +178,30 @@ def _turma_para_historico(t: Turma) -> dict:
     }
 
 
+def _turma_atribuida_para_lista(t: TurmaAtribuidaDreUe) -> dict:
+    return {
+        "codigo_escola": t.codigo_escola,
+        "codigo_turma": t.codigo_turma,
+        "ano_letivo": t.ano_letivo,
+        "modalidade": t.modalidade,
+        "semestre": t.semestre,
+        "codigo_modalidade": t.codigo_modalidade,
+        "codigo_dre": t.codigo_dre,
+        "dre": t.dre,
+        "dre_abreviacao": t.dre_abreviacao,
+        "ue": t.ue,
+        "ue_abreviacao": t.ue_abreviacao,
+        "nome_turma": t.nome_turma,
+        "ano": t.ano,
+        "tipo_ue": t.tipo_ue,
+        "codigo_tipo_ue": t.codigo_tipo_ue,
+        "codigo_tipo_escola": t.codigo_tipo_escola,
+        "tipo_escola": t.tipo_escola,
+        "duracao_turno": t.duracao_turno,
+        "tipo_turno": t.tipo_turno,
+    }
+
+
 def _codigos_por_atribuicao_origem(
     registros: Sequence[tuple[str | None, int | None]],
 ) -> list[int]:
@@ -241,6 +269,30 @@ class TurmasRepository:
         turmas = Turma.objects.using(self._DB).filter(codigo__in=codigos)
         return [_turma_para_lista(t) for t in turmas]
 
+    def turmas_atribuidas_dre_ue(self, codigos_ue: list[str]) -> list[dict]:
+        """Lista turmas atribuídas por unidades.
+
+        Args:
+            codigos_ue: Códigos das unidades educacionais.
+
+        Returns:
+            Lista de turmas atribuídas encontradas.
+        """
+        if not codigos_ue:
+            return []
+        turmas = (
+            TurmaAtribuidaDreUe.objects.using(self._DB)
+            .filter(codigo_escola__in=codigos_ue)
+            .order_by(
+                "codigo_dre",
+                "codigo_escola",
+                "ano_letivo",
+                "nome_turma",
+                "codigo_turma",
+            )
+        )
+        return [_turma_atribuida_para_lista(t) for t in turmas]
+
     def turmas_recorte_fund_medio_eja(self, codigos: list[int]) -> list[dict]:
         """Lista turmas no recorte de etapa (Fund/Médio/EJA).
 
@@ -255,6 +307,60 @@ class TurmasRepository:
             codigo_etapa_ensino__in=_ETAPAS_RECORTE_FUND_MEDIO_EJA,
         )
         return [_turma_para_lista(t) for t in turmas]
+
+    def turmas_elegiveis(
+        self,
+        codigo_rf: str,
+        codigo_turma: int,
+        componente_curricular: int,
+    ) -> list[dict]:
+        """Lista turmas elegíveis por atribuição de componente.
+
+        Args:
+            codigo_rf: RF usado na consulta.
+            codigo_turma: Turma base da consulta.
+            componente_curricular: Componente usado no filtro.
+
+        Returns:
+            Turmas elegíveis encontradas.
+        """
+        turma_base = (
+            Turma.objects.using(self._DB).filter(codigo=codigo_turma).first()
+        )
+        if turma_base is None:
+            return []
+
+        codigos = (
+            AtribuicaoComponente.objects.using(self._DB)
+            .filter(
+                professor=codigo_rf,
+                componente_codigo=componente_curricular,
+                ano_letivo=turma_base.ano_letivo,
+                dt_cancelamento__isnull=True,
+            )
+            .exclude(turma_codigo=str(codigo_turma))
+            .values_list("turma_codigo", flat=True)
+            .distinct()
+        )
+        codigos_turma = [
+            int(codigo) for codigo in codigos if str(codigo).isdigit()
+        ]
+        if not codigos_turma:
+            return []
+
+        turmas = Turma.objects.using(self._DB).filter(
+            codigo__in=codigos_turma,
+            ue_codigo=turma_base.ue_codigo,
+            ano_letivo=turma_base.ano_letivo,
+            semestre=turma_base.semestre,
+        )
+        if turma_base.tipo_turma != TIPO_TURMA_PROGRAMA:
+            turmas = turmas.filter(ano=turma_base.ano)
+
+        return [
+            {"cod_turma": turma.codigo, "nome_turma": turma.nome_turma}
+            for turma in turmas.order_by("nome_turma", "codigo")
+        ]
 
     def dados_turma(self, codigo: int) -> dict | None:
         """Retorna dados cadastrais de uma turma.

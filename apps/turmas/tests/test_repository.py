@@ -210,7 +210,7 @@ class TestTurmasRepository(TestCase):
 
     @patch("apps.turmas.repository.Turma.objects.using")
     def test_turmas_recorte_filtra_codigos_e_etapa(self, mock_using):
-        """Verifica se o filtro aplica tanto o código de turma quanto o recorte de etapa."""
+        """Verifica filtro por código de turma e recorte de etapa."""
         from apps.turmas.repository import _ETAPAS_RECORTE_FUND_MEDIO_EJA
 
         qs = FakeQuerySet([_turma(codigo_etapa_ensino=4)])
