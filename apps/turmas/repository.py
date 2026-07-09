@@ -1,8 +1,8 @@
 """Repositório do domínio Turmas."""
 
 from collections.abc import Sequence
-from datetime import datetime
-from typing import cast
+from datetime import UTC, datetime
+from typing import Any, cast
 
 from apps.componentes_curriculares.constants import (
     TIPO_TURMA_ED_FISICA,
@@ -34,6 +34,8 @@ from apps.turmas.models import (
 _ETAPAS_RECORTE_FUND_MEDIO_EJA = frozenset(
     {2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 17}
 )
+_TIPOS_ESCOLA_TURMAS_ELEGIVEIS = frozenset({1, 3, 4, 16})
+_SITUACOES_TURMAS_ELEGIVEIS = ("A", "C", "O")
 
 
 def _nome_filtro(
@@ -202,6 +204,132 @@ def _turma_atribuida_para_lista(t: TurmaAtribuidaDreUe) -> dict:
     }
 
 
+# Tipos de escola considerados pela abrangência de SME (parâmetro
+# tipo_escola_sgp do legado); recorta o universo de turmas atribuídas.
+_TIPOS_ESCOLA_SGP = (
+    1,
+    2,
+    3,
+    4,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    22,
+    23,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    38,
+)
+
+_CAMPOS_TURMA_ATRIBUIDA = (
+    "codigo_escola",
+    "codigo_turma",
+    "ano_letivo",
+    "modalidade",
+    "semestre",
+    "codigo_modalidade",
+    "codigo_dre",
+    "dre",
+    "dre_abreviacao",
+    "ue",
+    "ue_abreviacao",
+    "nome_turma",
+    "ano",
+    "tipo_ue",
+    "codigo_tipo_ue",
+    "codigo_tipo_escola",
+    "tipo_escola",
+    "duracao_turno",
+    "tipo_turno",
+)
+
+
+def _turma_abrangencia(item: dict) -> dict:
+    """Monta a turma no contrato de abrangência."""
+    return {
+        "ano": item.get("ano"),
+        "anoLetivo": item.get("ano_letivo"),
+        "codigo": item.get("codigo_turma"),
+        "tipoTurma": 0,
+        "modalidade": item.get("modalidade"),
+        "codigoModalidade": item.get("codigo_modalidade") or 0,
+        "nomeTurma": item.get("nome_turma"),
+        "semestre": item.get("semestre"),
+        "duracaoTurno": item.get("duracao_turno"),
+        "tipoTurno": item.get("tipo_turno"),
+        "dataFim": None,
+        "ehistorico": False,
+        "ensinoEspecial": False,
+        "etapaEJA": 0,
+        "serieEnsino": None,
+        "dataInicioTurma": None,
+        "extinta": False,
+        "situacao": None,
+        "ueCodigo": None,
+    }
+
+
+def _agrupar_abrangencia_dre_ue(rows: Any) -> dict:
+    """Agrupa as turmas atribuídas por DRE e UE no contrato de abrangência.
+
+    Feito no domínio para o gateway apenas repassar, evitando reprocessar
+    todo o conjunto de turmas.
+    """
+    dres: dict[str, dict] = {}
+    ues_por_dre: dict[tuple[str, str], dict] = {}
+    turmas_vistas: set[tuple[str, str, Any]] = set()
+
+    for item in rows:
+        codigo_ue = item.get("codigo_escola")
+        if not codigo_ue:
+            continue
+        codigo_dre = item.get("codigo_dre")
+        chave_dre = str(codigo_dre) if codigo_dre else "__sem_dre__"
+        dre = dres.get(chave_dre)
+        if dre is None:
+            dre = {
+                "abreviacao": item.get("dre_abreviacao"),
+                "codigo": codigo_dre,
+                "nome": item.get("dre"),
+                "ues": [],
+            }
+            dres[chave_dre] = dre
+
+        chave_ue = (chave_dre, str(codigo_ue))
+        ue = ues_por_dre.get(chave_ue)
+        if ue is None:
+            ue = {
+                "codigo": codigo_ue,
+                "nome": item.get("ue"),
+                "codTipoEscola": item.get("codigo_tipo_escola"),
+                "turmas": [],
+            }
+            ues_por_dre[chave_ue] = ue
+            dre["ues"].append(ue)
+
+        chave_turma = (chave_dre, str(codigo_ue), item.get("codigo_turma"))
+        if chave_turma in turmas_vistas:
+            continue
+        turmas_vistas.add(chave_turma)
+        ue["turmas"].append(_turma_abrangencia(item))
+
+    return {"abrangencia": None, "dres": list(dres.values())}
+
+
 def _codigos_por_atribuicao_origem(
     registros: Sequence[tuple[str | None, int | None]],
 ) -> list[int]:
@@ -290,8 +418,18 @@ class TurmasRepository:
                 "nome_turma",
                 "codigo_turma",
             )
+            .values(*_CAMPOS_TURMA_ATRIBUIDA)
         )
-        return [_turma_atribuida_para_lista(t) for t in turmas]
+        return list(turmas)
+
+    def todas_turmas_atribuidas_dre_ue(self) -> dict:
+        """Abrangência SME agrupada por DRE/UE (recorte de tipo de escola)."""
+        turmas = (
+            TurmaAtribuidaDreUe.objects.using(self._DB)
+            .filter(codigo_tipo_escola__in=_TIPOS_ESCOLA_SGP)
+            .values(*_CAMPOS_TURMA_ATRIBUIDA)
+        )
+        return _agrupar_abrangencia_dre_ue(turmas)
 
     def turmas_recorte_fund_medio_eja(self, codigos: list[int]) -> list[dict]:
         """Lista turmas no recorte de etapa (Fund/Médio/EJA).
@@ -330,15 +468,25 @@ class TurmasRepository:
         if turma_base is None:
             return []
 
+        turma_atribuida_base = (
+            TurmaAtribuidaDreUe.objects.using(self._DB)
+            .filter(codigo_turma=codigo_turma)
+            .first()
+        )
+        semestre_base = (
+            turma_atribuida_base.semestre
+            if turma_atribuida_base is not None
+            else turma_base.semestre
+        )
+
+        atribuicoes = AtribuicaoComponente.objects.using(self._DB).filter(
+            professor=codigo_rf,
+            componente_codigo=componente_curricular,
+            ano_letivo=turma_base.ano_letivo,
+            dt_cancelamento__isnull=True,
+        )
         codigos = (
-            AtribuicaoComponente.objects.using(self._DB)
-            .filter(
-                professor=codigo_rf,
-                componente_codigo=componente_curricular,
-                ano_letivo=turma_base.ano_letivo,
-                dt_cancelamento__isnull=True,
-            )
-            .exclude(turma_codigo=str(codigo_turma))
+            atribuicoes.exclude(turma_codigo=str(codigo_turma))
             .values_list("turma_codigo", flat=True)
             .distinct()
         )
@@ -348,12 +496,49 @@ class TurmasRepository:
         if not codigos_turma:
             return []
 
-        turmas = Turma.objects.using(self._DB).filter(
-            codigo__in=codigos_turma,
-            ue_codigo=turma_base.ue_codigo,
-            ano_letivo=turma_base.ano_letivo,
-            semestre=turma_base.semestre,
+        turmas_atribuidas = TurmaAtribuidaDreUe.objects.using(self._DB).filter(
+            codigo_turma__in=codigos_turma,
         )
+        if semestre_base is not None:
+            turmas_atribuidas = turmas_atribuidas.filter(
+                semestre=semestre_base,
+            )
+
+        if turmas_atribuidas.exists():
+            codigos_turma = list(
+                turmas_atribuidas.values_list(
+                    "codigo_turma", flat=True
+                ).distinct()
+            )
+        else:
+            limite_ano_letivo = datetime(
+                turma_base.ano_letivo, 1, 1, tzinfo=UTC
+            )
+            codigos = (
+                atribuicoes.filter(dt_atribuicao__lt=limite_ano_letivo)
+                .exclude(turma_codigo=str(codigo_turma))
+                .values_list("turma_codigo", flat=True)
+                .distinct()
+            )
+            codigos_turma = [
+                int(codigo) for codigo in codigos if str(codigo).isdigit()
+            ]
+            if not codigos_turma:
+                return []
+
+        filtros_turma = {
+            "codigo__in": codigos_turma,
+            "ue_codigo": turma_base.ue_codigo,
+            "ano_letivo": turma_base.ano_letivo,
+            "codigo_etapa_ensino": turma_base.codigo_etapa_ensino,
+            "situacao__in": _SITUACOES_TURMAS_ELEGIVEIS,
+        }
+        if turma_atribuida_base is not None:
+            filtros_turma["tipo_escola__in"] = _TIPOS_ESCOLA_TURMAS_ELEGIVEIS
+        if turma_atribuida_base is None and semestre_base is not None:
+            filtros_turma["semestre"] = semestre_base
+
+        turmas = Turma.objects.using(self._DB).filter(**filtros_turma)
         if turma_base.tipo_turma != TIPO_TURMA_PROGRAMA:
             turmas = turmas.filter(ano=turma_base.ano)
 

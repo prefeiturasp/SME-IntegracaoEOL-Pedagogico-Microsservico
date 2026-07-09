@@ -16,6 +16,7 @@ class ComponenteCurricularSerializer(serializers.Serializer):
     planejamento_regencia = serializers.BooleanField()
     territorio_saber = serializers.BooleanField()
     turma_codigo = serializers.CharField(allow_null=True)
+    tipo_escola = serializers.CharField(allow_null=True)
     exibir_componente_eol = serializers.BooleanField()
     professor = serializers.CharField(allow_null=True)
     codigos_territorios_agrupamento = serializers.ListField(

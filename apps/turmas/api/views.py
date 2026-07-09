@@ -137,6 +137,27 @@ class TurmasAtribuidasDreUeView(BaseAPIView):
         return Response(dados)
 
 
+class TodasTurmasAtribuidasDreUeView(BaseAPIView):
+    """Lista turmas atribuídas."""
+
+    @extend_schema(
+        tags=_TAG,
+        summary="Listar turmas atribuídas",
+        responses={200: TurmaAtribuidaDreUeSerializer(many=True)},
+        operation_id="todas_turmas_atribuidas_dre_ue",
+    )
+    def get(self, request: Request) -> Response:
+        """Retorna turmas atribuídas.
+
+        Args:
+            request: Requisição recebida.
+
+        Returns:
+            Turmas atribuídas.
+        """
+        return Response(TurmasService().todas_turmas_atribuidas_dre_ue())
+
+
 class TurmasElegiveisView(BaseAPIView):
     """Lista turmas elegíveis por atribuição."""
 

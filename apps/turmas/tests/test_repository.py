@@ -1,5 +1,6 @@
 """Testes do repository do dominio Turmas."""
 
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -37,6 +38,11 @@ class FakeQuerySet:
 
     def values(self, *args, **kwargs):
         self.calls.append(("values", args, kwargs))
+        if not self._data:
+            self._data = [
+                {campo: getattr(item, campo) for campo in args}
+                for item in self.items
+            ]
         self._values_mode = True
         return self
 
@@ -55,6 +61,9 @@ class FakeQuerySet:
 
     def first(self):
         return self.items[0] if self.items else None
+
+    def exists(self):
+        return bool(self.items or self._data)
 
 
 def _turma(**kwargs):
@@ -265,6 +274,25 @@ class TestTurmasRepository(TestCase):
             ),
         )
 
+    @patch("apps.turmas.repository.TurmaAtribuidaDreUe.objects.using")
+    def test_todas_turmas_atribuidas_dre_ue_recorta_tipo_escola(
+        self, mock_using
+    ):
+        from apps.turmas.repository import _TIPOS_ESCOLA_SGP
+
+        qs = FakeQuerySet([_turma_atribuida()])
+        mock_using.return_value = qs
+
+        resultado = self.repo.todas_turmas_atribuidas_dre_ue()
+
+        turma = resultado["dres"][0]["ues"][0]["turmas"][0]
+        self.assertEqual(turma["codigo"], 3011229)
+        self.assertEqual(resultado["dres"][0]["codigo"], "108900")
+        self.assertEqual(
+            qs.calls[0],
+            ("filter", (), {"codigo_tipo_escola__in": _TIPOS_ESCOLA_SGP}),
+        )
+
     @patch("apps.turmas.repository.Turma.objects.using")
     def test_turmas_recorte_filtra_codigos_e_etapa(self, mock_using):
         """Verifica filtro por código de turma e recorte de etapa."""
@@ -340,18 +368,30 @@ class TestTurmasRepository(TestCase):
         self.assertEqual(resultado, [])
 
     @patch("apps.turmas.repository.Turma.objects.using")
+    @patch("apps.turmas.repository.TurmaAtribuidaDreUe.objects.using")
     @patch("apps.turmas.repository.AtribuicaoComponente.objects.using")
     def test_turmas_elegiveis_regular_filtra_e_mapeia(
         self,
         mock_atribuicao,
+        mock_turma_atribuida,
         mock_turma,
     ):
         turma_base = _turma(codigo=2112345, ano="5")
         turma_destino = _turma(codigo=2112346, nome_turma="5B", ano="5")
+        turma_atribuida_base = _turma_atribuida(
+            codigo_turma=2112345,
+            semestre=1,
+        )
         qs_base = FakeQuerySet([turma_base])
         qs_turmas = FakeQuerySet([turma_destino])
         qs_atribuicoes = FakeQuerySet(values=["2112346", "abc"])
+        qs_turma_atribuida_base = FakeQuerySet([turma_atribuida_base])
+        qs_turma_atribuida_destino = FakeQuerySet(values=[2112346])
         mock_turma.side_effect = [qs_base, qs_turmas]
+        mock_turma_atribuida.side_effect = [
+            qs_turma_atribuida_base,
+            qs_turma_atribuida_destino,
+        ]
         mock_atribuicao.return_value = qs_atribuicoes
 
         resultado = self.repo.turmas_elegiveis("1234567", 2112345, 138)
@@ -374,12 +414,25 @@ class TestTurmasRepository(TestCase):
             qs_atribuicoes.calls[1][2], {"turma_codigo": "2112345"}
         )
         self.assertEqual(
+            qs_turma_atribuida_base.calls[0][2], {"codigo_turma": 2112345}
+        )
+        self.assertEqual(
+            qs_turma_atribuida_destino.calls[0][2],
+            {"codigo_turma__in": [2112346]},
+        )
+        self.assertEqual(
+            qs_turma_atribuida_destino.calls[1][2],
+            {"semestre": turma_atribuida_base.semestre},
+        )
+        self.assertEqual(
             qs_turmas.calls[0][2],
             {
                 "codigo__in": [2112346],
                 "ue_codigo": turma_base.ue_codigo,
                 "ano_letivo": turma_base.ano_letivo,
-                "semestre": turma_base.semestre,
+                "codigo_etapa_ensino": turma_base.codigo_etapa_ensino,
+                "situacao__in": ("A", "C", "O"),
+                "tipo_escola__in": frozenset({1, 3, 4, 16}),
             },
         )
         self.assertEqual(qs_turmas.calls[1][2], {"ano": "5"})
@@ -389,16 +442,26 @@ class TestTurmasRepository(TestCase):
         )
 
     @patch("apps.turmas.repository.Turma.objects.using")
+    @patch("apps.turmas.repository.TurmaAtribuidaDreUe.objects.using")
     @patch("apps.turmas.repository.AtribuicaoComponente.objects.using")
     def test_turmas_elegiveis_programa_nao_filtra_ano(
         self,
         mock_atribuicao,
+        mock_turma_atribuida,
         mock_turma,
     ):
         turma_base = _turma(tipo_turma=TIPO_TURMA_PROGRAMA)
+        turma_atribuida_base = _turma_atribuida(
+            codigo_turma=2112345,
+            semestre=1,
+        )
         qs_base = FakeQuerySet([turma_base])
         qs_turmas = FakeQuerySet([_turma(codigo=2112346, nome_turma="P1")])
         mock_turma.side_effect = [qs_base, qs_turmas]
+        mock_turma_atribuida.side_effect = [
+            FakeQuerySet([turma_atribuida_base]),
+            FakeQuerySet(values=[2112346]),
+        ]
         mock_atribuicao.return_value = FakeQuerySet(values=["2112346"])
 
         resultado = self.repo.turmas_elegiveis("1234567", 2112345, 138)
@@ -408,6 +471,51 @@ class TestTurmasRepository(TestCase):
             call for call in qs_turmas.calls if call[2] == {"ano": "3"}
         ]
         self.assertEqual(filtros_ano, [])
+
+    @patch("apps.turmas.repository.Turma.objects.using")
+    @patch("apps.turmas.repository.TurmaAtribuidaDreUe.objects.using")
+    @patch("apps.turmas.repository.AtribuicaoComponente.objects.using")
+    def test_turmas_elegiveis_sem_consolidacao_limita_atribuicao_inicial(
+        self,
+        mock_atribuicao,
+        mock_turma_atribuida,
+        mock_turma,
+    ):
+        turma_base = _turma(codigo=2112345, ano="5", semestre=0)
+        turma_destino = _turma(codigo=2112346, nome_turma="5B", ano="5")
+        qs_base = FakeQuerySet([turma_base])
+        qs_turmas = FakeQuerySet([turma_destino])
+        qs_atribuicoes = FakeQuerySet(values=["2112346"])
+        qs_turma_atribuida_base = FakeQuerySet([])
+        qs_turma_atribuida_destino = FakeQuerySet([])
+        mock_turma.side_effect = [qs_base, qs_turmas]
+        mock_turma_atribuida.side_effect = [
+            qs_turma_atribuida_base,
+            qs_turma_atribuida_destino,
+        ]
+        mock_atribuicao.return_value = qs_atribuicoes
+
+        resultado = self.repo.turmas_elegiveis("1234567", 2112345, 138)
+
+        self.assertEqual(
+            resultado,
+            [{"cod_turma": 2112346, "nome_turma": "5B"}],
+        )
+        self.assertEqual(
+            qs_atribuicoes.calls[4][2],
+            {"dt_atribuicao__lt": datetime(2024, 1, 1, tzinfo=UTC)},
+        )
+        self.assertEqual(
+            qs_turmas.calls[0][2],
+            {
+                "codigo__in": [2112346],
+                "ue_codigo": turma_base.ue_codigo,
+                "ano_letivo": turma_base.ano_letivo,
+                "codigo_etapa_ensino": turma_base.codigo_etapa_ensino,
+                "situacao__in": ("A", "C", "O"),
+                "semestre": turma_base.semestre,
+            },
+        )
 
     @patch("apps.turmas.repository.AtribuicaoComponente.objects.using")
     @patch("apps.turmas.repository.ComponenteCurricular.objects.using")

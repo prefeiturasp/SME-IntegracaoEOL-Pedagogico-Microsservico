@@ -1,5 +1,7 @@
 """Serviços do domínio Turmas."""
 
+from typing import Any
+
 from apps.turmas.repository import TurmasRepository
 
 
@@ -52,6 +54,10 @@ class TurmasService:
             Lista de turmas atribuídas encontradas.
         """
         return self._repo.turmas_atribuidas_dre_ue(codigos_ue)
+
+    def todas_turmas_atribuidas_dre_ue(self) -> dict[str, Any]:
+        """Retorna turmas atribuídas."""
+        return self._repo.todas_turmas_atribuidas_dre_ue()
 
     def turmas_elegiveis(
         self,
