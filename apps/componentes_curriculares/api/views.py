@@ -307,6 +307,13 @@ class ComponentesPorListaTurmasView(BaseAPIView):
                 default=True,
                 description="Inclui componentes de planejamento",
             ),
+            OpenApiParameter(
+                "incluir_extintas",
+                OpenApiTypes.BOOL,
+                OpenApiParameter.QUERY,
+                default=False,
+                description="Inclui turmas extintas no resultado",
+            ),
         ],
         responses={200: ComponenteCurricularSerializer(many=True)},
         description="Lista componentes de múltiplas turmas para planejamento.",
@@ -336,10 +343,27 @@ class ComponentesPorListaTurmasView(BaseAPIView):
             ).lower()
             == "true"
         )
-        dados = service.listar_por_lista_turmas(
-            codigos_turmas,
-            adicionar_componentes_planejamento=adicionar_componentes_planejamento,
+        incluir_extintas = (
+            request.query_params.get(
+                "incluir_extintas",
+                request.query_params.get("incluirExtintas", "false"),
+            ).lower()
+            == "true"
         )
+        if incluir_extintas:
+            dados = service.listar_por_lista_turmas_incluindo_extintas(
+                codigos_turmas,
+                adicionar_componentes_planejamento=(
+                    adicionar_componentes_planejamento
+                ),
+            )
+        else:
+            dados = service.listar_por_lista_turmas(
+                codigos_turmas,
+                adicionar_componentes_planejamento=(
+                    adicionar_componentes_planejamento
+                ),
+            )
         return Response(dados)
 
 

@@ -9,10 +9,13 @@ from apps.core.views import BaseAPIView
 from apps.turmas.constants import MENSAGEM_COMPORTAMENTO_INESPERADO
 from apps.turmas.serializers import (
     AnosLetivosVigenteQuerySerializer,
+    TurmaAtribuidaDreUeSerializer,
     TurmaDadosSerializer,
+    TurmaElegivelSerializer,
     TurmaHistoricaSerializer,
     TurmaItinerarioSerializer,
     TurmaListSerializer,
+    TurmasElegiveisRequestSerializer,
     TurmaSincronizacaoSerializer,
 )
 from apps.turmas.services import TurmasService
@@ -104,6 +107,86 @@ class ListarTurmasView(BaseAPIView):
         return Response(dados)
 
 
+class TurmasAtribuidasDreUeView(BaseAPIView):
+    """Lista turmas atribuídas por unidades."""
+
+    @extend_schema(
+        tags=_TAG,
+        summary="Listar turmas atribuídas por unidades",
+        request={
+            "application/json": {"type": "array", "items": {"type": "string"}}
+        },
+        responses={200: TurmaAtribuidaDreUeSerializer(many=True)},
+        operation_id="turmas_atribuidas_dre_ue",
+    )
+    def post(self, request: Request) -> Response:
+        """Retorna turmas atribuídas das unidades informadas.
+
+        Args:
+            request: Requisição com a lista de códigos de UE no corpo.
+
+        Returns:
+            Turmas atribuídas correspondentes às unidades.
+        """
+        codigos: list[object] = (
+            request.data if isinstance(request.data, list) else []
+        )
+        dados = TurmasService().turmas_atribuidas_dre_ue(
+            [str(codigo) for codigo in codigos if str(codigo).strip()]
+        )
+        return Response(dados)
+
+
+class TodasTurmasAtribuidasDreUeView(BaseAPIView):
+    """Lista turmas atribuídas."""
+
+    @extend_schema(
+        tags=_TAG,
+        summary="Listar turmas atribuídas",
+        responses={200: TurmaAtribuidaDreUeSerializer(many=True)},
+        operation_id="todas_turmas_atribuidas_dre_ue",
+    )
+    def get(self, request: Request) -> Response:
+        """Retorna turmas atribuídas.
+
+        Args:
+            request: Requisição recebida.
+
+        Returns:
+            Turmas atribuídas.
+        """
+        return Response(TurmasService().todas_turmas_atribuidas_dre_ue())
+
+
+class TurmasElegiveisView(BaseAPIView):
+    """Lista turmas elegíveis por atribuição."""
+
+    @extend_schema(
+        tags=_TAG,
+        summary="Listar turmas elegíveis",
+        request=TurmasElegiveisRequestSerializer,
+        responses={200: TurmaElegivelSerializer(many=True)},
+        operation_id="turmas_elegiveis",
+    )
+    def post(self, request: Request) -> Response:
+        """Retorna turmas elegíveis pelos dados informados.
+
+        Args:
+            request: Requisição com os dados da consulta.
+
+        Returns:
+            Turmas elegíveis encontradas.
+        """
+        serializer = TurmasElegiveisRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        dados = TurmasService().turmas_elegiveis(
+            serializer.validated_data["codigo_rf"],
+            serializer.validated_data["codigo_turma"],
+            serializer.validated_data["componente_curricular"],
+        )
+        return Response(dados)
+
+
 class TurmasRecorteFundMedioEjaView(BaseAPIView):
     """Lista turmas no recorte de etapa (Fund/Médio/EJA)."""
 
@@ -126,7 +209,9 @@ class TurmasRecorteFundMedioEjaView(BaseAPIView):
             Turmas dos códigos cuja etapa está no recorte
             (EJA + Fundamental + Médio).
         """
-        codigos = request.data if isinstance(request.data, list) else []
+        codigos: list[int] = (
+            request.data if isinstance(request.data, list) else []
+        )
         dados = TurmasService().turmas_recorte_fund_medio_eja(codigos)
         return Response(dados)
 

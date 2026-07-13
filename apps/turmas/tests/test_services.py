@@ -35,8 +35,32 @@ class TestTurmasService(TestCase):
         self.assertEqual(self.service.listar_turmas([3]), [{"codigo": 3}])
         self.repo.listar_turmas.assert_called_once_with([3])
 
+    def test_turmas_atribuidas_dre_ue(self) -> None:
+        self.repo.turmas_atribuidas_dre_ue.return_value = [
+            {"codigo_turma": 3011229}
+        ]
+
+        self.assertEqual(
+            self.service.turmas_atribuidas_dre_ue(["019362"]),
+            [{"codigo_turma": 3011229}],
+        )
+        self.repo.turmas_atribuidas_dre_ue.assert_called_once_with(["019362"])
+
+    def test_turmas_elegiveis(self) -> None:
+        self.repo.turmas_elegiveis.return_value = [{"cod_turma": 3011229}]
+
+        self.assertEqual(
+            self.service.turmas_elegiveis("1234567", 3011228, 138),
+            [{"cod_turma": 3011229}],
+        )
+        self.repo.turmas_elegiveis.assert_called_once_with(
+            "1234567",
+            3011228,
+            138,
+        )
+
     def test_turmas_recorte_fund_medio_eja(self) -> None:
-        """Verifica se o service delega ao repository com os códigos recebidos."""
+        """Verifica delegação ao repository."""
         self.repo.turmas_recorte_fund_medio_eja.return_value = [{"codigo": 6}]
 
         self.assertEqual(

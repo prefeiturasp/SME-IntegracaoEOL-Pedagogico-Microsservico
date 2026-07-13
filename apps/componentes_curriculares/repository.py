@@ -22,6 +22,7 @@ from apps.componentes_curriculares.models import (
 from apps.componentes_curriculares.queries import (
     SQL_COMPONENTES_GRADE_POR_UE_MODALIDADE_ANO,
     SQL_COMPONENTES_POR_LISTA_TURMAS,
+    SQL_COMPONENTES_POR_LISTA_TURMAS_INCLUI_EXTINTAS,
     SQL_COMPONENTES_SEM_ATRIBUICAO,
     SQL_COMPONENTES_SIMPLIFICADOS_POR_TURMAS,
     SQL_COMPONENTES_TURMA_COM_ATRIBUICAO,
@@ -145,6 +146,24 @@ def _normalizar_componente_turma(row: dict) -> dict:
     return _aplicar_regra_regencia_classe_infantil(item)
 
 
+def _normalizar_componente_atribuido(row: dict) -> dict:
+    """Normaliza um componente atribuído a funcionário.
+
+    Args:
+        row: Linha retornada pela consulta.
+
+    Returns:
+        Componente preservando o código retornado pela atribuição.
+    """
+    item = _componente_para_dict(row)
+    if (
+        item.get("codigo_componente_curricular_pai")
+        == CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL
+    ):
+        item["regencia"] = True
+    return item
+
+
 def _int_or_none(value: object) -> int | None:
     """Converta valor para inteiro quando possível.
 
@@ -239,6 +258,7 @@ def _expandir_planejamento_regencia(
                     "planejamento_regencia": True,
                     "territorio_saber": False,
                     "turma_codigo": row.get("turma_codigo"),
+                    "tipo_escola": row.get("tipo_escola"),
                     "ano_letivo": row.get("ano_letivo"),
                     "turno_turma": row.get("turno_turma"),
                     "ano_turma": row.get("ano_turma"),
@@ -426,7 +446,7 @@ class ComponentesRepository:
         resultado: list[dict] = []
         vistos: set[tuple[object, object, object]] = set()
         for row in rows:
-            item = _normalizar_componente_turma(row)
+            item = _normalizar_componente_atribuido(row)
             key = (
                 item.get("turma_codigo"),
                 item.get("codigo"),
@@ -720,12 +740,47 @@ class ComponentesRepository:
         Returns:
             Lista de componentes das turmas informadas.
         """
+        return self._listar_por_lista_turmas(
+            SQL_COMPONENTES_POR_LISTA_TURMAS,
+            codigos_turmas,
+            adicionar_componentes_planejamento,
+        )
+
+    def listar_por_lista_turmas_incluindo_extintas(
+        self,
+        codigos_turmas: list[str],
+        adicionar_componentes_planejamento: bool = True,
+    ) -> list[dict]:
+        """Lista componentes de múltiplas turmas, incluindo turmas extintas.
+
+        Igual a ``listar_por_lista_turmas``, mas não exclui turmas extintas —
+        usada pela consulta de disciplinas por turma para manter paridade com
+        o legado.
+
+        Args:
+            codigos_turmas: Códigos das turmas consultadas.
+            adicionar_componentes_planejamento: Quando True, expande
+                regência com os componentes de planejamento.
+
+        Returns:
+            Lista de componentes das turmas informadas.
+        """
+        return self._listar_por_lista_turmas(
+            SQL_COMPONENTES_POR_LISTA_TURMAS_INCLUI_EXTINTAS,
+            codigos_turmas,
+            adicionar_componentes_planejamento,
+        )
+
+    def _listar_por_lista_turmas(
+        self,
+        sql_base: str,
+        codigos_turmas: list[str],
+        adicionar_componentes_planejamento: bool,
+    ) -> list[dict]:
         if not codigos_turmas:
             return []
         placeholders = ",".join(["%s"] * len(codigos_turmas))
-        sql = SQL_COMPONENTES_POR_LISTA_TURMAS.format(
-            placeholders=placeholders
-        )
+        sql = sql_base.format(placeholders=placeholders)
         rows = _raw(sql, list(codigos_turmas), self._DB)
         if adicionar_componentes_planejamento:
             return _expandir_planejamento_regencia(rows, self._DB)
