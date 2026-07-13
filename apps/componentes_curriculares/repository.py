@@ -799,6 +799,77 @@ class ComponentesRepository:
             "extinta": row.get("extinta"),
         }
 
+    def _agrupar_componentes_listagem(
+        self,
+        rows: list[dict],
+    ) -> tuple[list[dict], dict[object, dict]]:
+        """Deduplica componentes e coleta os dados de turma da listagem.
+
+        Args:
+            rows: Linhas brutas da consulta de listagem turma×componente.
+
+        Returns:
+            Par com os componentes deduplicados e os dados por turma.
+        """
+        turma_info: dict[object, dict] = {}
+        componentes: list[dict] = []
+        vistos: set[tuple[object, object, object]] = set()
+        for row in rows:
+            turma_info.setdefault(
+                row["turma_codigo"],
+                self._info_turma_listagem(row),
+            )
+            item = _normalizar_componente_turma(row)
+            chave = (
+                item.get("turma_codigo"),
+                item.get("codigo"),
+                item.get("professor"),
+            )
+            if chave not in vistos:
+                vistos.add(chave)
+                componentes.append(item)
+        return componentes, turma_info
+
+    @staticmethod
+    def _montar_itens_listagem(
+        componentes: list[dict],
+        turma_info: dict[object, dict],
+        anos_infantil_desconsiderar: list[str] | None,
+    ) -> list[dict]:
+        """Monta os itens finais da listagem turma×componente.
+
+        Args:
+            componentes: Componentes já com Território do Saber aplicado.
+            turma_info: Dados de turma indexados pelo código da turma.
+            anos_infantil_desconsiderar: Anos de turma removidos do retorno.
+
+        Returns:
+            Itens de listagem deduplicados, no formato de resposta.
+        """
+        anos_ignorar = set(anos_infantil_desconsiderar or [])
+        itens: list[dict] = []
+        chaves_vistas: set[tuple] = set()
+        for componente in componentes:
+            info = turma_info.get(componente.get("turma_codigo"), {})
+            if anos_ignorar and info.get("ano") in anos_ignorar:
+                continue
+            item = _item_listagem_para_dict(componente, info)
+            chave = (
+                item["turma_codigo"],
+                item["modalidade"],
+                item["nome_turma"],
+                item["nome_componente_curricular"],
+                item["ano"],
+                item["complemento_turma_eja"],
+                item["turno"],
+                item["componente_curricular_codigo"],
+            )
+            if chave in chaves_vistas:
+                continue
+            chaves_vistas.add(chave)
+            itens.append(item)
+        return itens
+
     def listar_turmas_componentes_por_ue_modalidade_ano(
         self,
         ue_codigo: str,
@@ -856,24 +927,7 @@ class ComponentesRepository:
             historico_clause=historico_clause,
         )
         rows = _raw(sql, params, self._DB)
-
-        turma_info: dict[object, dict] = {}
-        componentes: list[dict] = []
-        vistos: set[tuple[object, object, object]] = set()
-        for row in rows:
-            turma_info.setdefault(
-                row["turma_codigo"],
-                self._info_turma_listagem(row),
-            )
-            item = _normalizar_componente_turma(row)
-            chave = (
-                item.get("turma_codigo"),
-                item.get("codigo"),
-                item.get("professor"),
-            )
-            if chave not in vistos:
-                vistos.add(chave)
-                componentes.append(item)
+        componentes, turma_info = self._agrupar_componentes_listagem(rows)
 
         login = codigo_rf if eh_professor else None
         componentes = mesclar_agrupamentos_territorio(
@@ -882,29 +936,11 @@ class ComponentesRepository:
             login,
         )
 
-        anos_ignorar = set(anos_infantil_desconsiderar or [])
-        itens: list[dict] = []
-        chaves_vistas: set[tuple] = set()
-        for componente in componentes:
-            info = turma_info.get(componente.get("turma_codigo"), {})
-            if anos_ignorar and info.get("ano") in anos_ignorar:
-                continue
-            item = _item_listagem_para_dict(componente, info)
-            chave = (
-                item["turma_codigo"],
-                item["modalidade"],
-                item["nome_turma"],
-                item["nome_componente_curricular"],
-                item["ano"],
-                item["complemento_turma_eja"],
-                item["turno"],
-                item["componente_curricular_codigo"],
-            )
-            if chave in chaves_vistas:
-                continue
-            chaves_vistas.add(chave)
-            itens.append(item)
-        return itens
+        return self._montar_itens_listagem(
+            componentes,
+            turma_info,
+            anos_infantil_desconsiderar,
+        )
 
     def listar_por_lista_turmas(
         self,
