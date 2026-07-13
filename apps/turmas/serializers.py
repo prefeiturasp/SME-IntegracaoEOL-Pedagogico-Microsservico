@@ -28,6 +28,45 @@ class TurmaListSerializer(serializers.Serializer):
     codigo_ciclo_ensino = serializers.IntegerField(allow_null=True)
 
 
+class TurmaAtribuidaDreUeSerializer(serializers.Serializer):
+    """Serializa turma atribuída por DRE e UE."""
+
+    codigo_escola = serializers.CharField()
+    codigo_turma = serializers.IntegerField()
+    ano_letivo = serializers.IntegerField()
+    modalidade = serializers.CharField(allow_null=True)
+    semestre = serializers.IntegerField(allow_null=True)
+    codigo_modalidade = serializers.IntegerField(allow_null=True)
+    codigo_dre = serializers.CharField()
+    dre = serializers.CharField(allow_null=True)
+    dre_abreviacao = serializers.CharField(allow_null=True)
+    ue = serializers.CharField(allow_null=True)
+    ue_abreviacao = serializers.CharField(allow_null=True)
+    nome_turma = serializers.CharField(allow_null=True)
+    ano = serializers.CharField(allow_null=True)
+    tipo_ue = serializers.CharField(allow_null=True)
+    codigo_tipo_ue = serializers.IntegerField(allow_null=True)
+    codigo_tipo_escola = serializers.IntegerField(allow_null=True)
+    tipo_escola = serializers.CharField(allow_null=True)
+    duracao_turno = serializers.IntegerField(allow_null=True)
+    tipo_turno = serializers.IntegerField(allow_null=True)
+
+
+class TurmasElegiveisRequestSerializer(serializers.Serializer):
+    """Valida filtros de turmas elegíveis."""
+
+    codigo_rf = serializers.CharField()
+    codigo_turma = serializers.IntegerField()
+    componente_curricular = serializers.IntegerField()
+
+
+class TurmaElegivelSerializer(serializers.Serializer):
+    """Serializa turma elegível."""
+
+    cod_turma = serializers.IntegerField()
+    nome_turma = serializers.CharField()
+
+
 class TurmaDadosSerializer(serializers.Serializer):
     """Serializa dados cadastrais de turma."""
 

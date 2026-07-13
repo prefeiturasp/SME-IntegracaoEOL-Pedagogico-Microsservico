@@ -28,6 +28,7 @@ class ComponenteTurma(ModeloBase):
     codigo_componente_territorio_saber = models.IntegerField(null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
     desc_territorio_saber = models.CharField(max_length=200, null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
     desc_experiencia_pedagogica = models.CharField(max_length=200, null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
+    tipo_escola = models.CharField(max_length=10, null=True, blank=True)
     turma_codigo = models.CharField(max_length=20)
 
     class Meta:
@@ -88,6 +89,11 @@ class AtribuicaoComponente(ModeloBase):
                     dt_cancelamento__isnull=True,
                     dt_disponibilizacao__isnull=True,
                 ),
+            ),
+            models.Index(
+                fields=["professor", "ano_letivo", "componente_codigo"],
+                name="idx_ac_prof_ano_comp_vig",
+                condition=models.Q(dt_cancelamento__isnull=True),
             ),
             models.Index(
                 fields=[

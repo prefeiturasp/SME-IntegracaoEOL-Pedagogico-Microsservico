@@ -1,6 +1,7 @@
 """Queries SQL do domínio Componentes Curriculares."""
 
 from apps.componentes_curriculares.constants import (
+    CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL,
     MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO,
     TIPO_TURMA_EVENTO_PARA_ATRIBUICAO,
     TIPO_TURMA_PROGRAMA,
@@ -34,6 +35,7 @@ COMPONENTE_TURMA_CAMPOS_RESPOSTA = f"""\
     false AS planejamento_regencia,
     {SQL_COMPONENTE_TERRITORIO_SABER} AS territorio_saber,
     ct.turma_codigo,
+    ct.tipo_escola,
     t.ano_letivo,
     t.duracao_turno AS turno_turma,
     t.ano AS ano_turma"""
@@ -44,6 +46,10 @@ SQL_FILTRO_ATRIBUICAO_POR_TURMA = f"""\
        ac.dt_disponibilizacao >= make_date(t.ano_letivo, 2, 5)
        OR ac.dt_disponibilizacao IS NULL
        OR ac.cd_motivo_disponibilizacao = {MOTIVO_FIM_ANO}
+       OR COALESCE(cc.regencia, false)
+       OR ct.componente_codigo = {CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL}
+       OR cch.idcomponentecurricularpai =
+          {CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL}
      )"""
 
 SQL_FILTRO_ATRIBUICAO_VIGENTE = """\
@@ -199,6 +205,13 @@ SELECT {COMPONENTE_TURMA_CAMPOS_RESPOSTA}, ac.professor
             )
  WHERE ct.turma_codigo IN ({{placeholders}})"""
 
+# Variante que NÃO exclui turmas extintas — usada na consulta de disciplinas
+# por turma, para manter paridade com o legado (que retorna disciplinas mesmo
+# de turmas extintas). Derivada da query base para evitar duplicação.
+SQL_COMPONENTES_POR_LISTA_TURMAS_INCLUI_EXTINTAS = (
+    SQL_COMPONENTES_POR_LISTA_TURMAS.replace(" AND t.extinta = false", "")
+)
+
 SQL_COMPONENTES_TURMAS_BRUTOS = f"""\
 SELECT DISTINCT
     ct.componente_codigo AS codigo,
@@ -209,6 +222,7 @@ SELECT DISTINCT
     false AS planejamento_regencia,
     {SQL_COMPONENTE_TERRITORIO_SABER} AS territorio_saber,
     ct.turma_codigo,
+    ct.tipo_escola,
     t.ano_letivo,
     t.duracao_turno AS turno_turma,
     t.ano AS ano_turma

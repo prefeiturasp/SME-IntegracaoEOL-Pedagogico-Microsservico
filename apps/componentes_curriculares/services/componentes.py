@@ -214,6 +214,26 @@ class ComponentesService:
             adicionar_componentes_planejamento=adicionar_componentes_planejamento,
         )
 
+    def listar_por_lista_turmas_incluindo_extintas(
+        self,
+        codigos_turmas: list[str],
+        adicionar_componentes_planejamento: bool = True,
+    ) -> list[dict]:
+        """Retorna componentes de múltiplas turmas, incluindo extintas.
+
+        Args:
+            codigos_turmas: Códigos das turmas consultadas.
+            adicionar_componentes_planejamento: Quando True, expande
+                regência com os componentes de planejamento.
+
+        Returns:
+            Lista de componentes das turmas informadas.
+        """
+        return self._repo.listar_por_lista_turmas_incluindo_extintas(
+            codigos_turmas,
+            adicionar_componentes_planejamento=adicionar_componentes_planejamento,
+        )
+
     def listar_turmas_brutos(
         self,
         codigos_turmas: list[str],

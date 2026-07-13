@@ -74,3 +74,30 @@ class TurmaItinerarioEnsinoMedio(models.Model):
 
     def __str__(self) -> str:
         return str(self.nome)
+
+
+class TurmaAtribuidaDreUe(ModeloBase):
+    """Representa turma consolidada por DRE e UE."""
+
+    codigo_escola = models.CharField(max_length=6)
+    codigo_turma = models.BigIntegerField()
+    ano_letivo = models.IntegerField()
+    modalidade = models.CharField(max_length=15, null=True, blank=True)
+    semestre = models.IntegerField(null=True, blank=True)
+    codigo_modalidade = models.IntegerField(null=True, blank=True)
+    codigo_dre = models.CharField(max_length=6)
+    dre = models.CharField(max_length=60, null=True, blank=True)
+    dre_abreviacao = models.CharField(max_length=60, null=True, blank=True)
+    ue = models.CharField(max_length=60, null=True, blank=True)
+    ue_abreviacao = models.CharField(max_length=60, null=True, blank=True)
+    nome_turma = models.CharField(max_length=15, null=True, blank=True)
+    ano = models.CharField(max_length=18, null=True, blank=True)
+    tipo_ue = models.CharField(max_length=25, null=True, blank=True)
+    codigo_tipo_ue = models.IntegerField(null=True, blank=True)
+    codigo_tipo_escola = models.IntegerField(null=True, blank=True)
+    tipo_escola = models.CharField(max_length=12, null=True, blank=True)
+    duracao_turno = models.IntegerField(null=True, blank=True)
+    tipo_turno = models.IntegerField(null=True, blank=True)
+
+    class Meta(ModeloBase.Meta):
+        db_table = "turma_atribuida_dre_ue"

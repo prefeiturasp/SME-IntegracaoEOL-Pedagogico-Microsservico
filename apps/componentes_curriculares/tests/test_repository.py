@@ -246,16 +246,17 @@ class TestComponentesRepository(TestCase):
         )
 
     @patch("apps.componentes_curriculares.repository._raw")
-    def test_listar_por_turma_funcionario_normaliza_regencia_infantil(
+    def test_listar_por_turma_funcionario_preserva_regencia_infantil(
         self,
         mock_raw,
     ) -> None:
-        """Consolida filhos de regência infantil no componente 512."""
+        """Preserva filhos de regência infantil por funcionário."""
         mock_raw.return_value = [
             {
                 "codigo": 512,
                 "descricao": "ED.INF. EMEI 4 HS",
                 "codigo_componente_curricular_pai": 512,
+                "tipo_escola": "2",
                 "turma_codigo": "T1",
                 "professor": "RF1",
             },
@@ -263,6 +264,7 @@ class TestComponentesRepository(TestCase):
                 "codigo": 513,
                 "descricao": "ED.INF. EMEI 2 HS",
                 "codigo_componente_curricular_pai": 512,
+                "tipo_escola": "2",
                 "turma_codigo": "T1",
                 "professor": "RF1",
             },
@@ -270,13 +272,14 @@ class TestComponentesRepository(TestCase):
 
         resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
 
-        self.assertEqual(len(resultado), 1)
+        self.assertEqual(len(resultado), 2)
         self.assertEqual(resultado[0]["codigo"], 512)
-        self.assertEqual(
-            resultado[0]["descricao"],
-            "Regência de classe infantil",
-        )
         self.assertTrue(resultado[0]["regencia"])
+        self.assertEqual(resultado[0]["tipo_escola"], "2")
+        self.assertEqual(resultado[1]["codigo"], 513)
+        self.assertEqual(resultado[1]["descricao"], "ED.INF. EMEI 2 HS")
+        self.assertTrue(resultado[1]["regencia"])
+        self.assertEqual(resultado[1]["tipo_escola"], "2")
         self.assertEqual(resultado[0]["professor"], "RF1")
 
     @patch("apps.componentes_curriculares.repository._raw")

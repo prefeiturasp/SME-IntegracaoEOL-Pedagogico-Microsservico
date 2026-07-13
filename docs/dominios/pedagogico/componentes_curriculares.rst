@@ -5,37 +5,17 @@ Objetivo
 --------
 
 O dominio de componentes curriculares atende consultas usadas pelo Transition
-Gateway para substituir endpoints do legado pedagogico. A implementacao do MS
-de dominio le dados materializados pelo ETL e aplica pequenas regras de
-compatibilidade para preservar o contrato do legado.
+Gateway para preservar o contrato do legado pedagogico. O MS le dados
+materializados pelo ETL e aplica regras de compatibilidade quando o contrato
+externo exige uma forma especifica de resposta.
 
-As principais classes envolvidas sao:
+Capacidades atendidas
+---------------------
 
-* ``apps.componentes_curriculares.repository.ComponentesRepository``;
-* ``apps.componentes_curriculares.services.componentes.ComponentesService``;
-* ``apps.componentes_curriculares.services.territorio_saber``;
-* ``apps.componentes_curriculares.api.views``;
-* tabelas materializadas em ``apps.componentes_curriculares.models``.
-
-Endpoints atendidos
--------------------
-
-O MS expõe os endpoints internos usados pelo gateway, entre eles:
-
-* ``GET /api/v1/componentes-curriculares/``
-* ``GET /api/v1/componentes-curriculares/grade-curricular/{ano_letivo}/``
-* ``GET /api/v1/componentes-curriculares/anos/{ano_turma}/regencia/``
-* ``GET /api/v1/componentes-curriculares/funcionarios/{login}/``
-* ``GET /api/v1/componentes-curriculares/turmas/{codigo_turma}/pap/``
-* ``GET /api/v1/componentes-curriculares/ues/{ue_id}/modalidades/{modalidade}/anos/{ano_letivo}/turmas-programa/``
-* ``GET /api/v1/componentes-curriculares/ues/{ue_id}/modalidades/{modalidade}/anos/{ano_letivo}/``
-* ``GET /api/v1/componentes-curriculares/ues/{ue_id}/turmas/``
-* ``GET /api/v1/componentes-curriculares/turmas/``
-* ``GET /api/v1/componentes-curriculares/turmas/brutos/``
-* ``GET /api/v1/componentes-curriculares/turmas/vigencia/``
-
-O Transition Gateway publica rotas legadas equivalentes e repassa as chamadas
-para este MS.
+O dominio responde consultas de catalogo de componentes, grade curricular,
+componentes por turma, componentes por funcionario, componentes de programas e
+agrupamentos de Territorio do Saber. O Transition Gateway mantem o formato
+legado quando a chamada vem por contratos externos.
 
 Fontes materializadas
 ---------------------
