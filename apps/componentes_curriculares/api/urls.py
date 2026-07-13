@@ -16,6 +16,7 @@ from apps.componentes_curriculares.api.views import (
     ComponentesTurmaProgramaView,
     ComponentesTurmasBrutosView,
     GradeCurricularView,
+    ListagemTurmasComponentesView,
     ValidarPapView,
     VigenciaComponentesView,
 )
@@ -63,6 +64,12 @@ urlpatterns = [
         "/turmas-programa/",
         ComponentesTurmaProgramaView.as_view(),
         name="turma-programa",
+    ),
+    path(
+        "ues/<str:ue_id>/modalidades/<int:modalidade>/anos/<int:ano_letivo>"
+        "/componentes/",
+        ListagemTurmasComponentesView.as_view(),
+        name="listagem-turmas-componentes",
     ),
     path(
         "ues/<str:ue_id>/modalidades/<int:modalidade>/anos/<int:ano_letivo>/",

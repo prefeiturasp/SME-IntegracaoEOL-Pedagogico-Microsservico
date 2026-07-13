@@ -1,7 +1,8 @@
 """Views do domínio Componentes Curriculares."""
 
-from datetime import date
+from datetime import date, datetime
 
+from django.utils.dateparse import parse_date, parse_datetime
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.request import Request
@@ -12,12 +13,75 @@ from apps.componentes_curriculares.serializers import (
     ComponenteRegenciaSerializer,
     ComponenteSimplificadoSerializer,
     GradeCurricularSerializer,
+    ListagemTurmasComponentesPaginadoSerializer,
     VigenciaComponenteSerializer,
 )
 from apps.componentes_curriculares.services import ComponentesService
 from apps.core.views import BaseAPIView
 
 _TAG = ["ComponentesCurriculares"]
+
+
+def _query_bool(request: Request, *nomes: str, default: bool = False) -> bool:
+    """Lê um booleano de query params aceitando snake_case e camelCase.
+
+    Args:
+        request: Requisição HTTP.
+        nomes: Nomes de parâmetro aceitos, em ordem de precedência.
+        default: Valor usado quando nenhum parâmetro está presente.
+
+    Returns:
+        Valor booleano interpretado do parâmetro.
+    """
+    for nome in nomes:
+        valor = request.query_params.get(nome)
+        if valor is not None:
+            return valor.lower() == "true"
+    return default
+
+
+def _query_int(request: Request, *nomes: str, default: int = 0) -> int:
+    """Lê um inteiro de query params aceitando snake_case e camelCase.
+
+    Args:
+        request: Requisição HTTP.
+        nomes: Nomes de parâmetro aceitos, em ordem de precedência.
+        default: Valor usado quando ausente ou inválido.
+
+    Returns:
+        Valor inteiro interpretado do parâmetro.
+    """
+    for nome in nomes:
+        valor = request.query_params.get(nome)
+        if valor:
+            try:
+                return int(valor)
+            except ValueError:
+                return default
+    return default
+
+
+def _query_datetime(request: Request, *nomes: str) -> datetime | None:
+    """Lê uma data/hora ISO de query params (snake_case e camelCase).
+
+    Args:
+        request: Requisição HTTP.
+        nomes: Nomes de parâmetro aceitos, em ordem de precedência.
+
+    Returns:
+        Data/hora interpretada ou None quando ausente/ inválida.
+    """
+    for nome in nomes:
+        valor = request.query_params.get(nome)
+        if not valor:
+            continue
+        analisado = parse_datetime(valor)
+        if analisado is not None:
+            return analisado
+        data = parse_date(valor)
+        if data is not None:
+            return datetime(data.year, data.month, data.day)
+    return None
 
 
 class ComponentesPorFuncionarioView(BaseAPIView):
@@ -248,6 +312,116 @@ class ComponentesTurmaProgramaView(BaseAPIView):
         service = ComponentesService()
         dados = service.listar_turma_programa_por_ue_modalidade_ano(
             ue_id, modalidade, ano_letivo
+        )
+        return Response(dados)
+
+
+class ListagemTurmasComponentesView(BaseAPIView):
+    """Lista turmas e componentes por UE, modalidade e ano letivo."""
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "codigo_turma",
+                OpenApiTypes.INT,
+                OpenApiParameter.QUERY,
+                description="Filtra por uma turma específica",
+            ),
+            OpenApiParameter(
+                "qtde_registros",
+                OpenApiTypes.INT,
+                OpenApiParameter.QUERY,
+                description="Tamanho da página (usado no total de páginas)",
+            ),
+            OpenApiParameter(
+                "qtde_registros_ignorados",
+                OpenApiTypes.INT,
+                OpenApiParameter.QUERY,
+                description="Número de registros a ignorar (usado no total de páginas)",
+            ),
+            OpenApiParameter(
+                "eh_professor",
+                OpenApiTypes.BOOL,
+                OpenApiParameter.QUERY,
+                default=False,
+                description="Restringe os componentes ao RF informado",
+            ),
+            OpenApiParameter(
+                "codigo_rf",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                description="RF do professor usado no filtro e no território",
+            ),
+            OpenApiParameter(
+                "considera_historico",
+                OpenApiTypes.BOOL,
+                OpenApiParameter.QUERY,
+                default=False,
+                description="Inclui turmas históricas (situação C/E)",
+            ),
+            OpenApiParameter(
+                "periodo_escolar_inicio",
+                OpenApiTypes.DATETIME,
+                OpenApiParameter.QUERY,
+                description="Início do período escolar (turmas extintas)",
+            ),
+            OpenApiParameter(
+                "anos_infantil_desconsiderar",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                many=True,
+                description="Anos de turma removidos do retorno",
+            ),
+        ],
+        responses={200: ListagemTurmasComponentesPaginadoSerializer},
+        description="Lista turmas e componentes por UE, modalidade e ano.",
+        tags=_TAG,
+        operation_id="listagem_turmas_componentes",
+    )
+    def get(
+        self,
+        request: Request,
+        ue_id: str,
+        modalidade: int,
+        ano_letivo: int,
+    ) -> Response:
+        """Lista turmas e componentes por UE, modalidade e ano letivo.
+
+        Args:
+            request: Requisição HTTP.
+            ue_id: Código da unidade educacional.
+            modalidade: Código da modalidade de ensino.
+            ano_letivo: Ano letivo consultado.
+
+        Returns:
+            Resposta paginada com os componentes das turmas encontradas.
+        """
+        eh_professor = _query_bool(request, "eh_professor", "ehProfessor")
+        codigo_rf = request.query_params.get(
+            "codigo_rf", request.query_params.get("codigoRf")
+        )
+        anos_infantil = request.query_params.getlist(
+            "anos_infantil_desconsiderar"
+        ) or request.query_params.getlist("anosInfantilDesconsiderar")
+        service = ComponentesService()
+        dados = service.listar_turmas_componentes_por_ue_modalidade_ano(
+            ue_id,
+            modalidade,
+            ano_letivo,
+            codigo_turma=_query_int(request, "codigo_turma", "codigoTurma")
+            or None,
+            qtde_registros=_query_int(
+                request, "qtde_registros", "qtdeRegistros"
+            ),
+            eh_professor=eh_professor,
+            codigo_rf=codigo_rf if eh_professor else None,
+            considera_historico=_query_bool(
+                request, "considera_historico", "consideraHistorico"
+            ),
+            periodo_escolar_inicio=_query_datetime(
+                request, "periodo_escolar_inicio", "periodoEscolarInicio"
+            ),
+            anos_infantil_desconsiderar=anos_infantil,
         )
         return Response(dados)
 

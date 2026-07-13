@@ -288,3 +288,46 @@ class TestComponentesService(SimpleTestCase):
             "listar_agrupamentos_territorio",
             [15],
         )
+
+
+class TestListagemTurmasComponentesService(SimpleTestCase):
+    """Valida o envelope paginado da listagem turma×componente."""
+
+    def setUp(self) -> None:
+        """Configura o repository mockado."""
+        patcher = patch(_REPO)
+        self.addCleanup(patcher.stop)
+        self.repo = patcher.start().return_value
+        self.service = ComponentesService()
+
+    def test_envelope_calcula_total_paginas(self) -> None:
+        """Calcula total de páginas sem fatiar os itens."""
+        itens = [{"componente_curricular_codigo": i} for i in range(5)]
+        self.repo.listar_turmas_componentes_por_ue_modalidade_ano.return_value = (  # noqa: E501
+            itens
+        )
+
+        resultado = (
+            self.service.listar_turmas_componentes_por_ue_modalidade_ano(
+                "9000", 5, 2024, qtde_registros=2
+            )
+        )
+
+        self.assertEqual(resultado["items"], itens)
+        self.assertEqual(resultado["total_registros"], 5)
+        self.assertEqual(resultado["total_paginas"], 3)
+
+    def test_envelope_qtde_zero_nao_divide(self) -> None:
+        """Não divide por zero quando qtde_registros é 0."""
+        self.repo.listar_turmas_componentes_por_ue_modalidade_ano.return_value = (  # noqa: E501
+            []
+        )
+
+        resultado = (
+            self.service.listar_turmas_componentes_por_ue_modalidade_ano(
+                "9000", 5, 2024, qtde_registros=0
+            )
+        )
+
+        self.assertEqual(resultado["total_paginas"], 0)
+        self.assertEqual(resultado["total_registros"], 0)

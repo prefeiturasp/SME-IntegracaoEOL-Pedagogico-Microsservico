@@ -258,7 +258,7 @@ def _codigos_turmas_com_territorio(componentes: list[dict]) -> set[object]:
 def _codigos_territorio_do_login(
     componentes: list[dict],
     turma_codigo: object,
-    login: str,
+    login: str | None,
 ) -> set[object]:
     """Retorna códigos de território atribuídos a um login.
 
@@ -285,25 +285,27 @@ def _codigos_territorio_do_login(
 def _buscar_agrupamentos_da_turma(
     using: str,
     turma_codigo: object,
-    login: str,
+    login: str | None,
 ) -> Iterable[AgrupamentoAtribuicaoTerritorioSaber]:
     """Busca agrupamentos de território de uma turma e professor.
 
     Args:
         using: Alias da conexão Django.
         turma_codigo: Código da turma usada como filtro.
-        login: RF do professor usado como filtro.
+        login: RF do professor usado como filtro. Quando ``None`` (visão de
+            gestor), agrega os agrupamentos de todos os professores da turma.
 
     Returns:
         Agrupamentos ordenados para seleção.
     """
-    return (
-        AgrupamentoAtribuicaoTerritorioSaber.objects.using(using)
-        .filter(cod_turma=turma_codigo, rf_professor=login)
-        .order_by(
-            F("dt_fim_atribuicao").asc(nulls_first=True),
-            "-dt_inicio_atribuicao",
-        )
+    queryset = AgrupamentoAtribuicaoTerritorioSaber.objects.using(
+        using
+    ).filter(cod_turma=turma_codigo)
+    if login is not None:
+        queryset = queryset.filter(rf_professor=login)
+    return queryset.order_by(
+        F("dt_fim_atribuicao").asc(nulls_first=True),
+        "-dt_inicio_atribuicao",
     )
 
 
@@ -379,7 +381,7 @@ def _selecionar_agrupamentos(
 def _deve_remover_componente_territorio(
     item: dict,
     turma_codigo: object,
-    login: str,
+    login: str | None,
     selecionados: AgrupamentosTerritorioSelecionados,
     codigos_territorio_login: set[object],
     primeiros_codigos_outros_professores: set[tuple[object, int]],
@@ -428,7 +430,7 @@ def _deve_remover_componente_territorio(
 def _primeiros_codigos_outros_professores(
     componentes: list[dict],
     turma_codigo: object,
-    login: str,
+    login: str | None,
     codigos_territorio_login: set[object],
 ) -> set[tuple[object, int]]:
     """Retorna o primeiro componente de território por outro professor.
@@ -464,7 +466,7 @@ def _primeiros_codigos_outros_professores(
 def _remover_componentes_agrupados(
     componentes: list[dict],
     turma_codigo: object,
-    login: str,
+    login: str | None,
     selecionados: AgrupamentosTerritorioSelecionados,
     codigos_territorio_login: set[object],
     primeiros_codigos_outros_professores: set[tuple[object, int]],
@@ -673,7 +675,7 @@ def _adicionar_atribuicoes_nao_agrupadas(
 
 def _atualizar_descricoes_outros_professores(
     componentes: list[dict],
-    login: str,
+    login: str | None,
     selecionados: AgrupamentosTerritorioSelecionados,
 ) -> None:
     """Atualiza descrições dos componentes preservados na resposta.
@@ -697,14 +699,17 @@ def _atualizar_descricoes_outros_professores(
 def mesclar_agrupamentos_territorio(
     componentes: list[dict],
     using: str,
-    login: str,
+    login: str | None,
 ) -> list[dict]:
     """Substitui componentes de território agrupados pelo agrupamento.
 
     Args:
         componentes: Componentes já normalizados da turma/funcionário.
         using: Alias da conexão Django.
-        login: RF do professor usado no filtro de atribuição.
+        login: RF do professor usado no filtro de atribuição. Quando ``None``
+            (visão de gestor, sem RF), agrega os agrupamentos de todos os
+            professores da turma; nesse caso os componentes de entrada não
+            têm professor e a seleção degenera para "todos os territórios".
 
     Returns:
         Lista de componentes com os agrupamentos de território aplicados.

@@ -1560,3 +1560,238 @@ class TestComponentesRepository(TestCase):
         resultado = self.repo.listar_agrupamentos_territorio([])
 
         self.assertEqual(resultado, [])
+
+
+def _row_listagem(
+    codigo: int,
+    descricao: str,
+    *,
+    turma_codigo: str = "T1",
+    modalidade: int = 5,
+    professor: str | None = None,
+    territorio: bool = False,
+    codigo_territorio: int | None = None,
+) -> dict:
+    """Cria linha bruta da consulta de listagem turma×componente.
+
+    Args:
+        codigo: Código do componente curricular.
+        descricao: Descrição do componente.
+        turma_codigo: Código da turma.
+        modalidade: Código de modalidade da turma.
+        professor: RF do professor (None no modo gestor).
+        territorio: Marca o componente como Território do Saber.
+        codigo_territorio: Código de território do componente.
+
+    Returns:
+        Linha no formato retornado pela consulta raw do repository.
+    """
+    return {
+        "codigo": codigo,
+        "descricao": descricao,
+        "codigo_componente_territorio_saber": codigo_territorio,
+        "codigo_componente_curricular_pai": None,
+        "territorio_saber": territorio,
+        "turma_codigo": turma_codigo,
+        "professor": professor,
+        "modalidade": modalidade,
+        "nome_turma": "1 ANO A",
+        "ano_turma": "1",
+        "tipo_turno": 3,
+        "descricao_grade_programa": "EJA I",
+        "ano_letivo": 2024,
+        "tipo_turma": 1,
+        "tipo_escola": 2,
+        "situacao": "A",
+        "data_status_turma_escola": "2024-03-01T08:00:00",
+        "ue_codigo": "9000",
+        "codigo_etapa_ensino": 6,
+        "codigo_ciclo_ensino": 3,
+        "serie_ensino": "1 ANO",
+        "tipo_grade_programa": 0,
+        "codigo_grade_programa": 0,
+        "data_inicio_turma": None,
+        "data_fim": None,
+        "data_atualizacao": "2024-03-02T09:00:00",
+        "turno_turma": 5,
+        "ensino_especial": False,
+        "extinta": False,
+        "semestre": 0,
+    }
+
+
+class TestListagemTurmasComponentes(TestCase):
+    """Valida a listagem turma×componente por UE, modalidade e ano."""
+
+    def setUp(self) -> None:
+        """Inicializa o repository."""
+        self.repo = ComponentesRepository()
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_achata_e_monta_dto(self, mock_raw) -> None:
+        """Monta itens turma×componente com os campos esperados."""
+        mock_raw.return_value = [
+            _row_listagem(1, "Matemática"),
+            _row_listagem(2, "Português"),
+        ]
+
+        itens = self.repo.listar_turmas_componentes_por_ue_modalidade_ano(
+            "9000", 5, 2024
+        )
+
+        self.assertEqual(len(itens), 2)
+        item = itens[0]
+        self.assertIsNone(item["id"])
+        self.assertEqual(item["turma_codigo"], "T1")
+        self.assertEqual(item["modalidade"], 5)
+        self.assertEqual(item["nome_turma"], "1 ANO A")
+        self.assertEqual(item["ano"], "1")
+        self.assertEqual(item["turno"], "3")
+        self.assertEqual(item["nome_componente_curricular"], "Matemática")
+        self.assertEqual(item["componente_curricular_codigo"], 1)
+        # Complemento só é preenchido na modalidade EJA.
+        self.assertEqual(item["complemento_turma_eja"], "")
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_inclui_atributos_cadastrais_turma(self, mock_raw) -> None:
+        """Repassa os atributos cadastrais da turma para cada item."""
+        mock_raw.return_value = [_row_listagem(1, "Matemática")]
+
+        itens = self.repo.listar_turmas_componentes_por_ue_modalidade_ano(
+            "9000", 5, 2024
+        )
+
+        item = itens[0]
+        self.assertEqual(item["ano_letivo"], 2024)
+        self.assertEqual(item["tipo_turma"], 1)
+        self.assertEqual(item["tipo_escola"], 2)
+        self.assertEqual(item["situacao_turma_escola"], "A")
+        self.assertEqual(
+            item["data_status_turma_escola"], "2024-03-01T08:00:00"
+        )
+        self.assertEqual(item["codigo_escola"], "9000")
+        self.assertEqual(item["etapa_ensino"], 6)
+        self.assertEqual(item["ciclo_ensino"], 3)
+        self.assertEqual(item["serie_ensino"], "1 ANO")
+        self.assertEqual(item["duracao_turno"], 5)
+        self.assertIs(item["extinta"], False)
+        self.assertIs(item["ensino_especial"], False)
+        self.assertEqual(item["semestre"], 0)
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_complemento_eja_apenas_modalidade_3(self, mock_raw) -> None:
+        """Preenche ComplementoTurmaEJA só na modalidade EJA (3)."""
+        mock_raw.return_value = [
+            _row_listagem(1, "Matemática", modalidade=3),
+        ]
+
+        itens = self.repo.listar_turmas_componentes_por_ue_modalidade_ano(
+            "9000", 3, 2024
+        )
+
+        self.assertEqual(itens[0]["complemento_turma_eja"], "EJA I")
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_deduplica_itens_repetidos(self, mock_raw) -> None:
+        """Remove itens turma×componente duplicados."""
+        mock_raw.return_value = [
+            _row_listagem(1, "Matemática"),
+            _row_listagem(1, "Matemática"),
+        ]
+
+        itens = self.repo.listar_turmas_componentes_por_ue_modalidade_ano(
+            "9000", 5, 2024
+        )
+
+        self.assertEqual(len(itens), 1)
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_anos_infantil_desconsiderar_filtra(self, mock_raw) -> None:
+        """Remove turmas cujo ano está na lista a desconsiderar."""
+        mock_raw.return_value = [_row_listagem(1, "Matemática")]
+
+        itens = self.repo.listar_turmas_componentes_por_ue_modalidade_ano(
+            "9000", 5, 2024, anos_infantil_desconsiderar=["1"]
+        )
+
+        self.assertEqual(itens, [])
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_filtro_professor_monta_join_e_param(self, mock_raw) -> None:
+        """Aplica join de atribuição e o RF quando eh_professor."""
+        mock_raw.return_value = []
+
+        self.repo.listar_turmas_componentes_por_ue_modalidade_ano(
+            "9000", 5, 2024, eh_professor=True, codigo_rf="RF1"
+        )
+
+        sql, params = mock_raw.call_args.args[0], mock_raw.call_args.args[1]
+        self.assertIn("atribuicao_componente ac", sql)
+        self.assertIn("ac.professor", sql)
+        self.assertIn("RF1", params)
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_considera_historico_monta_clausula(self, mock_raw) -> None:
+        """Inclui turmas históricas e o período quando solicitado."""
+        mock_raw.return_value = []
+        periodo = datetime(2024, 2, 1, tzinfo=UTC)
+
+        self.repo.listar_turmas_componentes_por_ue_modalidade_ano(
+            "9000",
+            5,
+            2024,
+            considera_historico=True,
+            periodo_escolar_inicio=periodo,
+        )
+
+        sql, params = mock_raw.call_args.args[0], mock_raw.call_args.args[1]
+        self.assertIn("t.situacao = 'E'", sql)
+        self.assertIn(periodo, params)
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_vigente_exclui_historicas(self, mock_raw) -> None:
+        """Sem histórico, filtra situações fora de C/E."""
+        mock_raw.return_value = []
+
+        self.repo.listar_turmas_componentes_por_ue_modalidade_ano(
+            "9000", 5, 2024
+        )
+
+        sql = mock_raw.call_args.args[0]
+        self.assertIn("NOT IN ('C', 'E')", sql)
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_gestor_agrega_agrupamento_de_qualquer_professor(
+        self, mock_raw
+    ) -> None:
+        """No modo gestor, agrega agrupamentos de todos os professores."""
+        mock_raw.return_value = [
+            _row_listagem(
+                1216,
+                "TS 3",
+                professor=None,
+                territorio=True,
+                codigo_territorio=1216,
+            ),
+            _row_listagem(
+                1217,
+                "TS 4",
+                professor=None,
+                territorio=True,
+                codigo_territorio=1217,
+            ),
+        ]
+        _make_agrupamento(
+            cod_agrupamento=813071,
+            cod_turma="T1",
+            rf_professor="RFX",
+            cod_componentes_curriculares="1216,1217",
+        )
+
+        itens = self.repo.listar_turmas_componentes_por_ue_modalidade_ano(
+            "9000", 5, 2024
+        )
+
+        codigos = {item["componente_curricular_codigo"] for item in itens}
+        self.assertEqual(codigos, {813071})
+        self.assertTrue(itens[0]["territorio_saber"])
