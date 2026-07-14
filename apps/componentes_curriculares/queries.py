@@ -267,6 +267,95 @@ WHERE t.ue_codigo = %s
   {{semestre_clause}}
 """
 
+# Listagem turma×componente por UE/modalidade/ano. Os campos de turma
+# (modalidade, nome, ano, turno, complemento) acompanham cada componente para
+# recompor o DTO após a substituição de Território do Saber. O bloco de
+# atribuição (`{professor_join}`/`{professor_select}`) só é aplicado quando a
+# consulta é filtrada por RF; caso contrário o professor volta nulo.
+SQL_LISTAGEM_TURMAS_COMPONENTES = f"""\
+SELECT
+    ct.componente_codigo AS codigo,
+    ct.codigo_componente_territorio_saber,
+    cch.idcomponentecurricularpai AS codigo_componente_curricular_pai,
+    CASE
+        WHEN ct.codigo_componente_territorio_saber IS NOT NULL
+         AND ct.desc_territorio_saber IS NOT NULL
+        THEN
+            CASE
+                WHEN ct.desc_experiencia_pedagogica IS NOT NULL
+                THEN btrim(ct.desc_territorio_saber) || ' - ' ||
+                     btrim(ct.desc_experiencia_pedagogica)
+                ELSE btrim(ct.desc_territorio_saber)
+            END
+        ELSE cc.descricao
+    END AS descricao,
+    false AS regencia,
+    false AS planejamento_regencia,
+    {SQL_COMPONENTE_TERRITORIO_SABER} AS territorio_saber,
+    ct.turma_codigo,
+    t.ano_letivo,
+    t.duracao_turno AS turno_turma,
+    t.ano AS ano_turma,
+    {{professor_select}} AS professor,
+    t.codigo_modalidade AS modalidade,
+    t.nome_turma,
+    t.tipo_turno,
+    t.descricao_grade_programa,
+    t.tipo_escola,
+    t.situacao,
+    t.data_status_turma_escola,
+    t.tipo_turma,
+    t.codigo_etapa_ensino,
+    t.codigo_ciclo_ensino,
+    t.serie_ensino,
+    t.tipo_grade_programa,
+    t.codigo_grade_programa,
+    t.data_inicio_turma,
+    t.data_fim,
+    t.data_atualizacao,
+    t.ensino_especial,
+    t.semestre,
+    t.extinta,
+    t.ue_codigo
+  FROM componente_turma ct
+  LEFT JOIN componente_curricular cc
+    ON cc.codigo = ct.componente_codigo
+  LEFT JOIN LATERAL (
+    SELECT h.idcomponentecurricularpai
+      FROM componente_curricular_hierarquia h
+     WHERE h.idcomponentecurricular = ct.componente_codigo
+     ORDER BY h.vigencia DESC NULLS LAST
+     LIMIT 1
+  ) cch ON true
+  JOIN turma t ON t.codigo::varchar = ct.turma_codigo
+  {{professor_join}}
+ WHERE t.ue_codigo = %s
+   AND t.ano_letivo = %s
+   AND t.codigo_modalidade = %s
+   {{codigo_turma_clause}}
+   {{historico_clause}}"""
+
+SQL_LISTAGEM_JOIN_PROFESSOR = f"""\
+  JOIN atribuicao_componente ac
+    ON ac.turma_codigo = ct.turma_codigo
+   AND ac.componente_codigo = ct.componente_codigo
+   AND ac.professor = %s
+   AND ac.dt_cancelamento IS NULL
+   AND (
+         ac.dt_disponibilizacao >= make_date(t.ano_letivo, 2, 5)
+         OR ac.dt_disponibilizacao IS NULL
+         OR ac.cd_motivo_disponibilizacao = {MOTIVO_FIM_ANO}
+       )"""
+
+SQL_LISTAGEM_HISTORICO_VIGENTE = (
+    " AND COALESCE(t.situacao, '') NOT IN ('C', 'E')"
+)
+SQL_LISTAGEM_HISTORICO_HISTORICA = """\
+ AND (
+       t.situacao = 'C'
+       OR (t.situacao = 'E' AND t.data_status_turma_escola >= %s)
+     )"""
+
 SQL_COMPONENTES_SEM_ATRIBUICAO = """\
 SELECT DISTINCT ct.componente_codigo AS codigo
   FROM componente_turma ct

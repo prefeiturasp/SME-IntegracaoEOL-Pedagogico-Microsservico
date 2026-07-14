@@ -1,6 +1,7 @@
 """Serviços do domínio Componentes Curriculares."""
 
-from datetime import date
+import math
+from datetime import date, datetime
 
 from apps.componentes_curriculares.repository import ComponentesRepository
 
@@ -121,6 +122,61 @@ class ComponentesService:
         return self._repo.listar_turma_programa_por_ue_modalidade_ano(
             ue_codigo, modalidade, ano_letivo
         )
+
+    def listar_turmas_componentes_por_ue_modalidade_ano(
+        self,
+        ue_codigo: str,
+        modalidade: int,
+        ano_letivo: int,
+        codigo_turma: int | None = None,
+        qtde_registros: int = 0,
+        eh_professor: bool = False,
+        codigo_rf: str | None = None,
+        considera_historico: bool = False,
+        periodo_escolar_inicio: datetime | None = None,
+        anos_infantil_desconsiderar: list[str] | None = None,
+    ) -> dict:
+        """Retorna listagem paginada de componentes por turma.
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+            modalidade: Código da modalidade de ensino.
+            ano_letivo: Ano letivo consultado.
+            codigo_turma: Filtra por uma turma específica quando informado.
+            qtde_registros: Tamanho da página usado no total de páginas.
+            eh_professor: Restringe os componentes ao RF informado.
+            codigo_rf: RF do professor usado no filtro e no território.
+            considera_historico: Inclui turmas históricas (situação C/E).
+            periodo_escolar_inicio: Início do período escolar para turmas
+                extintas quando `considera_historico` é verdadeiro.
+            anos_infantil_desconsiderar: Anos de turma removidos do retorno.
+
+        Returns:
+            Envelope com `items`, `total_registros` e `total_paginas`.
+        """
+        itens = self._repo.listar_turmas_componentes_por_ue_modalidade_ano(
+            ue_codigo,
+            modalidade,
+            ano_letivo,
+            codigo_turma=codigo_turma,
+            eh_professor=eh_professor,
+            codigo_rf=codigo_rf,
+            considera_historico=considera_historico,
+            periodo_escolar_inicio=periodo_escolar_inicio,
+            anos_infantil_desconsiderar=anos_infantil_desconsiderar,
+        )
+        total_registros = len(itens)
+        # A paginação só informa o total de páginas calculado a partir de `qtde_registros`.
+        total_paginas = (
+            math.ceil(total_registros / qtde_registros)
+            if qtde_registros > 0
+            else 0
+        )
+        return {
+            "items": itens,
+            "total_registros": total_registros,
+            "total_paginas": total_paginas,
+        }
 
     def listar_por_ue_e_turmas(
         self,

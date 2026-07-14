@@ -69,6 +69,18 @@ class TestTurmasService(TestCase):
         )
         self.repo.turmas_recorte_fund_medio_eja.assert_called_once_with([6])
 
+    def test_turmas_recorte_por_tipo(self) -> None:
+        """Delega ao repository com códigos e filtros informados."""
+        self.repo.turmas_recorte_por_tipo.return_value = [2112345]
+
+        self.assertEqual(
+            self.service.turmas_recorte_por_tipo([2112345], [1], "000532", 1),
+            [2112345],
+        )
+        self.repo.turmas_recorte_por_tipo.assert_called_once_with(
+            [2112345], [1], "000532", 1
+        )
+
     def test_dados_turma(self) -> None:
         self.repo.dados_turma.return_value = {"codigo": 4}
 

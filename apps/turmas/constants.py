@@ -8,6 +8,14 @@ MENSAGEM_COMPORTAMENTO_INESPERADO = (
 ETAPA_ENSINO_MAGISTERIO = 9
 TIPO_GRADE_PROGRAMA_ITINERARIO = 23
 
+# 1=AnualInício1ºSem, 2=AnualInício2ºSem, 3=SemestralInício1ºSem,
+# 4=SemestralInício2ºSem. Semestre 1 => início no 1º semestre (1,3);
+# semestre 2 => início no 2º semestre (2,4).
+PERIODICIDADES_POR_SEMESTRE = {
+    1: (1, 3),
+    2: (2, 4),
+}
+
 TIPOS_ESCOLA_TURMAS_HISTORICAS_PROFESSOR = (1, 2, 3, 4, 16, 28, 31)
 ETAPAS_ENSINO_TURMAS_HISTORICAS_PROFESSOR = (
     1,

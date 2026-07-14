@@ -67,3 +67,46 @@ class GradeCurricularSerializer(serializers.Serializer):
     descricao_serie_ensino = serializers.CharField(allow_null=True)
     codigo_serie_ensino = serializers.IntegerField(allow_null=True)
     modalidade = serializers.IntegerField(allow_null=True)
+
+
+class ListagemTurmaComponenteSerializer(serializers.Serializer):
+    """Serializa um item da listagem turma×componente."""
+
+    id = serializers.CharField(allow_null=True)
+    turma_codigo = serializers.CharField(allow_null=True)
+    modalidade = serializers.IntegerField(allow_null=True)
+    nome_turma = serializers.CharField(allow_null=True)
+    ano = serializers.CharField(allow_null=True)
+    complemento_turma_eja = serializers.CharField(allow_blank=True)
+    nome_componente_curricular = serializers.CharField(allow_null=True)
+    componente_curricular_codigo = serializers.IntegerField(allow_null=True)
+    turno = serializers.CharField(allow_null=True)
+    territorio_saber = serializers.BooleanField()
+    componente_curricular_territorio_saber_codigo = serializers.IntegerField()
+    ano_letivo = serializers.IntegerField(allow_null=True)
+    tipo_turma = serializers.IntegerField(allow_null=True)
+    tipo_escola = serializers.IntegerField(allow_null=True)
+    situacao_turma_escola = serializers.CharField(allow_null=True)
+    data_status_turma_escola = serializers.DateTimeField(allow_null=True)
+    codigo_escola = serializers.CharField(allow_null=True)
+    etapa_ensino = serializers.IntegerField(allow_null=True)
+    ciclo_ensino = serializers.IntegerField(allow_null=True)
+    serie_ensino = serializers.CharField(allow_null=True)
+    tipo_grade_programa = serializers.IntegerField(allow_null=True)
+    codigo_grade_programa = serializers.IntegerField(allow_null=True)
+    descricao_grade_programa = serializers.CharField(allow_null=True)
+    data_inicio_turma = serializers.DateTimeField(allow_null=True)
+    data_fim_turma = serializers.DateTimeField(allow_null=True)
+    data_atualizacao = serializers.DateTimeField(allow_null=True)
+    duracao_turno = serializers.IntegerField(allow_null=True)
+    ensino_especial = serializers.BooleanField(allow_null=True)
+    semestre = serializers.IntegerField(allow_null=True)
+    extinta = serializers.BooleanField(allow_null=True)
+
+
+class ListagemTurmasComponentesPaginadoSerializer(serializers.Serializer):
+    """Serializa a resposta paginada da listagem turma×componente."""
+
+    items = ListagemTurmaComponenteSerializer(many=True)
+    total_registros = serializers.IntegerField()
+    total_paginas = serializers.IntegerField()
