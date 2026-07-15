@@ -8,11 +8,12 @@ from apps.componentes_curriculares.constants import (
 )
 
 MOTIVO_FIM_ANO = MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO
+# Componente é de Território do Saber quando a grade da turma registra um
+# território efetivamente utilizado (com descrição); componentes da faixa de
+# território sem esse registro ("não utilizado") permanecem comuns.
 SQL_COMPONENTE_TERRITORIO_SABER = """\
 (
-        ct.codigo_componente_territorio_saber IS NOT NULL
-        OR ct.componente_codigo BETWEEN 1214 AND 1225
-        OR ct.componente_codigo BETWEEN 1519 AND 1522
+        ct.desc_territorio_saber IS NOT NULL
     )"""
 
 COMPONENTE_TURMA_CAMPOS_RESPOSTA = f"""\
@@ -332,6 +333,7 @@ SELECT
  WHERE t.ue_codigo = %s
    AND t.ano_letivo = %s
    AND t.codigo_modalidade = %s
+   AND t.tipo_turma <> 4
    {{codigo_turma_clause}}
    {{historico_clause}}"""
 

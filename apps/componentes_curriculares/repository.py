@@ -133,6 +133,20 @@ def _aplicar_regra_regencia_classe_infantil(item: dict) -> dict:
     return item
 
 
+def _componente_catalogo_territorio(codigo: object) -> bool:
+    """Indica se o componente pertence ao catálogo de Território do Saber.
+
+    Args:
+        codigo: Código do componente curricular.
+
+    Returns:
+        True quando o código está nas faixas de componentes de território.
+    """
+    return isinstance(codigo, int) and (
+        1214 <= codigo <= 1225 or 1519 <= codigo <= 1522
+    )
+
+
 def _item_listagem_para_dict(componente: dict, info: dict) -> dict:
     """Monta um item da listagem turma×componente para resposta.
 
@@ -144,8 +158,22 @@ def _item_listagem_para_dict(componente: dict, info: dict) -> dict:
         Item da listagem no formato de resposta (snake_case).
     """
     turno = info.get("turno")
+    # Itens de Território do Saber carregam identificador próprio (o código
+    # do agrupamento ou do componente) e o RF do professor da atribuição;
+    # componentes comuns não têm esses campos. O id existe para qualquer
+    # componente do catálogo de território, mesmo sem registro na turma.
+    eh_territorio = bool(
+        componente.get("territorio_saber")
+        or componente.get("codigo_componente_territorio_saber")
+    )
+    tem_id_territorio = eh_territorio or _componente_catalogo_territorio(
+        componente.get("codigo")
+    )
     return {
-        "id": None,
+        "id": str(componente["codigo"]) if tem_id_territorio else None,
+        "registro_funcional": (
+            componente.get("professor") if eh_territorio else None
+        ),
         "turma_codigo": componente.get("turma_codigo"),
         "modalidade": info.get("modalidade"),
         "nome_turma": info.get("nome_turma"),
@@ -839,7 +867,10 @@ class ComponentesRepository:
                 row["turma_codigo"],
                 self._info_turma_listagem(row),
             )
-            item = _normalizar_componente_turma(row)
+            # A listagem exibe o componente como cadastrado na grade da
+            # turma; a consolidação da regência de classe infantil vale
+            # para os retornos por turma/funcionário, não aqui.
+            item = _componente_para_dict(row)
             chave = (
                 item.get("turma_codigo"),
                 item.get("codigo"),
@@ -925,9 +956,12 @@ class ComponentesRepository:
         """
         professor_select = "ac.professor" if eh_professor else "NULL"
         professor_join = SQL_LISTAGEM_JOIN_PROFESSOR if eh_professor else ""
-        params: list = [ue_codigo, ano_letivo, modalidade]
+        # O join do professor injeta um %s ANTES do WHERE, então o RF precisa
+        # ser o primeiro parâmetro posicional quando eh_professor.
+        params: list = []
         if eh_professor:
             params.append(codigo_rf)
+        params += [ue_codigo, ano_letivo, modalidade]
 
         codigo_turma_clause = ""
         if codigo_turma:

@@ -296,16 +296,22 @@ def _buscar_agrupamentos_da_turma(
             gestor), agrega os agrupamentos de todos os professores da turma.
 
     Returns:
-        Agrupamentos ordenados para seleção.
+        Agrupamentos ordenados para seleção: atribuição mais recente
+        primeiro e, entre atribuições da mesma data, a vigente (sem data
+        de fim) antes das encerradas.
     """
     queryset = AgrupamentoAtribuicaoTerritorioSaber.objects.using(
         using
     ).filter(cod_turma=turma_codigo)
     if login is not None:
         queryset = queryset.filter(rf_professor=login)
-    return queryset.order_by(
-        F("dt_fim_atribuicao").asc(nulls_first=True),
-        "-dt_inicio_atribuicao",
+    return sorted(
+        queryset,
+        key=lambda agrupamento: (
+            agrupamento.dt_inicio_atribuicao,
+            agrupamento.dt_fim_atribuicao is None,
+        ),
+        reverse=True,
     )
 
 
@@ -355,25 +361,38 @@ def _selecionar_agrupamentos(
         Agrupamentos selecionados e índices auxiliares.
     """
     selecionados = AgrupamentosTerritorioSelecionados()
-    chaves_vistas: set[str | None] = set()
+    chaves_vistas: set[tuple[str | None, str | None]] = set()
+    hoje = date.today()
 
     for agrupamento in agrupamentos:
         codigos = parse_csv(agrupamento.cod_componentes_curriculares)
-        if len(codigos) < 2:
+        if not codigos:
+            continue
+        if not agrupamento_vigente_na_data(agrupamento, hoje):
             continue
         if (
             codigos_territorio_login is not None
             and not set(codigos) & codigos_territorio_login
         ):
             continue
-        if agrupamento.cod_componentes_curriculares in chaves_vistas:
+        # Um professor pode ter mais de uma atribuição do mesmo conjunto
+        # (renovação): só a mais prioritária entra; conjuntos iguais de
+        # professores diferentes são seleções distintas.
+        chave = (
+            agrupamento.rf_professor,
+            agrupamento.cod_componentes_curriculares,
+        )
+        if chave in chaves_vistas:
             continue
-        chaves_vistas.add(agrupamento.cod_componentes_curriculares)
+        chaves_vistas.add(chave)
         selecionados.agrupamentos.append(agrupamento)
         selecionados.codigos_agrupados.update(codigos)
         selecionados.primeiros_codigos.add(codigos[0])
-        selecionados.descricoes_primeiros_codigos[codigos[0]] = (
-            agrupamento_para_dict(agrupamento)["descricao"]
+        # A descrição exibida é a do agrupamento mais prioritário do
+        # conjunto (o primeiro selecionado).
+        selecionados.descricoes_primeiros_codigos.setdefault(
+            codigos[0],
+            agrupamento_para_dict(agrupamento)["descricao"],
         )
     return selecionados
 
@@ -601,19 +620,17 @@ def _buscar_atribuicao_nao_agrupada(
         contagem[chave] = contagem.get(chave, 0) + 1
         pares.append((componente, atribuicao))
 
-    duplicados: dict[
-        tuple[object, ...],
-        tuple[ComponenteTurma, AtribuicaoTerritorioSaber],
-    ] = {}
+    # Atribuição só é "não agrupada" quando é a única com aquela chave;
+    # atribuições que compartilham a chave pertencem a um agrupamento e o
+    # componente individual não volta à resposta (fica só o agrupamento).
     for componente, atribuicao in pares:
         if componente.componente_codigo != codigo_componente:
             continue
         chave = _chave_agrupamento_atribuicao(componente, atribuicao)
         if contagem[chave] == 1:
             return componente, atribuicao
-        duplicados.setdefault(chave, (componente, atribuicao))
 
-    return next(iter(duplicados.values()), None)
+    return None
 
 
 def _adicionar_atribuicoes_nao_agrupadas(
@@ -671,6 +688,40 @@ def _adicionar_atribuicoes_nao_agrupadas(
         descricoes_existentes.add(chave_descricao)
         adicionados.append(item)
     return componentes + adicionados
+
+
+def _preencher_professor_territorio_sem_agrupamento(
+    componentes: list[dict],
+    using: str,
+    turma_codigo: object,
+    codigos_territorio_login: set[object],
+) -> None:
+    """Preenche o professor de territórios de turma sem agrupamento.
+
+    Mesmo sem agrupamento na turma, um componente de território carrega o
+    professor da sua atribuição única, quando houver.
+
+    Args:
+        componentes: Componentes normalizados para resposta.
+        using: Alias da conexão Django.
+        turma_codigo: Código da turma em processamento.
+        codigos_territorio_login: Componentes de território do professor.
+    """
+    for item in componentes:
+        if (
+            not item.get("territorio_saber")
+            or item.get("turma_codigo") != turma_codigo
+            or item.get("professor") is not None
+            or item.get("codigo") not in codigos_territorio_login
+        ):
+            continue
+        par = _buscar_atribuicao_nao_agrupada(
+            using,
+            turma_codigo,
+            item["codigo"],
+        )
+        if par is not None:
+            item["professor"] = par[1].professor
 
 
 def _atualizar_descricoes_outros_professores(
@@ -735,6 +786,12 @@ def mesclar_agrupamentos_territorio(
             codigos_territorio_login,
         )
         if not selecionados.agrupamentos:
+            _preencher_professor_territorio_sem_agrupamento(
+                resultado,
+                using,
+                turma_codigo,
+                codigos_territorio_login,
+            )
             continue
 
         primeiros_codigos_outros_professores = (
