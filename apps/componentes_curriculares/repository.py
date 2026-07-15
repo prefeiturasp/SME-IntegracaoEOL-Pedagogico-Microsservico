@@ -956,9 +956,12 @@ class ComponentesRepository:
         """
         professor_select = "ac.professor" if eh_professor else "NULL"
         professor_join = SQL_LISTAGEM_JOIN_PROFESSOR if eh_professor else ""
-        params: list = [ue_codigo, ano_letivo, modalidade]
+        # O join do professor injeta um %s ANTES do WHERE, então o RF precisa
+        # ser o primeiro parâmetro posicional quando eh_professor.
+        params: list = []
         if eh_professor:
             params.append(codigo_rf)
+        params += [ue_codigo, ano_letivo, modalidade]
 
         codigo_turma_clause = ""
         if codigo_turma:

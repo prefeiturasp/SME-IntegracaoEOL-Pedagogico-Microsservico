@@ -1850,7 +1850,9 @@ class TestListagemTurmasComponentes(TestCase):
         sql, params = mock_raw.call_args.args[0], mock_raw.call_args.args[1]
         self.assertIn("atribuicao_componente ac", sql)
         self.assertIn("ac.professor", sql)
-        self.assertIn("RF1", params)
+        # O %s do join do professor vem ANTES do WHERE, então o RF tem de ser
+        # o primeiro parâmetro posicional; ue/ano/modalidade seguem na ordem.
+        self.assertEqual(params[:4], ["RF1", "9000", 2024, 5])
 
     @patch("apps.componentes_curriculares.repository._raw")
     def test_considera_historico_monta_clausula(self, mock_raw) -> None:

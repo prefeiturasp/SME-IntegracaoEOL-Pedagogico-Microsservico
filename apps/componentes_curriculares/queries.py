@@ -333,6 +333,7 @@ SELECT
  WHERE t.ue_codigo = %s
    AND t.ano_letivo = %s
    AND t.codigo_modalidade = %s
+   AND t.tipo_turma <> 4
    {{codigo_turma_clause}}
    {{historico_clause}}"""
 
