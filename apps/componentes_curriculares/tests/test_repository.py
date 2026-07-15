@@ -560,7 +560,12 @@ class TestComponentesRepository(TestCase):
         self,
         mock_raw,
     ) -> None:
-        """Inclui componente alvo mesmo quando há par no mesmo território."""
+        """Descarta componente cujas atribuições compartilham a chave.
+
+        Atribuições que dividem território/experiência/professor/data
+        pertencem a um agrupamento; sem atribuição única, o componente
+        individual não volta à resposta.
+        """
         mock_raw.return_value = _componentes_territorio(
             [1214, 1215, 1216],
             "RF1",
@@ -593,7 +598,7 @@ class TestComponentesRepository(TestCase):
 
         self.assertEqual(
             [(item["codigo"], item["professor"]) for item in resultado],
-            [(810333, "RF1"), (1216, "RF2")],
+            [(810333, "RF1")],
         )
 
     @patch("apps.componentes_curriculares.repository._raw")

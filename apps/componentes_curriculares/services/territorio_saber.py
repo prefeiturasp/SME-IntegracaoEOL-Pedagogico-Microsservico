@@ -601,19 +601,17 @@ def _buscar_atribuicao_nao_agrupada(
         contagem[chave] = contagem.get(chave, 0) + 1
         pares.append((componente, atribuicao))
 
-    duplicados: dict[
-        tuple[object, ...],
-        tuple[ComponenteTurma, AtribuicaoTerritorioSaber],
-    ] = {}
+    # Atribuição só é "não agrupada" quando é a única com aquela chave;
+    # atribuições que compartilham a chave pertencem a um agrupamento e o
+    # componente individual não volta à resposta (fica só o agrupamento).
     for componente, atribuicao in pares:
         if componente.componente_codigo != codigo_componente:
             continue
         chave = _chave_agrupamento_atribuicao(componente, atribuicao)
         if contagem[chave] == 1:
             return componente, atribuicao
-        duplicados.setdefault(chave, (componente, atribuicao))
 
-    return next(iter(duplicados.values()), None)
+    return None
 
 
 def _adicionar_atribuicoes_nao_agrupadas(
