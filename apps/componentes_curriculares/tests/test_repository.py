@@ -352,13 +352,12 @@ class TestComponentesRepository(TestCase):
         self.assertEqual(codigos, {813071, 1218, 1219})
 
     @patch("apps.componentes_curriculares.repository._raw")
-    def test_listar_por_turma_funcionario_mantem_territorio_nao_agrupado(
+    def test_listar_por_turma_funcionario_aplica_agrupamento_unico(
         self,
         mock_raw,
     ) -> None:
-        """Mantém território de componente único (sem agrupamento)."""
+        """Agrupamento de componente único também substitui o componente."""
         mock_raw.return_value = [_componente_territorio(1216, "RF1")]
-        # Agrupamento de componente único não deve agrupar (len < 2).
         _make_agrupamento(
             cod_agrupamento=813090,
             cod_turma="T1",
@@ -369,7 +368,7 @@ class TestComponentesRepository(TestCase):
         resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
 
         codigos = {item["codigo"] for item in resultado}
-        self.assertEqual(codigos, {1216})
+        self.assertEqual(codigos, {813090})
 
     @patch("apps.componentes_curriculares.repository._raw")
     def test_listar_por_turma_funcionario_ignora_agrupamento_outro_professor(
@@ -1659,6 +1658,121 @@ class TestListagemTurmasComponentes(TestCase):
         self.assertEqual(item["componente_curricular_codigo"], 1)
         # Complemento só é preenchido na modalidade EJA.
         self.assertEqual(item["complemento_turma_eja"], "")
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_item_territorio_recebe_id_e_registro_funcional(
+        self, mock_raw
+    ) -> None:
+        """Item de território carrega id e RF; componente comum fica nulo."""
+        mock_raw.return_value = [
+            _row_listagem(1, "Matemática"),
+            _row_listagem(
+                1214,
+                "TERRITORIO 1 - EXPERIENCIA 1",
+                professor="8285411",
+                territorio=True,
+                codigo_territorio=1214,
+            ),
+        ]
+
+        itens = self.repo.listar_turmas_componentes_por_ue_modalidade_ano(
+            "9000", 5, 2024
+        )
+
+        por_codigo = {
+            item["componente_curricular_codigo"]: item for item in itens
+        }
+        self.assertIsNone(por_codigo[1]["id"])
+        self.assertIsNone(por_codigo[1]["registro_funcional"])
+        self.assertEqual(por_codigo[1214]["id"], "1214")
+        self.assertEqual(por_codigo[1214]["registro_funcional"], "8285411")
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_agrupamento_prioriza_atribuicao_mais_recente(
+        self, mock_raw
+    ) -> None:
+        """Entre atribuições do mesmo conjunto, vence a de início mais novo.
+
+        Quando o mesmo código de agrupamento cobre atribuições de
+        professores diferentes, o item exibido carrega o RF da atribuição
+        mais recente, mesmo que ela já esteja encerrada.
+        """
+        mock_raw.return_value = [
+            _row_listagem(
+                1216,
+                "TERRIT SABER / EXP PEDAG 3",
+                territorio=True,
+                codigo_territorio=1216,
+            ),
+            _row_listagem(
+                1217,
+                "TERRIT SABER / EXP PEDAG 4",
+                territorio=True,
+                codigo_territorio=1217,
+            ),
+        ]
+        _make_agrupamento(
+            cod_agrupamento=813200,
+            cod_turma="T1",
+            rf_professor="RF_ANTIGO",
+            cod_componentes_curriculares="1216,1217",
+            dt_inicio_atribuicao=datetime(2024, 3, 1, tzinfo=UTC),
+        )
+        _make_agrupamento(
+            cod_agrupamento=813200,
+            cod_turma="T1",
+            rf_professor="RF_NOVO",
+            cod_componentes_curriculares="1216,1217",
+            dt_inicio_atribuicao=datetime(2024, 5, 1, tzinfo=UTC),
+            dt_fim_atribuicao=datetime(2024, 6, 1, tzinfo=UTC),
+        )
+
+        itens = self.repo.listar_turmas_componentes_por_ue_modalidade_ano(
+            "9000", 5, 2024
+        )
+
+        agrupados = [
+            item
+            for item in itens
+            if item["componente_curricular_codigo"] == 813200
+        ]
+        self.assertEqual(len(agrupados), 1)
+        self.assertEqual(agrupados[0]["id"], "813200")
+        self.assertEqual(agrupados[0]["registro_funcional"], "RF_NOVO")
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_agrupamento_com_inicio_futuro_nao_e_aplicado(
+        self, mock_raw
+    ) -> None:
+        """Agrupamento com atribuição ainda não iniciada fica de fora."""
+        mock_raw.return_value = [
+            _row_listagem(
+                1216,
+                "TERRIT SABER / EXP PEDAG 3",
+                territorio=True,
+                codigo_territorio=1216,
+            ),
+            _row_listagem(
+                1217,
+                "TERRIT SABER / EXP PEDAG 4",
+                territorio=True,
+                codigo_territorio=1217,
+            ),
+        ]
+        _make_agrupamento(
+            cod_agrupamento=813300,
+            cod_turma="T1",
+            rf_professor="RF1",
+            cod_componentes_curriculares="1216,1217",
+            dt_inicio_atribuicao=datetime(2099, 1, 1, tzinfo=UTC),
+        )
+
+        itens = self.repo.listar_turmas_componentes_por_ue_modalidade_ano(
+            "9000", 5, 2024
+        )
+
+        codigos = {item["componente_curricular_codigo"] for item in itens}
+        self.assertEqual(codigos, {1216, 1217})
 
     @patch("apps.componentes_curriculares.repository._raw")
     def test_inclui_atributos_cadastrais_turma(self, mock_raw) -> None:

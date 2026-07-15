@@ -73,6 +73,7 @@ class ListagemTurmaComponenteSerializer(serializers.Serializer):
     """Serializa um item da listagem turma×componente."""
 
     id = serializers.CharField(allow_null=True)
+    registro_funcional = serializers.CharField(allow_null=True)
     turma_codigo = serializers.CharField(allow_null=True)
     modalidade = serializers.IntegerField(allow_null=True)
     nome_turma = serializers.CharField(allow_null=True)
