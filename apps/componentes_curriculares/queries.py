@@ -335,18 +335,33 @@ SELECT
    AND t.codigo_modalidade = %s
    AND t.tipo_turma <> 4
    {{codigo_turma_clause}}
+   {{sem_atribuicao_clause}}
    {{historico_clause}}"""
+
+_LISTAGEM_ATRIBUICAO_VIGENTE = f"""\
+   AND ac.dt_cancelamento IS NULL
+   AND (
+         ac.dt_disponibilizacao >= make_date(t.ano_letivo, 2, 5)
+         OR ac.dt_disponibilizacao IS NULL
+         OR ac.cd_motivo_disponibilizacao = {MOTIVO_FIM_ANO}
+       )"""
 
 SQL_LISTAGEM_JOIN_PROFESSOR = f"""\
   JOIN atribuicao_componente ac
     ON ac.turma_codigo = ct.turma_codigo
    AND ac.componente_codigo = ct.componente_codigo
    AND ac.professor = %s
-   AND ac.dt_cancelamento IS NULL
-   AND (
-         ac.dt_disponibilizacao >= make_date(t.ano_letivo, 2, 5)
-         OR ac.dt_disponibilizacao IS NULL
-         OR ac.cd_motivo_disponibilizacao = {MOTIVO_FIM_ANO}
+{_LISTAGEM_ATRIBUICAO_VIGENTE}"""
+
+# Recorte dos componentes que nenhum professor assumiu: a turma oferece o
+# componente na grade, mas não há atribuição vigente para ele.
+SQL_LISTAGEM_SEM_ATRIBUICAO = f"""\
+   AND NOT EXISTS (
+         SELECT 1
+           FROM atribuicao_componente ac
+          WHERE ac.turma_codigo = ct.turma_codigo
+            AND ac.componente_codigo = ct.componente_codigo
+{_LISTAGEM_ATRIBUICAO_VIGENTE}
        )"""
 
 SQL_LISTAGEM_HISTORICO_VIGENTE = (
