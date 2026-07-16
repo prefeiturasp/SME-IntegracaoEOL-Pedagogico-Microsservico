@@ -312,6 +312,60 @@ class TestTurmasRepository(TestCase):
         )
 
     @patch("apps.turmas.repository.Turma.objects.using")
+    def test_recorte_por_tipo_aplica_filtros(self, mock_using):
+        """Aplica tipo de turma, UE e semestre e devolve os códigos."""
+        qs = FakeQuerySet(values=[2112345])
+        mock_using.return_value = qs
+
+        resultado = self.repo.turmas_recorte_por_tipo(
+            [2112345, 9],
+            tipos_turma=[1, 5],
+            ue_codigo="000532",
+            semestre=1,
+        )
+
+        self.assertEqual(resultado, [2112345])
+        filtros = {
+            chave: valor
+            for nome, _args, kwargs in qs.calls
+            if nome == "filter"
+            for chave, valor in kwargs.items()
+        }
+        self.assertEqual(filtros["codigo__in"], [2112345, 9])
+        self.assertEqual(filtros["tipo_turma__in"], [1, 5])
+        self.assertEqual(filtros["ue_codigo"], "000532")
+        self.assertEqual(filtros["codigo_tipo_periodicidade__in"], (1, 3))
+
+    @patch("apps.turmas.repository.Turma.objects.using")
+    def test_recorte_por_tipo_sem_filtros_opcionais(self, mock_using):
+        """Sem tipo/UE/semestre aplica apenas o filtro de códigos."""
+        qs = FakeQuerySet(values=[2112345])
+        mock_using.return_value = qs
+
+        resultado = self.repo.turmas_recorte_por_tipo([2112345])
+
+        self.assertEqual(resultado, [2112345])
+        filtros = [kwargs for nome, _a, kwargs in qs.calls if nome == "filter"]
+        self.assertEqual(filtros, [{"codigo__in": [2112345]}])
+
+    @patch("apps.turmas.repository.Turma.objects.using")
+    def test_recorte_por_tipo_semestre_fora_do_mapa_nao_filtra(
+        self, mock_using
+    ):
+        """Semestre sem periodicidade mapeada não aplica o filtro."""
+        qs = FakeQuerySet(values=[2112345])
+        mock_using.return_value = qs
+
+        self.repo.turmas_recorte_por_tipo([2112345], semestre=9)
+
+        filtros = [kwargs for nome, _a, kwargs in qs.calls if nome == "filter"]
+        self.assertEqual(filtros, [{"codigo__in": [2112345]}])
+
+    def test_recorte_por_tipo_sem_codigos_retorna_vazio(self):
+        """Lista de códigos vazia curto-circuita sem consultar o banco."""
+        self.assertEqual(self.repo.turmas_recorte_por_tipo([]), [])
+
+    @patch("apps.turmas.repository.Turma.objects.using")
     def test_dados_turma_retorna_none_quando_nao_encontrada(self, mock_using):
         mock_using.return_value = FakeQuerySet([])
 

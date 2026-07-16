@@ -184,3 +184,72 @@ class TestComponentesViews(TestCase):
             "100013",
             ["T1"],
         )
+
+
+class TestListagemTurmasComponentesView(TestCase):
+    """Valida a view de listagem turma×componente."""
+
+    def setUp(self):
+        """Configura clientes de teste."""
+        self.client = APIClient()
+        self.client.credentials(HTTP_X_API_KEY="dev-key-default")
+        self.anon = APIClient()
+        self.path = "/ues/9000/modalidades/5/anos/2024/componentes/"
+
+    @patch(_SVC)
+    def test_lista_com_paginacao(self, mock_service):
+        """Retorna o envelope paginado do service."""
+        service = mock_service.return_value
+        envelope = {"items": [], "total_registros": 0, "total_paginas": 0}
+        metodo = service.listar_turmas_componentes_por_ue_modalidade_ano
+        metodo.return_value = envelope
+
+        response = self.client.get(f"{_BASE}{self.path}?qtdeRegistros=10")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json(), envelope)
+
+    @patch(_SVC)
+    def test_traduz_parametros_professor(self, mock_service):
+        """Repassa eh_professor/codigo_rf e demais filtros ao service."""
+        service = mock_service.return_value
+        metodo = service.listar_turmas_componentes_por_ue_modalidade_ano
+        metodo.return_value = {
+            "items": [],
+            "total_registros": 0,
+            "total_paginas": 0,
+        }
+
+        self.client.get(
+            f"{_BASE}{self.path}"
+            "?ehProfessor=true&codigoRf=RF1&codigoTurma=77"
+            "&qtdeRegistros=10&consideraHistorico=false"
+        )
+
+        _, kwargs = metodo.call_args
+        self.assertTrue(kwargs["eh_professor"])
+        self.assertEqual(kwargs["codigo_rf"], "RF1")
+        self.assertEqual(kwargs["codigo_turma"], 77)
+        self.assertEqual(kwargs["qtde_registros"], 10)
+
+    @patch(_SVC)
+    def test_gestor_nao_repassa_rf(self, mock_service):
+        """Sem eh_professor, o RF não é repassado ao service."""
+        service = mock_service.return_value
+        metodo = service.listar_turmas_componentes_por_ue_modalidade_ano
+        metodo.return_value = {
+            "items": [],
+            "total_registros": 0,
+            "total_paginas": 0,
+        }
+
+        self.client.get(f"{_BASE}{self.path}?codigoRf=RF1")
+
+        _, kwargs = metodo.call_args
+        self.assertFalse(kwargs["eh_professor"])
+        self.assertIsNone(kwargs["codigo_rf"])
+
+    def test_exige_api_key(self):
+        """Rejeita requisição sem API Key."""
+        response = self.anon.get(f"{_BASE}{self.path}")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

@@ -9,6 +9,7 @@ from django.db.models import F, Q, QuerySet
 from apps.componentes_curriculares.constants import (
     CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL,
     DESCRICAO_COMPONENTE_REGENCIA_CLASSE_INFANTIL,
+    MODALIDADE_EJA,
     MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO,
 )
 from apps.componentes_curriculares.models import (
@@ -30,6 +31,11 @@ from apps.componentes_curriculares.queries import (
     SQL_COMPONENTES_TURMAS_BRUTOS,
     SQL_FILTRO_ATRIBUICAO_POR_TURMA,
     SQL_FILTRO_ATRIBUICAO_VIGENTE,
+    SQL_LISTAGEM_HISTORICO_HISTORICA,
+    SQL_LISTAGEM_HISTORICO_VIGENTE,
+    SQL_LISTAGEM_JOIN_PROFESSOR,
+    SQL_LISTAGEM_SEM_ATRIBUICAO,
+    SQL_LISTAGEM_TURMAS_COMPONENTES,
     SQL_VIGENCIA_COMPONENTES,
 )
 from apps.componentes_curriculares.services.territorio_saber import (
@@ -126,6 +132,82 @@ def _aplicar_regra_regencia_classe_infantil(item: dict) -> dict:
         item["descricao"] = DESCRICAO_COMPONENTE_REGENCIA_CLASSE_INFANTIL
         item["regencia"] = True
     return item
+
+
+def _componente_catalogo_territorio(codigo: object) -> bool:
+    """Indica se o componente pertence ao catálogo de Território do Saber.
+
+    Args:
+        codigo: Código do componente curricular.
+
+    Returns:
+        True quando o código está nas faixas de componentes de território.
+    """
+    return isinstance(codigo, int) and (
+        1214 <= codigo <= 1225 or 1519 <= codigo <= 1522
+    )
+
+
+def _item_listagem_para_dict(componente: dict, info: dict) -> dict:
+    """Monta um item da listagem turma×componente para resposta.
+
+    Args:
+        componente: Componente já processado pelo Território do Saber.
+        info: Dados da turma associados ao componente.
+
+    Returns:
+        Item da listagem no formato de resposta (snake_case).
+    """
+    turno = info.get("turno")
+    # Itens de Território do Saber carregam identificador próprio (o código
+    # do agrupamento ou do componente) e o RF do professor da atribuição;
+    # componentes comuns não têm esses campos. O id existe para qualquer
+    # componente do catálogo de território, mesmo sem registro na turma.
+    eh_territorio = bool(
+        componente.get("territorio_saber")
+        or componente.get("codigo_componente_territorio_saber")
+    )
+    tem_id_territorio = eh_territorio or _componente_catalogo_territorio(
+        componente.get("codigo")
+    )
+    return {
+        "id": str(componente["codigo"]) if tem_id_territorio else None,
+        "registro_funcional": (
+            componente.get("professor") if eh_territorio else None
+        ),
+        "turma_codigo": componente.get("turma_codigo"),
+        "modalidade": info.get("modalidade"),
+        "nome_turma": info.get("nome_turma"),
+        "ano": info.get("ano"),
+        "complemento_turma_eja": info.get("complemento_turma_eja") or "",
+        "nome_componente_curricular": componente.get("descricao"),
+        "componente_curricular_codigo": componente.get("codigo"),
+        "turno": str(turno) if turno is not None else None,
+        "territorio_saber": componente.get("territorio_saber", False),
+        "componente_curricular_territorio_saber_codigo": (
+            componente.get("codigo_componente_territorio_saber") or 0
+        ),
+        # Atributos cadastrais da turma (mesma turma repetida por componente).
+        "ano_letivo": info.get("ano_letivo"),
+        "tipo_turma": info.get("tipo_turma"),
+        "tipo_escola": info.get("tipo_escola"),
+        "situacao_turma_escola": info.get("situacao"),
+        "data_status_turma_escola": info.get("data_status_turma_escola"),
+        "codigo_escola": info.get("ue_codigo"),
+        "etapa_ensino": info.get("etapa_ensino"),
+        "ciclo_ensino": info.get("ciclo_ensino"),
+        "serie_ensino": info.get("serie_ensino"),
+        "tipo_grade_programa": info.get("tipo_grade_programa"),
+        "codigo_grade_programa": info.get("codigo_grade_programa"),
+        "descricao_grade_programa": info.get("descricao_grade_programa"),
+        "data_inicio_turma": info.get("data_inicio_turma"),
+        "data_fim_turma": info.get("data_fim"),
+        "data_atualizacao": info.get("data_atualizacao"),
+        "duracao_turno": info.get("duracao_turno"),
+        "ensino_especial": info.get("ensino_especial"),
+        "semestre": info.get("semestre"),
+        "extinta": info.get("extinta"),
+    }
 
 
 def _normalizar_componente_turma(row: dict) -> dict:
@@ -724,6 +806,209 @@ class ComponentesRepository:
             params.extend(turmas)
         sql += " ORDER BY cc.descricao"
         return _raw(sql, params, self._DB)
+
+    @staticmethod
+    def _info_turma_listagem(row: dict) -> dict:
+        """Extrai dados de turma que acompanham cada componente na listagem.
+
+        Args:
+            row: Linha bruta da consulta de listagem turma×componente.
+
+        Returns:
+            Dados de turma usados para recompor o retorno após o território.
+        """
+        modalidade = row.get("modalidade")
+        complemento = row.get("descricao_grade_programa") or ""
+        return {
+            "modalidade": modalidade,
+            "nome_turma": row.get("nome_turma"),
+            "ano": row.get("ano_turma"),
+            "turno": row.get("tipo_turno"),
+            "complemento_turma_eja": (
+                complemento if modalidade == MODALIDADE_EJA else ""
+            ),
+            "ano_letivo": row.get("ano_letivo"),
+            "tipo_turma": row.get("tipo_turma"),
+            "tipo_escola": row.get("tipo_escola"),
+            "situacao": row.get("situacao"),
+            "data_status_turma_escola": row.get("data_status_turma_escola"),
+            "ue_codigo": row.get("ue_codigo"),
+            "etapa_ensino": row.get("codigo_etapa_ensino"),
+            "ciclo_ensino": row.get("codigo_ciclo_ensino"),
+            "serie_ensino": row.get("serie_ensino"),
+            "tipo_grade_programa": row.get("tipo_grade_programa"),
+            "codigo_grade_programa": row.get("codigo_grade_programa"),
+            "descricao_grade_programa": row.get("descricao_grade_programa"),
+            "data_inicio_turma": row.get("data_inicio_turma"),
+            "data_fim": row.get("data_fim"),
+            "data_atualizacao": row.get("data_atualizacao"),
+            "duracao_turno": row.get("turno_turma"),
+            "ensino_especial": row.get("ensino_especial"),
+            "semestre": row.get("semestre"),
+            "extinta": row.get("extinta"),
+        }
+
+    def _agrupar_componentes_listagem(
+        self,
+        rows: list[dict],
+    ) -> tuple[list[dict], dict[object, dict]]:
+        """Deduplica componentes e coleta os dados de turma da listagem.
+
+        Args:
+            rows: Linhas brutas da consulta de listagem turma×componente.
+
+        Returns:
+            Par com os componentes deduplicados e os dados por turma.
+        """
+        turma_info: dict[object, dict] = {}
+        componentes: list[dict] = []
+        vistos: set[tuple[object, object, object]] = set()
+        for row in rows:
+            turma_info.setdefault(
+                row["turma_codigo"],
+                self._info_turma_listagem(row),
+            )
+            # A listagem exibe o componente como cadastrado na grade da
+            # turma; a consolidação da regência de classe infantil vale
+            # para os retornos por turma/funcionário, não aqui.
+            item = _componente_para_dict(row)
+            chave = (
+                item.get("turma_codigo"),
+                item.get("codigo"),
+                item.get("professor"),
+            )
+            if chave not in vistos:
+                vistos.add(chave)
+                componentes.append(item)
+        return componentes, turma_info
+
+    @staticmethod
+    def _montar_itens_listagem(
+        componentes: list[dict],
+        turma_info: dict[object, dict],
+        anos_infantil_desconsiderar: list[str] | None,
+    ) -> list[dict]:
+        """Monta os itens finais da listagem turma×componente.
+
+        Args:
+            componentes: Componentes já com Território do Saber aplicado.
+            turma_info: Dados de turma indexados pelo código da turma.
+            anos_infantil_desconsiderar: Anos de turma removidos do retorno.
+
+        Returns:
+            Itens de listagem deduplicados, no formato de resposta.
+        """
+        anos_ignorar = set(anos_infantil_desconsiderar or [])
+        itens: list[dict] = []
+        chaves_vistas: set[tuple] = set()
+        for componente in componentes:
+            info = turma_info.get(componente.get("turma_codigo"), {})
+            if anos_ignorar and info.get("ano") in anos_ignorar:
+                continue
+            item = _item_listagem_para_dict(componente, info)
+            chave = (
+                item["turma_codigo"],
+                item["modalidade"],
+                item["nome_turma"],
+                item["nome_componente_curricular"],
+                item["ano"],
+                item["complemento_turma_eja"],
+                item["turno"],
+                item["componente_curricular_codigo"],
+            )
+            if chave in chaves_vistas:
+                continue
+            chaves_vistas.add(chave)
+            itens.append(item)
+        return itens
+
+    def listar_turmas_componentes_por_ue_modalidade_ano(
+        self,
+        ue_codigo: str,
+        modalidade: int,
+        ano_letivo: int,
+        codigo_turma: int | None = None,
+        eh_professor: bool = False,
+        codigo_rf: str | None = None,
+        considera_historico: bool = False,
+        periodo_escolar_inicio: datetime | None = None,
+        anos_infantil_desconsiderar: list[str] | None = None,
+    ) -> list[dict]:
+        """Lista componentes por turma para UE, modalidade e ano letivo.
+
+        Aplica a substituição de Território do Saber. Quando `eh_professor`
+        é falso, o território roda no modo gestor (sem RF), agregando os
+        agrupamentos de todos os professores da turma.
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+            modalidade: Código da modalidade de ensino.
+            ano_letivo: Ano letivo consultado.
+            codigo_turma: Filtra por uma turma específica quando informado.
+            eh_professor: Restringe os componentes ao RF informado. Sem
+                `codigo_rf`, restringe aos componentes que nenhum
+                professor assumiu.
+            codigo_rf: RF do professor usado no filtro e no território.
+            considera_historico: Inclui turmas históricas (situação C/E).
+            periodo_escolar_inicio: Início do período escolar para turmas
+                extintas quando `considera_historico` é verdadeiro.
+            anos_infantil_desconsiderar: Anos de turma removidos do retorno.
+
+        Returns:
+            Itens de listagem turma×componente com território aplicado.
+        """
+        # Restringir ao professor sem informar o RF significa pedir os
+        # componentes que nenhum professor assumiu.
+        sem_atribuicao = eh_professor and not codigo_rf
+        filtra_por_rf = eh_professor and not sem_atribuicao
+
+        professor_select = "ac.professor" if filtra_por_rf else "NULL"
+        professor_join = (
+            SQL_LISTAGEM_JOIN_PROFESSOR if filtra_por_rf else ""
+        )
+        sem_atribuicao_clause = (
+            SQL_LISTAGEM_SEM_ATRIBUICAO if sem_atribuicao else ""
+        )
+        # O join do professor injeta um %s ANTES do WHERE, então o RF precisa
+        # ser o primeiro parâmetro posicional quando filtra por RF.
+        params: list = []
+        if filtra_por_rf:
+            params.append(codigo_rf)
+        params += [ue_codigo, ano_letivo, modalidade]
+
+        codigo_turma_clause = ""
+        if codigo_turma:
+            codigo_turma_clause = "AND t.codigo = %s"
+            params.append(codigo_turma)
+
+        if considera_historico:
+            historico_clause = SQL_LISTAGEM_HISTORICO_HISTORICA
+            params.append(periodo_escolar_inicio)
+        else:
+            historico_clause = SQL_LISTAGEM_HISTORICO_VIGENTE
+
+        sql = SQL_LISTAGEM_TURMAS_COMPONENTES.format(
+            professor_select=professor_select,
+            professor_join=professor_join,
+            codigo_turma_clause=codigo_turma_clause,
+            sem_atribuicao_clause=sem_atribuicao_clause,
+            historico_clause=historico_clause,
+        )
+        rows = _raw(sql, params, self._DB)
+        componentes, turma_info = self._agrupar_componentes_listagem(rows)
+
+        login = codigo_rf if eh_professor else None
+        componentes = mesclar_agrupamentos_territorio(
+            componentes,
+            self._DB,
+            login,
+        )
+
+        return self._montar_itens_listagem(
+            componentes,
+            turma_info,
+            anos_infantil_desconsiderar,
+        )
 
     def listar_por_lista_turmas(
         self,

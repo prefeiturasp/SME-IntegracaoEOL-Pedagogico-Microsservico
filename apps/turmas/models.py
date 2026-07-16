@@ -33,6 +33,7 @@ class Turma(ModeloBase):
     codigo_etapa_ensino = models.IntegerField(null=True, blank=True)
     codigo_ciclo_ensino = models.IntegerField(null=True, blank=True)
     semestre = models.IntegerField(null=True, blank=True, default=0)
+    codigo_tipo_periodicidade = models.IntegerField(null=True, blank=True)
     ensino_especial = models.BooleanField(default=False)
     data_atualizacao = models.DateTimeField(null=True, blank=True)
     data_status_turma_escola = models.DateTimeField(null=True, blank=True)
