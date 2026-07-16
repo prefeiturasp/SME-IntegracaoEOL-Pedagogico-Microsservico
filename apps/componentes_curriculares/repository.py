@@ -34,6 +34,7 @@ from apps.componentes_curriculares.queries import (
     SQL_LISTAGEM_HISTORICO_HISTORICA,
     SQL_LISTAGEM_HISTORICO_VIGENTE,
     SQL_LISTAGEM_JOIN_PROFESSOR,
+    SQL_LISTAGEM_SEM_ATRIBUICAO,
     SQL_LISTAGEM_TURMAS_COMPONENTES,
     SQL_VIGENCIA_COMPONENTES,
 )
@@ -944,7 +945,9 @@ class ComponentesRepository:
             modalidade: Código da modalidade de ensino.
             ano_letivo: Ano letivo consultado.
             codigo_turma: Filtra por uma turma específica quando informado.
-            eh_professor: Restringe os componentes ao RF informado.
+            eh_professor: Restringe os componentes ao RF informado. Sem
+                `codigo_rf`, restringe aos componentes que nenhum
+                professor assumiu.
             codigo_rf: RF do professor usado no filtro e no território.
             considera_historico: Inclui turmas históricas (situação C/E).
             periodo_escolar_inicio: Início do período escolar para turmas
@@ -954,12 +957,22 @@ class ComponentesRepository:
         Returns:
             Itens de listagem turma×componente com território aplicado.
         """
-        professor_select = "ac.professor" if eh_professor else "NULL"
-        professor_join = SQL_LISTAGEM_JOIN_PROFESSOR if eh_professor else ""
+        # Restringir ao professor sem informar o RF significa pedir os
+        # componentes que nenhum professor assumiu.
+        sem_atribuicao = eh_professor and not codigo_rf
+        filtra_por_rf = eh_professor and not sem_atribuicao
+
+        professor_select = "ac.professor" if filtra_por_rf else "NULL"
+        professor_join = (
+            SQL_LISTAGEM_JOIN_PROFESSOR if filtra_por_rf else ""
+        )
+        sem_atribuicao_clause = (
+            SQL_LISTAGEM_SEM_ATRIBUICAO if sem_atribuicao else ""
+        )
         # O join do professor injeta um %s ANTES do WHERE, então o RF precisa
-        # ser o primeiro parâmetro posicional quando eh_professor.
+        # ser o primeiro parâmetro posicional quando filtra por RF.
         params: list = []
-        if eh_professor:
+        if filtra_por_rf:
             params.append(codigo_rf)
         params += [ue_codigo, ano_letivo, modalidade]
 
@@ -978,6 +991,7 @@ class ComponentesRepository:
             professor_select=professor_select,
             professor_join=professor_join,
             codigo_turma_clause=codigo_turma_clause,
+            sem_atribuicao_clause=sem_atribuicao_clause,
             historico_clause=historico_clause,
         )
         rows = _raw(sql, params, self._DB)

@@ -1853,6 +1853,51 @@ class TestListagemTurmasComponentes(TestCase):
         # O %s do join do professor vem ANTES do WHERE, então o RF tem de ser
         # o primeiro parâmetro posicional; ue/ano/modalidade seguem na ordem.
         self.assertEqual(params[:4], ["RF1", "9000", 2024, 5])
+        self.assertNotIn("NOT EXISTS", sql)
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_professor_sem_rf_busca_sem_atribuicao(self, mock_raw) -> None:
+        """Sem RF, restringe aos componentes que ninguém assumiu."""
+        mock_raw.return_value = []
+
+        self.repo.listar_turmas_componentes_por_ue_modalidade_ano(
+            "9000", 5, 2024, eh_professor=True, codigo_rf=None
+        )
+
+        sql, params = mock_raw.call_args.args[0], mock_raw.call_args.args[1]
+        self.assertIn("NOT EXISTS", sql)
+        # Sem RF não há %s antes do WHERE: ue/ano/modalidade abrem a lista.
+        self.assertEqual(params, ["9000", 2024, 5])
+        self.assertNotIn("ac.professor = %s", sql)
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_professor_com_rf_vazio_busca_sem_atribuicao(
+        self, mock_raw
+    ) -> None:
+        """RF vazio equivale a RF ausente."""
+        mock_raw.return_value = []
+
+        self.repo.listar_turmas_componentes_por_ue_modalidade_ano(
+            "9000", 5, 2024, eh_professor=True, codigo_rf=""
+        )
+
+        sql, params = mock_raw.call_args.args[0], mock_raw.call_args.args[1]
+        self.assertIn("NOT EXISTS", sql)
+        self.assertEqual(params, ["9000", 2024, 5])
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_sem_eh_professor_nao_filtra_atribuicao(self, mock_raw) -> None:
+        """Sem eh_professor, não recorta por atribuição."""
+        mock_raw.return_value = []
+
+        self.repo.listar_turmas_componentes_por_ue_modalidade_ano(
+            "9000", 5, 2024, eh_professor=False
+        )
+
+        sql, params = mock_raw.call_args.args[0], mock_raw.call_args.args[1]
+        self.assertNotIn("NOT EXISTS", sql)
+        self.assertNotIn("atribuicao_componente ac", sql)
+        self.assertEqual(params, ["9000", 2024, 5])
 
     @patch("apps.componentes_curriculares.repository._raw")
     def test_considera_historico_monta_clausula(self, mock_raw) -> None:
