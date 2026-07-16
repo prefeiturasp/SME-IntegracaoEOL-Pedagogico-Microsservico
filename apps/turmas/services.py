@@ -1,5 +1,7 @@
 """Serviços do domínio Turmas."""
 
+from typing import Any
+
 from apps.turmas.repository import TurmasRepository
 
 
@@ -41,6 +43,43 @@ class TurmasService:
             Lista de turmas encontradas.
         """
         return self._repo.listar_turmas(codigos)
+
+    def turmas_atribuidas_dre_ue(self, codigos_ue: list[str]) -> list[dict]:
+        """Retorna turmas atribuídas das unidades.
+
+        Args:
+            codigos_ue: Códigos das unidades educacionais.
+
+        Returns:
+            Lista de turmas atribuídas encontradas.
+        """
+        return self._repo.turmas_atribuidas_dre_ue(codigos_ue)
+
+    def todas_turmas_atribuidas_dre_ue(self) -> dict[str, Any]:
+        """Retorna turmas atribuídas."""
+        return self._repo.todas_turmas_atribuidas_dre_ue()
+
+    def turmas_elegiveis(
+        self,
+        codigo_rf: str,
+        codigo_turma: int,
+        componente_curricular: int,
+    ) -> list[dict]:
+        """Retorna turmas elegíveis por atribuição.
+
+        Args:
+            codigo_rf: RF usado na consulta.
+            codigo_turma: Turma base da consulta.
+            componente_curricular: Componente usado no filtro.
+
+        Returns:
+            Lista de turmas elegíveis encontradas.
+        """
+        return self._repo.turmas_elegiveis(
+            codigo_rf,
+            codigo_turma,
+            componente_curricular,
+        )
 
     def turmas_recorte_fund_medio_eja(self, codigos: list[int]) -> list[dict]:
         """Retorna turmas no recorte de etapa (Fund/Médio/EJA).
