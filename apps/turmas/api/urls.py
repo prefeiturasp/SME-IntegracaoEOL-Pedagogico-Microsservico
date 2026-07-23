@@ -4,6 +4,7 @@ from django.urls import path
 
 from apps.turmas.api.views import (
     AnosLetivosUEView,
+    CodigosTurmasContagemView,
     ItinerarioEnsinoMedioView,
     ListarTurmasView,
     TodasTurmasAtribuidasDreUeView,
@@ -58,6 +59,11 @@ urlpatterns = [
         "recorte-por-tipo/",
         TurmasRecortePorTipoView.as_view(),
         name="turmas-recorte-por-tipo",
+    ),
+    path(
+        "codigos-turmas-contagem/",
+        CodigosTurmasContagemView.as_view(),
+        name="codigos-turmas-contagem",
     ),
     path(
         "<int:codigo_turma>/dados/",
