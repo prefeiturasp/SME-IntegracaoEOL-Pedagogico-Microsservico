@@ -81,6 +81,22 @@ class TestTurmasService(TestCase):
             [2112345], [1], "000532", 1
         )
 
+    def test_codigos_turmas_por_ano_modalidade_dre(self) -> None:
+        """Delega ao repository com UEs e filtros informados."""
+        self.repo.codigos_turmas_por_ano_modalidade_dre.return_value = [
+            3011258
+        ]
+
+        self.assertEqual(
+            self.service.codigos_turmas_por_ano_modalidade_dre(
+                ["019370"], "1", 5, 2026
+            ),
+            [3011258],
+        )
+        (
+            self.repo.codigos_turmas_por_ano_modalidade_dre
+        ).assert_called_once_with(["019370"], "1", 5, 2026)
+
     def test_dados_turma(self) -> None:
         self.repo.dados_turma.return_value = {"codigo": 4}
 

@@ -349,6 +349,36 @@ class TestTurmasViews(TestCase):
         ).assert_called_once_with([2112345, 9], [1, 5], "000532", 1)
 
     @patch(_SVC)
+    def test_codigos_turmas_contagem_repassa_ues_e_filtros(self, mock_svc):
+        """Lê UEs do corpo e ano/modalidade/ano_letivo da query string."""
+        (
+            mock_svc.return_value.codigos_turmas_por_ano_modalidade_dre
+        ).return_value = [3011258]
+        res = self.client.post(
+            f"{_BASE}/codigos-turmas-contagem/"
+            "?ano_turma=1&codigo_modalidade=5&ano_letivo=2026",
+            ["019370", "108200"],
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, [3011258])
+        (
+            mock_svc.return_value.codigos_turmas_por_ano_modalidade_dre
+        ).assert_called_once_with(["019370", "108200"], "1", 5, 2026)
+
+    @patch(_SVC)
+    def test_codigos_turmas_contagem_sem_filtros(self, mock_svc):
+        """Sem query string, os filtros opcionais vão vazios/None."""
+        (
+            mock_svc.return_value.codigos_turmas_por_ano_modalidade_dre
+        ).return_value = []
+        res = self.post("/codigos-turmas-contagem/", ["019370"])
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        (
+            mock_svc.return_value.codigos_turmas_por_ano_modalidade_dre
+        ).assert_called_once_with(["019370"], None, None, None)
+
+    @patch(_SVC)
     def test_recorte_por_tipo_sem_filtros(self, mock_svc):
         """Sem query string, os filtros opcionais vão vazios/None."""
         mock_svc.return_value.turmas_recorte_por_tipo.return_value = []

@@ -92,6 +92,28 @@ class TurmasService:
         """
         return self._repo.turmas_recorte_fund_medio_eja(codigos)
 
+    def codigos_turmas_por_ano_modalidade_dre(
+        self,
+        ues_codigos: list[str],
+        ano_turma: str | None = None,
+        codigo_modalidade: int | None = None,
+        ano_letivo: int | None = None,
+    ) -> list[int]:
+        """Lista códigos de turmas vigentes para a contagem de alunos.
+
+        Args:
+            ues_codigos: Códigos EOL das UEs consideradas.
+            ano_turma: Primeiro caractere da nomenclatura da turma.
+            codigo_modalidade: Modalidade materializada.
+            ano_letivo: Ano letivo da chamada.
+
+        Returns:
+            Códigos distintos das turmas que atendem ao recorte.
+        """
+        return self._repo.codigos_turmas_por_ano_modalidade_dre(
+            ues_codigos, ano_turma, codigo_modalidade, ano_letivo
+        )
+
     def turmas_recorte_por_tipo(
         self,
         codigos: list[int],

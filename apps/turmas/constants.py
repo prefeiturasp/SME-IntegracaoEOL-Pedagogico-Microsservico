@@ -16,6 +16,34 @@ PERIODICIDADES_POR_SEMESTRE = {
     2: (2, 4),
 }
 
+# Recorte de turmas vigentes para contagem de alunos por ano/modalidade/DRE.
+SITUACOES_TURMA_VIGENTE = ("O", "A", "E", "C")
+TIPO_TURMA_EXCLUIDO_CONTAGEM = 4
+TIPOS_ESCOLA_CONTAGEM_ALUNOS = (
+    1,
+    2,
+    3,
+    4,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    22,
+    23,
+    25,
+    26,
+    27,
+    28,
+    29,
+    31,
+)
+
 TIPOS_ESCOLA_TURMAS_HISTORICAS_PROFESSOR = (1, 2, 3, 4, 16, 28, 31)
 ETAPAS_ENSINO_TURMAS_HISTORICAS_PROFESSOR = (
     1,

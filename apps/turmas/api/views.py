@@ -252,6 +252,63 @@ def _query_int(request: Request, *nomes: str) -> int | None:
     return None
 
 
+class CodigosTurmasContagemView(BaseAPIView):
+    """Lista códigos de turmas vigentes para a contagem de alunos."""
+
+    @extend_schema(
+        tags=_TAG,
+        summary="Códigos de turmas por ano/modalidade/UEs",
+        parameters=[
+            OpenApiParameter(
+                "ano_turma", str, OpenApiParameter.QUERY, required=False
+            ),
+            OpenApiParameter(
+                "codigo_modalidade",
+                int,
+                OpenApiParameter.QUERY,
+                required=False,
+            ),
+            OpenApiParameter(
+                "ano_letivo", int, OpenApiParameter.QUERY, required=False
+            ),
+        ],
+        request={
+            "application/json": {"type": "array", "items": {"type": "string"}}
+        },
+        responses={200: {"type": "array", "items": {"type": "integer"}}},
+        operation_id="codigos_turmas_contagem",
+    )
+    def post(self, request: Request) -> Response:
+        """Retorna os códigos de turma que atendem ao recorte de contagem.
+
+        Recebe a lista de códigos de UE no corpo e os filtros de ano,
+        modalidade e ano letivo na query string.
+
+        Args:
+            request: Requisição com os códigos de UE no corpo e os filtros
+                ``ano_turma``/``codigo_modalidade``/``ano_letivo`` na query.
+
+        Returns:
+            Códigos distintos das turmas que atendem ao recorte.
+        """
+        ues_codigos = [
+            str(ue)
+            for ue in (request.data if isinstance(request.data, list) else [])
+            if ue
+        ]
+        ano_turma = request.query_params.get(
+            "ano_turma"
+        ) or request.query_params.get("anoTurma")
+        codigo_modalidade = _query_int(
+            request, "codigo_modalidade", "codigoModalidade"
+        )
+        ano_letivo = _query_int(request, "ano_letivo", "anoLetivo")
+        dados = TurmasService().codigos_turmas_por_ano_modalidade_dre(
+            ues_codigos, ano_turma, codigo_modalidade, ano_letivo
+        )
+        return Response(dados)
+
+
 class TurmasRecortePorTipoView(BaseAPIView):
     """Filtra códigos de turma por tipo de turma, UE e semestre."""
 

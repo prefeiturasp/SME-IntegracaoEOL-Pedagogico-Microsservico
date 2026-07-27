@@ -366,6 +366,57 @@ class TestTurmasRepository(TestCase):
         self.assertEqual(self.repo.turmas_recorte_por_tipo([]), [])
 
     @patch("apps.turmas.repository.Turma.objects.using")
+    def test_codigos_turmas_contagem_aplica_filtros(self, mock_using):
+        """Aplica UEs, situação, tipo de escola, ano e modalidade."""
+        qs = FakeQuerySet(values=[3011258])
+        mock_using.return_value = qs
+
+        resultado = self.repo.codigos_turmas_por_ano_modalidade_dre(
+            ["019370", "108200"],
+            ano_turma="1",
+            codigo_modalidade=5,
+            ano_letivo=2026,
+        )
+
+        self.assertEqual(resultado, [3011258])
+        filtros = {
+            chave: valor
+            for nome, _args, kwargs in qs.calls
+            if nome == "filter"
+            for chave, valor in kwargs.items()
+        }
+        self.assertEqual(filtros["ue_codigo__in"], ["019370", "108200"])
+        self.assertIn("O", filtros["situacao__in"])
+        self.assertEqual(filtros["ano"], "1")
+        self.assertEqual(filtros["codigo_modalidade"], 5)
+        self.assertEqual(filtros["ano_letivo"], 2026)
+        exclui = [kwargs for nome, _a, kwargs in qs.calls if nome == "exclude"]
+        self.assertEqual(exclui, [{"tipo_turma": 4}])
+
+    @patch("apps.turmas.repository.Turma.objects.using")
+    def test_codigos_turmas_contagem_sem_filtros_opcionais(self, mock_using):
+        """Sem ano/modalidade/ano_letivo aplica apenas o recorte base."""
+        qs = FakeQuerySet(values=[3011258])
+        mock_using.return_value = qs
+
+        self.repo.codigos_turmas_por_ano_modalidade_dre(["019370"])
+
+        filtros = {
+            chave: valor
+            for nome, _a, kwargs in qs.calls
+            if nome == "filter"
+            for chave, valor in kwargs.items()
+        }
+        self.assertNotIn("ano", filtros)
+        self.assertNotIn("codigo_modalidade", filtros)
+
+    def test_codigos_turmas_contagem_sem_ues_retorna_vazio(self):
+        """Lista de UEs vazia curto-circuita sem consultar o banco."""
+        self.assertEqual(
+            self.repo.codigos_turmas_por_ano_modalidade_dre([]), []
+        )
+
+    @patch("apps.turmas.repository.Turma.objects.using")
     def test_dados_turma_retorna_none_quando_nao_encontrada(self, mock_using):
         mock_using.return_value = FakeQuerySet([])
 
