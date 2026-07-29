@@ -516,7 +516,9 @@ class TurmasRepository:
         if not ues_codigos:
             return []
         ano_letivo_filtro = (
-            ano_letivo if ano_letivo and ano_letivo > 0 else datetime.now(UTC).year
+            ano_letivo
+            if ano_letivo and ano_letivo > 0
+            else datetime.now(UTC).year
         )
         consulta = (
             Turma.objects.using(self._DB)
