@@ -6,6 +6,7 @@ from apps.componentes_curriculares.api.views import (
     AgrupamentosCorrelacionadosLoteView,
     AgrupamentosCorrelacionadosView,
     AgrupamentosTerritorioLoteView,
+    ComponenteCurricularTurmaProfessorValidarAtribuicaoData,
     ComponentesCatalogoView,
     ComponentesPorFuncionarioView,
     ComponentesPorListaTurmasView,
@@ -103,4 +104,9 @@ urlpatterns = [
         name="agrupamentos-territorio",
     ),
     path("", ComponentesCatalogoView.as_view(), name="catalogo"),
+    path(
+        "<int:codigo_componente>/turmas/<str:codigo_turma>/professor/<str:codigo_rf>/data/<str:data>/atribuicao/validar/",
+        ComponenteCurricularTurmaProfessorValidarAtribuicaoData.as_view(),
+        name="atribuicao-territorio-validar",
+    ),
 ]

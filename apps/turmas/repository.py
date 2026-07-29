@@ -459,8 +459,8 @@ class TurmasRepository:
     ) -> list[int]:
         """Filtra os códigos de turma por tipo de turma, UE e semestre.
 
-        Um semestre fora do mapeamento ``PERIODICIDADES_POR_SEMESTRE`` não aplica
-        filtro de periodicidade.
+        Um semestre fora do mapeamento ``PERIODICIDADES_POR_SEMESTRE`` não
+        aplica filtro de periodicidade.
 
         Args:
             codigos: Códigos de turma candidatos.
@@ -516,7 +516,9 @@ class TurmasRepository:
         if not ues_codigos:
             return []
         ano_letivo_filtro = (
-            ano_letivo if ano_letivo and ano_letivo > 0 else datetime.now(UTC).year
+            ano_letivo
+            if ano_letivo and ano_letivo > 0
+            else datetime.now(UTC).year
         )
         consulta = (
             Turma.objects.using(self._DB)
