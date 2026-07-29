@@ -963,9 +963,7 @@ class ComponentesRepository:
         filtra_por_rf = eh_professor and not sem_atribuicao
 
         professor_select = "ac.professor" if filtra_por_rf else "NULL"
-        professor_join = (
-            SQL_LISTAGEM_JOIN_PROFESSOR if filtra_por_rf else ""
-        )
+        professor_join = SQL_LISTAGEM_JOIN_PROFESSOR if filtra_por_rf else ""
         sem_atribuicao_clause = (
             SQL_LISTAGEM_SEM_ATRIBUICAO if sem_atribuicao else ""
         )
@@ -2098,3 +2096,69 @@ class ComponentesRepository:
                 continue
             resultado.append(agrupamento_para_dict(escolhido))
         return resultado
+
+    def validar_atribuicao_territorio_agrupado_professor(
+        self,
+        codigo_agrupamento: int,
+        codigo_turma: str,
+        codigo_rf: str,
+        data: date,
+    ) -> bool:
+        """Valida se o professor está atribuído ao agrupamento na data.
+
+        Args:
+            codigo_agrupamento: Código do agrupamento.
+            codigo_turma: Código da turma.
+            codigo_rf: Código RF do professor.
+            data: Data de referência.
+
+        Returns:
+            True se o professor estiver atribuído, False caso contrário.
+        """
+        return bool(
+            AgrupamentoAtribuicaoTerritorioSaber.objects.using(self._DB)
+            .filter(
+                cod_agrupamento=codigo_agrupamento,
+                cod_turma=codigo_turma,
+                rf_professor=codigo_rf,
+                dt_inicio_atribuicao__lte=data,
+            )
+            .filter(
+                Q(dt_fim_atribuicao__isnull=True)
+                | Q(dt_fim_atribuicao__gte=data)
+            )
+            .exists()
+        )
+
+    def validar_atribuicao_territorio_professor(
+        self,
+        codigo_componente: int,
+        codigo_turma: str,
+        codigo_rf: str,
+        data: date,
+    ) -> bool:
+        """Valida se o professor está atribuído ao componente na turma.
+
+        Args:
+            codigo_componente: Código do componente curricular.
+            codigo_turma: Código da turma.
+            codigo_rf: Código RF do professor.
+            data: Data de referência.
+
+        Returns:
+            True se o professor estiver atribuído, False caso contrário.
+        """
+        return bool(
+            AtribuicaoTerritorioSaber.objects.using(self._DB)
+            .filter(
+                turma_codigo=codigo_turma,
+                componente_codigo=codigo_componente,
+                professor=codigo_rf,
+                dt_atribuicao__lte=data,
+            )
+            .filter(
+                Q(dt_disponibilizacao__isnull=True)
+                | Q(dt_disponibilizacao__gte=data)
+            )
+            .exists()
+        )

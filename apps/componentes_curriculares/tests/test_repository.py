@@ -1964,3 +1964,156 @@ class TestListagemTurmasComponentes(TestCase):
         codigos = {item["componente_curricular_codigo"] for item in itens}
         self.assertEqual(codigos, {813071})
         self.assertTrue(itens[0]["territorio_saber"])
+
+
+class TestValidarAtribuicaoTerritorioSaberRepository(TestCase):
+    """Valida a vigência de atribuições de Território do Saber."""
+
+    def setUp(self) -> None:
+        """Inicializa o repository."""
+        self.repo = ComponentesRepository()
+        self.data_referencia = date(2024, 6, 15)
+
+    def test_agrupamento_ativo_sem_data_fim(self) -> None:
+        """Reconhece agrupamento vigente sem encerramento."""
+        _make_agrupamento(
+            cod_agrupamento=800001,
+            cod_turma="T1",
+            rf_professor="RF1",
+            dt_inicio_atribuicao=datetime(2024, 6, 1, tzinfo=UTC),
+        )
+
+        resultado = self.repo.validar_atribuicao_territorio_agrupado_professor(
+            800001,
+            "T1",
+            "RF1",
+            self.data_referencia,
+        )
+
+        self.assertTrue(resultado)
+
+    def test_agrupamento_considera_bordas_da_vigencia(self) -> None:
+        """Inclui as datas exatas de início e encerramento."""
+        instante = datetime(2024, 6, 15, 3, tzinfo=UTC)
+        _make_agrupamento(
+            cod_agrupamento=800001,
+            cod_turma="T1",
+            rf_professor="RF1",
+            dt_inicio_atribuicao=instante,
+            dt_fim_atribuicao=instante,
+        )
+
+        resultado = self.repo.validar_atribuicao_territorio_agrupado_professor(
+            800001,
+            "T1",
+            "RF1",
+            self.data_referencia,
+        )
+
+        self.assertTrue(resultado)
+
+    def test_agrupamento_rejeita_registros_fora_dos_filtros(self) -> None:
+        """Ignora agrupamentos futuros, encerrados ou de outro vínculo."""
+        casos = [
+            {
+                "cod_agrupamento": 800001,
+                "cod_turma": "T1",
+                "rf_professor": "RF1",
+                "dt_inicio_atribuicao": datetime(2024, 6, 16, tzinfo=UTC),
+            },
+            {
+                "cod_agrupamento": 800001,
+                "cod_turma": "T1",
+                "rf_professor": "RF1",
+                "dt_fim_atribuicao": datetime(2024, 6, 14, tzinfo=UTC),
+            },
+            {"cod_agrupamento": 800002},
+            {"cod_turma": "T2"},
+            {"rf_professor": "RF2"},
+        ]
+        for indice, dados in enumerate(casos):
+            with self.subTest(dados=dados):
+                dados.setdefault("cod_agrupamento", 800001)
+                dados.setdefault("cod_turma", "T1")
+                dados.setdefault("rf_professor", "RF1")
+                dados["cod_experiencia_pedagogica"] = indice
+                _make_agrupamento(**dados)
+
+        resultado = self.repo.validar_atribuicao_territorio_agrupado_professor(
+            800001,
+            "T1",
+            "RF1",
+            self.data_referencia,
+        )
+
+        self.assertFalse(resultado)
+
+    def test_atribuicao_individual_ativa_sem_data_fim(self) -> None:
+        """Reconhece atribuição individual vigente sem encerramento."""
+        _make_atribuicao_territorio(
+            componente_codigo=1214,
+            turma_codigo="T1",
+            professor="RF1",
+            dt_atribuicao=datetime(2024, 6, 1, tzinfo=UTC),
+        )
+
+        resultado = self.repo.validar_atribuicao_territorio_professor(
+            1214,
+            "T1",
+            "RF1",
+            self.data_referencia,
+        )
+
+        self.assertTrue(resultado)
+
+    def test_atribuicao_individual_considera_bordas_da_vigencia(
+        self,
+    ) -> None:
+        """Inclui as datas exatas de atribuição e disponibilização."""
+        instante = datetime(2024, 6, 15, 3, tzinfo=UTC)
+        _make_atribuicao_territorio(
+            componente_codigo=1214,
+            turma_codigo="T1",
+            professor="RF1",
+            dt_atribuicao=instante,
+            dt_disponibilizacao=instante,
+        )
+
+        resultado = self.repo.validar_atribuicao_territorio_professor(
+            1214,
+            "T1",
+            "RF1",
+            self.data_referencia,
+        )
+
+        self.assertTrue(resultado)
+
+    def test_atribuicao_individual_rejeita_filtros_incorretos(self) -> None:
+        """Ignora atribuições futuras, encerradas ou de outro vínculo."""
+        casos = [
+            {
+                "dt_atribuicao": datetime(2024, 6, 16, tzinfo=UTC),
+            },
+            {
+                "dt_disponibilizacao": datetime(2024, 6, 14, tzinfo=UTC),
+            },
+            {"componente_codigo": 1215},
+            {"turma_codigo": "T2"},
+            {"professor": "RF2"},
+        ]
+        for indice, dados in enumerate(casos):
+            with self.subTest(dados=dados):
+                dados.setdefault("componente_codigo", 1214)
+                dados.setdefault("turma_codigo", "T1")
+                dados.setdefault("professor", "RF1")
+                dados["codigo_experiencia_pedagogica"] = indice
+                _make_atribuicao_territorio(**dados)
+
+        resultado = self.repo.validar_atribuicao_territorio_professor(
+            1214,
+            "T1",
+            "RF1",
+            self.data_referencia,
+        )
+
+        self.assertFalse(resultado)
