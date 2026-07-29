@@ -5,6 +5,8 @@ from datetime import date, datetime
 
 from apps.componentes_curriculares.repository import ComponentesRepository
 
+COMPONENTE_AGRUPAMENTO_TERRITORIO_SABER_ID_INICIAL: int = 800000
+
 
 class ComponentesService:
     """Orquestra as operações de Componentes Curriculares."""
@@ -166,7 +168,8 @@ class ComponentesService:
             anos_infantil_desconsiderar=anos_infantil_desconsiderar,
         )
         total_registros = len(itens)
-        # A paginação só informa o total de páginas calculado a partir de `qtde_registros`.
+        # A paginação informa o total calculado a partir de
+        # `qtde_registros`.
         total_paginas = (
             math.ceil(total_registros / qtde_registros)
             if qtde_registros > 0
@@ -360,3 +363,49 @@ class ComponentesService:
             Lista de agrupamentos de Território do Saber.
         """
         return self._repo.listar_agrupamentos_territorio(ids)
+
+    def validar_atribuicao_territorio_saber_professor(
+        self,
+        codigo_componente: int,
+        codigo_turma: str,
+        codigo_rf: str,
+        data: date,
+    ) -> bool:
+        """Valida se o professor foi atribuido ao território do saber.
+
+        Args:
+            codigo_componente: Código do componente curricular.
+            codigo_turma: Código da turma.
+            codigo_rf: Código RF do professor.
+            data: Data de referência para validação.
+
+        Returns:
+            True se a atribuição é válida; False caso contrário.
+        """
+        if self._validar_componente_eh_territorio_saber_agrupado(
+            codigo_componente
+        ):
+            return self._repo.validar_atribuicao_territorio_agrupado_professor(
+                codigo_componente, codigo_turma, codigo_rf, data
+            )
+        else:
+            return self._repo.validar_atribuicao_territorio_professor(
+                codigo_componente, codigo_turma, codigo_rf, data
+            )
+
+    def _validar_componente_eh_territorio_saber_agrupado(
+        self,
+        codigo_componente: int,
+    ) -> bool:
+        """Valida se o componente curricular é agrupado em Território do Saber.
+
+        Args:
+            codigo_componente: Código do componente curricular.
+
+        Returns:
+            True se o componente é agrupado; False caso contrário.
+        """
+        return (
+            codigo_componente
+            >= COMPONENTE_AGRUPAMENTO_TERRITORIO_SABER_ID_INICIAL
+        )

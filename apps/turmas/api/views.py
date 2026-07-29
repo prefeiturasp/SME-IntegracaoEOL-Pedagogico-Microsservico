@@ -282,8 +282,8 @@ class TurmasRecortePorTipoView(BaseAPIView):
     def post(self, request: Request) -> Response:
         """Retorna os códigos de turma que atendem ao recorte.
 
-        Recebe a lista de códigos de turma no corpo e os filtros de tipo de turma,
-        UE e semestre na query string.
+        Recebe a lista de códigos de turma no corpo e os filtros de tipo de
+        turma, UE e semestre na query string.
 
         Args:
             request: Requisição com a lista de códigos no corpo e os

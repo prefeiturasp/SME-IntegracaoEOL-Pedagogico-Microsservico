@@ -337,7 +337,10 @@ class ListagemTurmasComponentesView(BaseAPIView):
                 "qtde_registros_ignorados",
                 OpenApiTypes.INT,
                 OpenApiParameter.QUERY,
-                description="Número de registros a ignorar (usado no total de páginas)",
+                description=(
+                    "Número de registros a ignorar "
+                    "(usado no total de páginas)"
+                ),
             ),
             OpenApiParameter(
                 "eh_professor",
@@ -866,3 +869,60 @@ class AgrupamentosTerritorioLoteView(BaseAPIView):
         service = ComponentesService()
         dados = service.listar_agrupamentos_territorio(ids)
         return Response(dados)
+
+
+class ComponenteCurricularTurmaProfessorValidarAtribuicaoData(BaseAPIView):
+    """Validar territorio saber esta atribuido professor na data."""
+
+    def _validar_data(self, data_str: str) -> bool:
+        """Valida uma data no formato YYYY-MM-DD.
+
+        Args:
+            data_str: Data em formato de string (YYYY-MM-DD).
+
+        Returns:
+            ``True`` se a data for válida. Caso contrário, retorna ``False``.
+        """
+        try:
+            datetime.strptime(data_str, "%Y-%m-%d")
+            return True
+        except (ValueError, TypeError):
+            return False
+
+    @extend_schema(
+        responses={200: OpenApiTypes.BOOL, 400: OpenApiTypes.STR},
+        description=(
+            "Valida se o território do saber está atribuído ao"
+            "professor na data."
+        ),
+        tags=_TAG,
+        operation_id="validar_atribuicao_territorio_saber_professor",
+    )
+    def get(
+        self,
+        request: Request,
+        codigo_componente: int,
+        codigo_turma: str,
+        codigo_rf: str,
+        data: str,
+    ) -> Response:
+        """Validar territorio saber esta atribuido professor na data.
+
+        Args:
+            request: Requisição HTTP.
+            codigo_componente: Código do componente curricular.
+            codigo_turma: Código da turma.
+            codigo_rf: Código do professor (RF).
+            data: Data de referência no formato ISO 8601 (yyyy-MM-dd).
+
+        Returns:
+            Resposta se o território está atribuído ao professor na data.
+        """
+        if self._validar_data(data) is False:
+            return Response("Deve ser informada uma data valida.", status=400)
+
+        service = ComponentesService()
+        resultado = service.validar_atribuicao_territorio_saber_professor(
+            codigo_componente, codigo_turma, codigo_rf, data
+        )
+        return Response(resultado)
