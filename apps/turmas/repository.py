@@ -483,56 +483,6 @@ class TurmasRepository:
                 )
         return list(consulta.values_list("codigo", flat=True).distinct())
 
-    def codigos_turmas_por_ano_modalidade_dre(
-        self,
-        ues_codigos: Sequence[str],
-        ano_turma: str | None = None,
-        codigo_modalidade: int | None = None,
-        ano_letivo: int | None = None,
-    ) -> list[int]:
-        """Lista códigos de turmas vigentes para a contagem de alunos.
-
-        Restringe às turmas vigentes (``situacao`` em ``('O','A','E','C')``,
-        tipo de turma diferente de ``4`` e tipo de escola no recorte de
-        contagem), nas UEs informadas, no ano letivo da chamada — ou no ano
-        corrente quando a chamada não informa um. Aplica também os filtros de
-        ano e modalidade materializada.
-
-        Args:
-            ues_codigos: Códigos EOL das UEs consideradas.
-            ano_turma: Primeiro caractere da nomenclatura da turma; sem filtro
-                quando ausente.
-            codigo_modalidade: Modalidade materializada; sem filtro quando
-                ausente ou não positiva.
-            ano_letivo: Ano letivo da chamada; usa o ano corrente quando
-                ausente ou não positivo.
-
-        Returns:
-            Códigos distintos das turmas que atendem ao recorte.
-        """
-        if not ues_codigos:
-            return []
-        ano_letivo_filtro = (
-            ano_letivo
-            if ano_letivo and ano_letivo > 0
-            else datetime.now(UTC).year
-        )
-        consulta = (
-            Turma.objects.using(self._DB)
-            .filter(
-                ue_codigo__in=ues_codigos,
-                ano_letivo=ano_letivo_filtro,
-                situacao__in=SITUACOES_TURMA_VIGENTE,
-                tipo_escola__in=TIPOS_ESCOLA_CONTAGEM_ALUNOS,
-            )
-            .exclude(tipo_turma=TIPO_TURMA_EXCLUIDO_CONTAGEM)
-        )
-        if ano_turma:
-            consulta = consulta.filter(ano=ano_turma)
-        if codigo_modalidade and codigo_modalidade > 0:
-            consulta = consulta.filter(codigo_modalidade=codigo_modalidade)
-        return list(consulta.values_list("codigo", flat=True).distinct())
-
     def turmas_elegiveis(
         self,
         codigo_rf: str,
