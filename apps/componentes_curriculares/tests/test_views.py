@@ -185,6 +185,73 @@ class TestComponentesViews(TestCase):
             ["T1"],
         )
 
+    @patch(_SVC)
+    def test_valida_atribuicao_territorio_saber(
+        self,
+        mock_service,
+    ) -> None:
+        """Retorna a validação e repassa os parâmetros ao serviço."""
+        metodo = (
+            mock_service.return_value.validar_atribuicao_territorio_saber_professor
+        )
+        metodo.return_value = True
+
+        response = self.get(
+            "/1214/turmas/T1/professor/RF1/data/2024-06-01"
+            "/atribuicao/validar/"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIs(response.data, True)
+        metodo.assert_called_once_with(
+            1214,
+            "T1",
+            "RF1",
+            "2024-06-01",
+        )
+
+    @patch(_SVC)
+    def test_valida_atribuicao_rejeita_data_inexistente(
+        self,
+        mock_service,
+    ) -> None:
+        """Rejeita data inexistente sem consultar o serviço."""
+        response = self.get(
+            "/1214/turmas/T1/professor/RF1/data/2024-02-30"
+            "/atribuicao/validar/"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, "Deve ser informada uma data valida.")
+        metodo = (
+            mock_service.return_value.validar_atribuicao_territorio_saber_professor
+        )
+        metodo.assert_not_called()
+
+    @patch(_SVC)
+    def test_valida_atribuicao_rejeita_formato_de_data(
+        self,
+        mock_service,
+    ) -> None:
+        """Rejeita data fora do formato ISO sem consultar o serviço."""
+        response = self.get(
+            "/1214/turmas/T1/professor/RF1/data/01-06-2024"
+            "/atribuicao/validar/"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        metodo = (
+            mock_service.return_value.validar_atribuicao_territorio_saber_professor
+        )
+        metodo.assert_not_called()
+
+    def test_valida_atribuicao_exige_api_key(self) -> None:
+        """Rejeita validação sem API Key."""
+        self.assert_unauthorized(
+            "/1214/turmas/T1/professor/RF1/data/2024-06-01"
+            "/atribuicao/validar/"
+        )
+
 
 class TestListagemTurmasComponentesView(TestCase):
     """Valida a view de listagem turma×componente."""

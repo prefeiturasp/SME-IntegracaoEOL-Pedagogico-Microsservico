@@ -289,6 +289,52 @@ class TestComponentesService(SimpleTestCase):
             [15],
         )
 
+    def test_valida_atribuicao_de_componente_individual(self) -> None:
+        """Consulta atribuição individual para código abaixo do limite."""
+        data_referencia = date(2024, 6, 1)
+        metodo = self.repo.validar_atribuicao_territorio_professor
+        metodo.return_value = True
+
+        resultado = self.service.validar_atribuicao_territorio_saber_professor(
+            799999,
+            "T1",
+            "RF1",
+            data_referencia,
+        )
+
+        self.assertTrue(resultado)
+        metodo.assert_called_once_with(
+            799999,
+            "T1",
+            "RF1",
+            data_referencia,
+        )
+        self.repo.validar_atribuicao_territorio_agrupado_professor.assert_not_called()
+
+    def test_valida_atribuicao_de_componente_agrupado_no_limite(
+        self,
+    ) -> None:
+        """Consulta atribuição agrupada a partir do código limite."""
+        data_referencia = date(2024, 6, 1)
+        metodo = self.repo.validar_atribuicao_territorio_agrupado_professor
+        metodo.return_value = False
+
+        resultado = self.service.validar_atribuicao_territorio_saber_professor(
+            800000,
+            "T1",
+            "RF1",
+            data_referencia,
+        )
+
+        self.assertFalse(resultado)
+        metodo.assert_called_once_with(
+            800000,
+            "T1",
+            "RF1",
+            data_referencia,
+        )
+        self.repo.validar_atribuicao_territorio_professor.assert_not_called()
+
 
 class TestListagemTurmasComponentesService(SimpleTestCase):
     """Valida o envelope paginado da listagem turma×componente."""
