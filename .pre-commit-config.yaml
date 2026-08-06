@@ -22,3 +22,5 @@ repos:
           - djangorestframework
           - drf-spectacular
           - httpx
+          - django-db-connection-pool>=1.2,<2
+          - psycopg[binary]>=3.2,<4

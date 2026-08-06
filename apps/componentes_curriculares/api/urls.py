@@ -6,7 +6,11 @@ from apps.componentes_curriculares.api.views import (
     AgrupamentosCorrelacionadosLoteView,
     AgrupamentosCorrelacionadosView,
     AgrupamentosTerritorioLoteView,
+    AtribuicoesTerritorioProfessorAnoView,
+    AtribuicoesTerritorioProfessorView,
+    AtribuicoesTerritorioTurmaView,
     ComponenteCurricularTurmaProfessorValidarAtribuicaoData,
+    ComponentesApiEolView,
     ComponentesCatalogoView,
     ComponentesPorFuncionarioView,
     ComponentesPorListaTurmasView,
@@ -105,8 +109,29 @@ urlpatterns = [
     ),
     path("", ComponentesCatalogoView.as_view(), name="catalogo"),
     path(
+        "api-eol/",
+        ComponentesApiEolView.as_view(),
+        name="componentes-api-eol",
+    ),
+    path(
         "<int:codigo_componente>/turmas/<str:codigo_turma>/professor/<str:codigo_rf>/data/<str:data>/atribuicao/validar/",
         ComponenteCurricularTurmaProfessorValidarAtribuicaoData.as_view(),
         name="atribuicao-territorio-validar",
+    ),
+    path(
+        "professores/<str:codigo_rf>/atribuicoes-territorio-saber/",
+        AtribuicoesTerritorioProfessorView.as_view(),
+        name="atribuicoes-territorio-professor",
+    ),
+    path(
+        "professores/<str:codigo_rf>/anos-letivos/<int:ano_letivo>/"
+        "atribuicoes-territorio-saber/",
+        AtribuicoesTerritorioProfessorAnoView.as_view(),
+        name="atribuicoes-territorio-professor-ano",
+    ),
+    path(
+        "turmas/<str:codigo_turma>/atribuicoes-territorio-saber/",
+        AtribuicoesTerritorioTurmaView.as_view(),
+        name="atribuicoes-territorio-turma",
     ),
 ]

@@ -52,6 +52,31 @@ class TestComponentesService(SimpleTestCase):
         self.assertEqual(resultado, [])
         self.repo.listar_por_funcionario.assert_called_once_with("f1")
 
+    def test_lista_atribuicoes_territorio_por_professor_ano(self) -> None:
+        """Delega a listagem de atribuições por RF e ano letivo."""
+        self.assert_delega(
+            "listar_atribuicoes_territorio_por_professor_ano",
+            "listar_atribuicoes_territorio_por_professor_ano",
+            "RF1",
+            2024,
+        )
+
+    def test_lista_atribuicoes_territorio_por_professor(self) -> None:
+        """Delega a listagem de atribuições apenas por RF."""
+        self.assert_delega(
+            "listar_atribuicoes_territorio_por_professor",
+            "listar_atribuicoes_territorio_por_professor",
+            "RF1",
+        )
+
+    def test_lista_atribuicoes_territorio_por_turma(self) -> None:
+        """Delega a listagem de atribuições apenas por turma."""
+        self.assert_delega(
+            "listar_atribuicoes_territorio_por_turma",
+            "listar_atribuicoes_territorio_por_turma",
+            "T1",
+        )
+
     def test_ep1_com_turma_planejamento_true(self) -> None:
         """Delega listagem com planejamento para o repository."""
         self.repo.listar_planejamento_por_turma_funcionario.return_value = []
@@ -231,6 +256,13 @@ class TestComponentesService(SimpleTestCase):
     def test_ep9_catalogo_delega(self) -> None:
         """Delega listagem do catálogo ao repository."""
         self.assert_delega("listar_catalogo", "listar_catalogo")
+
+    def test_listar_componentes_api_eol_delega(self) -> None:
+        """Delega a listagem de componentes da API EOL ao repository."""
+        self.assert_delega(
+            "listar_componentes_api_eol",
+            "listar_componentes_api_eol",
+        )
 
     def test_ep10_vigencia_delega(self) -> None:
         """Delega listagem de vigência ao repository."""
