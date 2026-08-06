@@ -59,6 +59,113 @@ class TestComponentesViews(TestCase):
         self.assert_unauthorized("/funcionarios/f1/?idPerfil=p1")
 
     @patch(_SVC)
+    def test_lista_atribuicoes_territorio_por_professor_ano(
+        self,
+        mock_service,
+    ) -> None:
+        """Retorna atribuições e repassa RF e ano ao serviço."""
+        metodo = (
+            mock_service.return_value.listar_atribuicoes_territorio_por_professor_ano
+        )
+        metodo.return_value = [{"codigo_rf": "RF1", "ano_letivo": 2024}]
+
+        response = self.get(
+            "/professores/RF1/anos-letivos/2024/"
+            "atribuicoes-territorio-saber/"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data,
+            [{"codigo_rf": "RF1", "ano_letivo": 2024}],
+        )
+        metodo.assert_called_once_with("RF1", 2024)
+
+    def test_atribuicoes_territorio_exige_api_key(self) -> None:
+        """Rejeita a listagem de atribuições sem API Key."""
+        self.assert_unauthorized(
+            "/professores/RF1/anos-letivos/2024/"
+            "atribuicoes-territorio-saber/"
+        )
+
+    @patch(_SVC)
+    def test_lista_atribuicoes_territorio_sem_filtro_de_ano(
+        self,
+        mock_service,
+    ) -> None:
+        """Lista atribuições repassando somente o RF ao serviço."""
+        metodo = (
+            mock_service.return_value.listar_atribuicoes_territorio_por_professor
+        )
+        metodo.return_value = [
+            {"codigo_rf": "RF1", "ano_letivo": 2023},
+            {"codigo_rf": "RF1", "ano_letivo": 2024},
+        ]
+
+        response = self.get("/professores/RF1/atribuicoes-territorio-saber/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        metodo.assert_called_once_with("RF1")
+
+    def test_atribuicoes_territorio_sem_ano_exige_api_key(self) -> None:
+        """Rejeita a listagem sem ano quando não há API Key."""
+        self.assert_unauthorized(
+            "/professores/RF1/atribuicoes-territorio-saber/"
+        )
+
+    @patch(_SVC)
+    def test_lista_atribuicoes_territorio_por_turma(
+        self,
+        mock_service,
+    ) -> None:
+        """Lista atribuições repassando somente o código da turma."""
+        metodo = (
+            mock_service.return_value.listar_atribuicoes_territorio_por_turma
+        )
+        metodo.return_value = [{"codigo_turma": "T1", "ano_letivo": 2024}]
+
+        response = self.get("/turmas/T1/atribuicoes-territorio-saber/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data,
+            [{"codigo_turma": "T1", "ano_letivo": 2024}],
+        )
+        metodo.assert_called_once_with("T1")
+
+    def test_atribuicoes_territorio_por_turma_exige_api_key(self) -> None:
+        """Rejeita a listagem por turma quando não há API Key."""
+        self.assert_unauthorized("/turmas/T1/atribuicoes-territorio-saber/")
+
+    @patch(_SVC)
+    def test_lista_componentes_api_eol(self, mock_service):
+        """Lista componentes curriculares da API EOL."""
+        dados = [
+            {
+                "id_relacao_origem": None,
+                "id_componente_curricular": 1,
+                "eh_regencia": True,
+                "eh_territorio": False,
+                "descricao": "Regência",
+                "id_componente_curricular_pai": None,
+                "vigencia": None,
+            }
+        ]
+        service = mock_service.return_value
+        service.listar_componentes_api_eol.return_value = dados
+
+        response = self.get("/api-eol/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, dados)
+        service.listar_componentes_api_eol.assert_called_once_with()
+
+    def test_componentes_api_eol_sem_api_key(self):
+        """Rejeita consulta da API EOL sem autenticação."""
+        self.assert_unauthorized("/api-eol/")
+
+    @patch(_SVC)
     def test_ep14_corpo_invalido(self, _mock_service):
         """Valida corpo inválido para agrupamentos correlacionados."""
         response = self.post(
