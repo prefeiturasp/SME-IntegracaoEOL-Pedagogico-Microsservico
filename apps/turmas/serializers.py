@@ -149,6 +149,30 @@ class TurmaHistoricaSerializer(serializers.Serializer):
     semestre = serializers.IntegerField()
 
 
+class TurmaPorTipoSalaSerializer(serializers.Serializer):
+    """Serializa turma por tipo de sala/UE/ano letivo (endpoints 2 e 4)."""
+
+    codigo_turma = serializers.IntegerField()
+    nome_turma = serializers.CharField()
+    tipo_turma = serializers.IntegerField()
+    situacao = serializers.CharField(allow_null=True)
+    data_inicio_turma = serializers.DateTimeField(allow_null=True)
+    data_fim_turma = serializers.DateTimeField(allow_null=True)
+
+
+class TurmaPorEscolaSerializer(serializers.Serializer):
+    """Serializa turma por UE/ano letivo com sigla de modalidade."""
+
+    codigo_turma = serializers.IntegerField()
+    nome_turma_eol = serializers.CharField()
+    nome_turma = serializers.CharField()
+    tipo_turma = serializers.IntegerField()
+    situacao = serializers.CharField(allow_null=True)
+    data_inicio_turma = serializers.DateTimeField(allow_null=True)
+    data_fim_turma = serializers.DateTimeField(allow_null=True)
+    sigla_modalidade = serializers.CharField(allow_null=True)
+
+
 class TurmaItinerarioSerializer(serializers.Serializer):
     """Serializa dados de itinerário do Ensino Médio."""
 
