@@ -753,3 +753,60 @@ class TestTurmasViews(TestCase):
                 status.HTTP_401_UNAUTHORIZED,
                 f"esperado 401 em POST {path}",
             )
+
+    @patch(_SVC)
+    def test_modalidades_ensino_retorna_200(self, mock_svc):
+        mock_svc.return_value.modalidades_ensino.return_value = [
+            "Infantil",
+            "Fundamental",
+        ]
+        res = self.get("/escolas/modalidades-ensino/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, ["Infantil", "Fundamental"])
+
+    def test_modalidades_ensino_sem_api_key_retorna_401(self):
+        self.assert_401("/escolas/modalidades-ensino/")
+
+    @patch(_SVC)
+    def test_turmas_por_tipo_sala_retorna_200(self, mock_svc):
+        mock_svc.return_value.turmas_por_tipo_sala.return_value = [
+            {"codigo_turma": 2112345}
+        ]
+        res = self.get("/escolas/000532/salas/1/anos-letivos/2024/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        mock_svc.return_value.turmas_por_tipo_sala.assert_called_once_with(
+            "000532", "1", 2024
+        )
+
+    def test_turmas_por_tipo_sala_sem_api_key_retorna_401(self):
+        self.assert_401("/escolas/000532/salas/1/anos-letivos/2024/")
+
+    @patch(_SVC)
+    def test_turmas_por_escola_retorna_200(self, mock_svc):
+        mock_svc.return_value.turmas_por_escola.return_value = [
+            {"codigo_turma": 2112345}
+        ]
+        res = self.get("/escolas/000532/anos-letivos/2024/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        mock_svc.return_value.turmas_por_escola.assert_called_once_with(
+            "000532", 2024
+        )
+
+    def test_turmas_por_escola_sem_api_key_retorna_401(self):
+        self.assert_401("/escolas/000532/anos-letivos/2024/")
+
+    @patch(_SVC)
+    def test_turmas_sondagem_retorna_200(self, mock_svc):
+        mock_svc.return_value.turmas_sondagem.return_value = [
+            {"codigo_turma": 2112345}
+        ]
+        res = self.get("/escolas/000532/turmas-sondagem/anos-letivos/2024/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        mock_svc.return_value.turmas_sondagem.assert_called_once_with(
+            "000532", 2024
+        )
+
+    def test_turmas_sondagem_sem_api_key_retorna_401(self):
+        self.assert_401(
+            "/escolas/000532/turmas-sondagem/anos-letivos/2024/"
+        )
