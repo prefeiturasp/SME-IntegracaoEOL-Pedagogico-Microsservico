@@ -14,6 +14,25 @@ class ComponentesService:
     def __init__(self) -> None:
         self._repo = ComponentesRepository()
 
+    def listar_disciplinas_por_turma(
+        self,
+        codigo_turma: str,
+        codigos_disciplinas: list[int],
+    ) -> list[dict]:
+        """Retorna disciplinas selecionadas vinculadas a uma turma.
+
+        Args:
+            codigo_turma: Código da turma consultada.
+            codigos_disciplinas: Códigos das disciplinas consultadas.
+
+        Returns:
+            Dados das disciplinas encontradas na turma.
+        """
+        return self._repo.listar_disciplinas_por_turma(
+            codigo_turma,
+            codigos_disciplinas,
+        )
+
     def listar_componentes_por_funcionario(
         self,
         login: str,
@@ -420,6 +439,22 @@ class ComponentesService:
             Atribuições agrupadas sem filtro de ano ou vigência.
         """
         return self._repo.listar_atribuicoes_territorio_por_turma(codigo_turma)
+
+    def listar_atribuicoes_territorio_por_turmas(
+        self,
+        codigos_turmas: list[str],
+    ) -> list[dict]:
+        """Retorna todas as atribuições de território das turmas.
+
+        Args:
+            codigos_turmas: Códigos das turmas consultadas.
+
+        Returns:
+            Atribuições agrupadas sem filtro de ano ou vigência.
+        """
+        return self._repo.listar_atribuicoes_territorio_por_turmas(
+            codigos_turmas
+        )
 
     def validar_atribuicao_territorio_saber_professor(
         self,

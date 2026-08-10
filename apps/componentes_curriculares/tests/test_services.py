@@ -43,6 +43,15 @@ class TestComponentesService(SimpleTestCase):
             *args, **kwargs
         )
 
+    def test_lista_disciplinas_por_turma(self) -> None:
+        """Delega turma e disciplinas para o repository."""
+        self.assert_delega(
+            "listar_disciplinas_por_turma",
+            "listar_disciplinas_por_turma",
+            "3022108",
+            [1214, 1215],
+        )
+
     def test_ep1_sem_turma_delega_listar_por_funcionario(self) -> None:
         """Delega listagem sem turma para o repository."""
         self.repo.listar_por_funcionario.return_value = []
@@ -75,6 +84,14 @@ class TestComponentesService(SimpleTestCase):
             "listar_atribuicoes_territorio_por_turma",
             "listar_atribuicoes_territorio_por_turma",
             "T1",
+        )
+
+    def test_lista_atribuicoes_territorio_por_turmas(self) -> None:
+        """Delega a listagem de atribuições de várias turmas."""
+        self.assert_delega(
+            "listar_atribuicoes_territorio_por_turmas",
+            "listar_atribuicoes_territorio_por_turmas",
+            ["T1", "T2"],
         )
 
     def test_ep1_com_turma_planejamento_true(self) -> None:
