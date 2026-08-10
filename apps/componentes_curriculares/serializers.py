@@ -24,6 +24,24 @@ class ComponenteCurricularSerializer(serializers.Serializer):
     )
 
 
+class ComponenteTurmaDisciplinaSerializer(serializers.Serializer):
+    """Serializa dados de uma disciplina vinculada a uma turma."""
+
+    turma_codigo = serializers.CharField()
+    desc_territorio_saber = serializers.CharField(allow_null=True)
+    desc_experiencia_pedagogica = serializers.CharField(allow_null=True)
+    componente_codigo = serializers.IntegerField()
+    codigo_componente_territorio_saber = serializers.IntegerField(
+        allow_null=True
+    )
+
+
+class CodigosDisciplinasSerializer(serializers.ListSerializer):
+    """Valida uma lista de códigos de disciplinas."""
+
+    child = serializers.IntegerField(min_value=1)
+
+
 class ComponenteSimplificadoSerializer(serializers.Serializer):
     """Serializa dados simplificados de componente curricular."""
 
@@ -83,6 +101,7 @@ class TurmaAtribuidaAnoSerializer(serializers.Serializer):
 class AtribuicaoTerritorioTurmaSerializer(serializers.Serializer):
     """Serializa uma atribuição de Território do Saber da turma."""
 
+    cod_agrupamento = serializers.IntegerField()
     codigo_territorio_saber = serializers.IntegerField()
     codigo_experiencia_pedagogica = serializers.IntegerField(allow_null=True)
     dt_inicio_atribuicao = serializers.DateTimeField()
@@ -103,6 +122,12 @@ class AtribuicaoTerritorioTurmaSerializer(serializers.Serializer):
     componentes_curriculares_agrupados = serializers.ListField(
         child=serializers.IntegerField()
     )
+
+
+class CodigosTurmasLoteSerializer(serializers.ListSerializer):
+    """Valida uma lista de códigos de turmas."""
+
+    child = serializers.CharField(allow_blank=False)
 
 
 class VigenciaComponenteSerializer(serializers.Serializer):

@@ -365,6 +365,37 @@ class ComponentesRepository:
 
     _DB = "default"
 
+    def listar_disciplinas_por_turma(
+        self,
+        codigo_turma: str,
+        codigos_disciplinas: list[int],
+    ) -> list[dict]:
+        """Lista disciplinas selecionadas vinculadas a uma turma.
+
+        Args:
+            codigo_turma: Código da turma consultada.
+            codigos_disciplinas: Códigos das disciplinas consultadas.
+
+        Returns:
+            Dados de território e experiência das disciplinas encontradas.
+        """
+        campos = (
+            "turma_codigo",
+            "desc_territorio_saber",
+            "desc_experiencia_pedagogica",
+            "componente_codigo",
+            "codigo_componente_territorio_saber",
+        )
+        return list(
+            ComponenteTurma.objects.using(self._DB)
+            .filter(
+                turma_codigo=codigo_turma,
+                componente_codigo__in=codigos_disciplinas,
+            )
+            .values(*campos)
+            .order_by("componente_codigo")
+        )
+
     @staticmethod
     def _ordenar_agrupamentos_legado(
         queryset: QuerySet[AgrupamentoAtribuicaoTerritorioSaber],
@@ -2165,10 +2196,25 @@ class ComponentesRepository:
         Returns:
             Atribuições de todos os anos e períodos de vigência.
         """
+        return self.listar_atribuicoes_territorio_por_turmas([codigo_turma])
+
+    def listar_atribuicoes_territorio_por_turmas(
+        self,
+        codigos_turmas: list[str],
+    ) -> list[dict]:
+        """Lista todas as atribuições agrupadas das turmas.
+
+        Args:
+            codigos_turmas: Códigos das turmas consultadas.
+
+        Returns:
+            Atribuições de todos os anos e períodos de vigência.
+        """
         agrupamentos = (
             AgrupamentoAtribuicaoTerritorioSaber.objects.using(self._DB)
-            .filter(cod_turma=codigo_turma)
+            .filter(cod_turma__in=codigos_turmas)
             .order_by(
+                "cod_turma",
                 "ano_letivo",
                 "dt_inicio_atribuicao",
                 "cod_agrupamento",
@@ -2176,6 +2222,7 @@ class ComponentesRepository:
         )
         return [
             {
+                "cod_agrupamento": item.cod_agrupamento,
                 "codigo_territorio_saber": item.cod_territorio_saber,
                 "codigo_experiencia_pedagogica": (
                     item.cod_experiencia_pedagogica

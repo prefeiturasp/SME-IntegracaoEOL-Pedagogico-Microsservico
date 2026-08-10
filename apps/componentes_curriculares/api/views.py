@@ -10,10 +10,13 @@ from rest_framework.response import Response
 
 from apps.componentes_curriculares.serializers import (
     AtribuicaoTerritorioTurmaSerializer,
+    CodigosDisciplinasSerializer,
+    CodigosTurmasLoteSerializer,
     ComponenteCurricularApiEolSerializer,
     ComponenteCurricularSerializer,
     ComponenteRegenciaSerializer,
     ComponenteSimplificadoSerializer,
+    ComponenteTurmaDisciplinaSerializer,
     GradeCurricularSerializer,
     ListagemTurmasComponentesPaginadoSerializer,
     TurmaAtribuidaAnoSerializer,
@@ -23,6 +26,53 @@ from apps.componentes_curriculares.services import ComponentesService
 from apps.core.views import BaseAPIView
 
 _TAG = ["ComponentesCurriculares"]
+
+
+class DisciplinasPorTurmaView(BaseAPIView):
+    """Lista disciplinas selecionadas vinculadas a uma turma."""
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "codigos_componentes",
+                OpenApiTypes.INT,
+                OpenApiParameter.QUERY,
+                many=True,
+                required=True,
+                description=(
+                    "Código da disciplina. Repita o parâmetro para "
+                    "consultar mais de uma disciplina."
+                ),
+            )
+        ],
+        responses={200: ComponenteTurmaDisciplinaSerializer(many=True)},
+        description="Lista disciplinas selecionadas vinculadas à turma.",
+        tags=_TAG,
+        operation_id="disciplinas_por_turma",
+    )
+    def get(self, request: Request, codigo_turma: str) -> Response:
+        """Lista disciplinas selecionadas vinculadas a uma turma.
+
+        Args:
+            request: Requisição HTTP com os códigos das disciplinas.
+            codigo_turma: Código da turma consultada.
+
+        Returns:
+            Dados das disciplinas encontradas na turma.
+        """
+        codigos = request.query_params.getlist(
+            "codigos_componentes"
+        ) or request.query_params.getlist("codigosComponentes")
+        serializer = CodigosDisciplinasSerializer(
+            data=codigos,
+            allow_empty=False,
+        )
+        serializer.is_valid(raise_exception=True)
+        dados = ComponentesService().listar_disciplinas_por_turma(
+            codigo_turma,
+            serializer.validated_data,
+        )
+        return Response(dados)
 
 
 class AtribuicoesTerritorioTurmaView(BaseAPIView):
@@ -49,6 +99,51 @@ class AtribuicoesTerritorioTurmaView(BaseAPIView):
         """
         service = ComponentesService()
         dados = service.listar_atribuicoes_territorio_por_turma(codigo_turma)
+        return Response(dados)
+
+
+class AtribuicoesTerritorioTurmasLoteView(BaseAPIView):
+    """Lista atribuições de Território do Saber de várias turmas."""
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "codigo_turma",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                description=(
+                    "Código de turma. Repita o parâmetro para consultar "
+                    "mais de uma turma."
+                ),
+                required=True,
+                many=True,
+            )
+        ],
+        responses={200: AtribuicaoTerritorioTurmaSerializer(many=True)},
+        description=(
+            "Lista todas as atribuições agrupadas de Território do Saber "
+            "das turmas informadas, sem filtro de ano letivo ou vigência."
+        ),
+        tags=_TAG,
+        operation_id="atribuicoes_territorio_turmas_lote",
+    )
+    def get(self, request: Request) -> Response:
+        """Retorna todas as atribuições das turmas informadas.
+
+        Args:
+            request: Requisição HTTP com os códigos de turmas.
+
+        Returns:
+            Atribuições agrupadas de Território do Saber.
+        """
+        serializer = CodigosTurmasLoteSerializer(
+            data=request.query_params.getlist("codigo_turma"),
+            allow_empty=False,
+        )
+        serializer.is_valid(raise_exception=True)
+        dados = ComponentesService().listar_atribuicoes_territorio_por_turmas(
+            serializer.validated_data
+        )
         return Response(dados)
 
 

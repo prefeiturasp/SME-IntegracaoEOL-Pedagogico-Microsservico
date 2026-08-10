@@ -63,6 +63,55 @@ def _make_atribuicao_territorio(**kwargs):
     return AtribuicaoTerritorioSaber.objects.create(**defaults)
 
 
+class TestDisciplinasPorTurmaRepository(TestCase):
+    """Valida a consulta de disciplinas selecionadas por turma."""
+
+    def test_filtra_turma_e_codigos_e_retorna_campos_esperados(self) -> None:
+        """Retorna somente disciplinas solicitadas pertencentes à turma."""
+        ComponenteTurma.objects.create(
+            turma_codigo="3022108",
+            componente_codigo=1214,
+            codigo_componente_territorio_saber=1519,
+            desc_territorio_saber="Território",
+            desc_experiencia_pedagogica="Experiência",
+        )
+        ComponenteTurma.objects.create(
+            turma_codigo="3022108",
+            componente_codigo=9999,
+        )
+        ComponenteTurma.objects.create(
+            turma_codigo="OUTRA",
+            componente_codigo=1215,
+        )
+
+        resultado = ComponentesRepository().listar_disciplinas_por_turma(
+            "3022108",
+            [1214, 1215],
+        )
+
+        self.assertEqual(
+            resultado,
+            [
+                {
+                    "turma_codigo": "3022108",
+                    "desc_territorio_saber": "Território",
+                    "desc_experiencia_pedagogica": "Experiência",
+                    "componente_codigo": 1214,
+                    "codigo_componente_territorio_saber": 1519,
+                }
+            ],
+        )
+
+    def test_retorna_lista_vazia_quando_nao_encontra(self) -> None:
+        """Retorna lista vazia quando nenhuma disciplina corresponde."""
+        resultado = ComponentesRepository().listar_disciplinas_por_turma(
+            "3022108",
+            [1214],
+        )
+
+        self.assertEqual(resultado, [])
+
+
 class TestAtribuicoesTerritorioProfessorAnoRepository(TestCase):
     """Valida a listagem anual de atribuições de território."""
 
@@ -166,6 +215,7 @@ class TestAtribuicoesTerritorioProfessorAnoRepository(TestCase):
             [item["ano_letivo"] for item in resultado], [2023, 2024]
         )
         primeira = resultado[0]
+        self.assertEqual(primeira["cod_agrupamento"], 9001)
         self.assertEqual(primeira["codigo_territorio_saber"], 10)
         self.assertEqual(primeira["codigo_experiencia_pedagogica"], 20)
         self.assertEqual(primeira["dt_inicio_atribuicao"], inicio)
@@ -185,6 +235,35 @@ class TestAtribuicoesTerritorioProfessorAnoRepository(TestCase):
         self.assertNotIn("criado_em", primeira)
         self.assertNotIn("alterado_em", primeira)
         self.assertFalse(primeira["atribuicao_externa"])
+
+    def test_por_turmas_retorna_somente_as_turmas_informadas(self) -> None:
+        """Retorna atribuições de todas as turmas consultadas."""
+        _make_agrupamento(
+            cod_agrupamento=9101,
+            cod_turma="T1",
+            ano_letivo=2024,
+        )
+        _make_agrupamento(
+            cod_agrupamento=9102,
+            cod_turma="T2",
+            ano_letivo=2025,
+        )
+        _make_agrupamento(
+            cod_agrupamento=9103,
+            cod_turma="T3",
+            ano_letivo=2025,
+        )
+
+        resultado = (
+            ComponentesRepository().listar_atribuicoes_territorio_por_turmas(
+                ["T1", "T2"]
+            )
+        )
+
+        self.assertEqual(
+            [item["codigo_turma"] for item in resultado],
+            ["T1", "T2"],
+        )
 
 
 _DESCRICOES_TERRITORIO = {

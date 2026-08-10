@@ -8,6 +8,7 @@ from apps.componentes_curriculares.api.views import (
     AgrupamentosTerritorioLoteView,
     AtribuicoesTerritorioProfessorAnoView,
     AtribuicoesTerritorioProfessorView,
+    AtribuicoesTerritorioTurmasLoteView,
     AtribuicoesTerritorioTurmaView,
     ComponenteCurricularTurmaProfessorValidarAtribuicaoData,
     ComponentesApiEolView,
@@ -20,6 +21,7 @@ from apps.componentes_curriculares.api.views import (
     ComponentesSemAtribuicaoView,
     ComponentesTurmaProgramaView,
     ComponentesTurmasBrutosView,
+    DisciplinasPorTurmaView,
     GradeCurricularView,
     ListagemTurmasComponentesView,
     ValidarPapView,
@@ -128,6 +130,16 @@ urlpatterns = [
         "atribuicoes-territorio-saber/",
         AtribuicoesTerritorioProfessorAnoView.as_view(),
         name="atribuicoes-territorio-professor-ano",
+    ),
+    path(
+        "turmas/atribuicoes-territorio-saber/",
+        AtribuicoesTerritorioTurmasLoteView.as_view(),
+        name="atribuicoes-territorio-turmas-lote",
+    ),
+    path(
+        "turmas/<str:codigo_turma>/componentes-turma/",
+        DisciplinasPorTurmaView.as_view(),
+        name="componentes-turma",
     ),
     path(
         "turmas/<str:codigo_turma>/atribuicoes-territorio-saber/",
