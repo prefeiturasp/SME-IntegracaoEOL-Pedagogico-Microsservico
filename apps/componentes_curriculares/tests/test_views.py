@@ -78,7 +78,7 @@ class TestComponentesViews(TestCase):
     def test_lista_disciplinas_por_turma_exige_api_key(self) -> None:
         """Rejeita a consulta sem API Key."""
         self.assert_unauthorized(
-            "/turmas/3022108/componentes-turma/" "?codigos_componentes=1214"
+            "/turmas/3022108/componentes-turma/?codigos_componentes=1214"
         )
 
     @patch(_SVC)
