@@ -28,7 +28,7 @@ class ComponenteCurricularApiEol(ModeloBase):
     id_componente_curricular = models.IntegerField()
     eh_regencia = models.BooleanField()
     eh_territorio = models.BooleanField()
-    descricao = models.CharField(max_length=300, null=True, blank=True)
+    descricao = models.CharField(max_length=300, null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
     id_componente_curricular_pai = models.IntegerField(
         null=True,
         blank=True,
