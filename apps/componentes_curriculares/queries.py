@@ -312,7 +312,7 @@ SELECT
     t.tipo_grade_programa,
     t.codigo_grade_programa,
     t.data_inicio_turma,
-    t.data_fim,
+    t.data_fim_turma,
     t.data_atualizacao,
     t.ensino_especial,
     t.semestre,

@@ -86,6 +86,7 @@ def _turma(**kwargs):
         "duracao_turno": None,
         "tipo_turno": None,
         "data_fim": None,
+        "data_fim_turma": None,
         "codigo_tipo_programa": None,
         "codigo_modalidade_etapa": None,
         "codigo_etapa_ensino": None,
@@ -672,7 +673,7 @@ class TestTurmasRepository(TestCase):
                     codigo_grade_programa=10,
                     descricao_grade_programa="GRADE EMEI",
                     tipo_grade_programa=1,
-                    data_fim="2026-12-20",
+                    data_fim_turma="2026-12-20",
                 )
             ]
         )

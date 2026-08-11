@@ -192,7 +192,7 @@ def _turma_para_sincronizacao(
         "semestre": t.semestre or 0,
         "duracao_turno": t.duracao_turno,
         "tipo_turno": t.tipo_turno,
-        "data_fim_turma": t.data_fim,
+        "data_fim_turma": t.data_fim_turma,
         "ensino_especial": t.ensino_especial,
         "etapa_eja": _etapa_eja(t),
         "serie_ensino": t.serie_ensino,
@@ -221,7 +221,7 @@ def _turma_para_sala(t: Turma) -> dict:
         "tipo_turma": t.tipo_turma,
         "situacao": t.situacao,
         "data_inicio_turma": t.data_inicio_turma,
-        "data_fim_turma": t.data_fim,
+        "data_fim_turma": t.data_fim_turma,
     }
 
 
@@ -239,7 +239,7 @@ def _turma_para_escola(t: Turma) -> dict:
         "tipo_turma": t.tipo_turma,
         "situacao": t.situacao,
         "data_inicio_turma": t.data_inicio_turma,
-        "data_fim_turma": t.data_fim,
+        "data_fim_turma": t.data_fim_turma,
         "sigla_modalidade": sigla,
     }
 
