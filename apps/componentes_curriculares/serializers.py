@@ -24,11 +24,41 @@ class ComponenteCurricularSerializer(serializers.Serializer):
     )
 
 
+class ComponenteTurmaDisciplinaSerializer(serializers.Serializer):
+    """Serializa dados de uma disciplina vinculada a uma turma."""
+
+    turma_codigo = serializers.CharField()
+    desc_territorio_saber = serializers.CharField(allow_null=True)
+    desc_experiencia_pedagogica = serializers.CharField(allow_null=True)
+    componente_codigo = serializers.IntegerField()
+    codigo_componente_territorio_saber = serializers.IntegerField(
+        allow_null=True
+    )
+
+
+class CodigosDisciplinasSerializer(serializers.ListSerializer):
+    """Valida uma lista de códigos de disciplinas."""
+
+    child = serializers.IntegerField(min_value=1)
+
+
 class ComponenteSimplificadoSerializer(serializers.Serializer):
     """Serializa dados simplificados de componente curricular."""
 
     codigo = serializers.IntegerField()
     descricao = serializers.CharField()
+
+
+class ComponenteCurricularApiEolSerializer(serializers.Serializer):
+    """Serializa dados de componente curricular da API EOL."""
+
+    id_relacao_origem = serializers.IntegerField(allow_null=True)
+    id_componente_curricular = serializers.IntegerField()
+    eh_regencia = serializers.BooleanField()
+    eh_territorio = serializers.BooleanField()
+    descricao = serializers.CharField(allow_null=True)
+    id_componente_curricular_pai = serializers.IntegerField(allow_null=True)
+    vigencia = serializers.DateTimeField(allow_null=True)
 
 
 class ComponenteRegenciaSerializer(serializers.Serializer):
@@ -47,6 +77,57 @@ class ComponenteRegenciaSerializer(serializers.Serializer):
     professor = serializers.CharField(allow_null=True)
     inicio_atribuicao = serializers.DateTimeField(allow_null=True)
     fim_atribuicao = serializers.DateTimeField(allow_null=True)
+
+
+class TurmaAtribuidaAnoSerializer(serializers.Serializer):
+    """Serializa uma atribuição agrupada de Território do Saber."""
+
+    codigo_turma = serializers.CharField(allow_null=True)
+    ano_letivo = serializers.IntegerField()
+    nome_turma = serializers.CharField(allow_null=True)
+    data_inicio_atribuicao = serializers.DateTimeField()
+    data_fim_atribuicao = serializers.DateTimeField(allow_null=True)
+    data_fim_turma = serializers.DateTimeField(allow_null=True)
+    ano_atribuicao = serializers.IntegerField()
+    codigo_rf = serializers.CharField(allow_null=True)
+    disciplina_id = serializers.CharField()
+    disciplina_nome = serializers.CharField()
+    disciplinas_agrupadas_ids = serializers.ListField(
+        child=serializers.IntegerField()
+    )
+    nome_professor = serializers.CharField(allow_null=True)
+
+
+class AtribuicaoTerritorioTurmaSerializer(serializers.Serializer):
+    """Serializa uma atribuição de Território do Saber da turma."""
+
+    cod_agrupamento = serializers.IntegerField()
+    codigo_territorio_saber = serializers.IntegerField()
+    codigo_experiencia_pedagogica = serializers.IntegerField(allow_null=True)
+    dt_inicio_atribuicao = serializers.DateTimeField()
+    ano_atribuicao = serializers.IntegerField()
+    dt_fim_atribuicao = serializers.DateTimeField(allow_null=True)
+    dt_fim_turma = serializers.DateTimeField(allow_null=True)
+    codigo_motivo_disponibilizacao = serializers.IntegerField(allow_null=True)
+    rf_professor = serializers.CharField(allow_null=True)
+    codigo_turma = serializers.CharField(allow_null=True)
+    ano_letivo = serializers.IntegerField()
+    codigos_componentes_curriculares = serializers.CharField(allow_null=True)
+    descricao_territorio_saber = serializers.CharField(allow_null=True)
+    descricao_experiencia_pedagogica = serializers.CharField(allow_null=True)
+    encerramento_atribuicao_via_atualizacao_componentes_agrupados = (
+        serializers.BooleanField(allow_null=True)
+    )
+    atribuicao_externa = serializers.BooleanField()
+    componentes_curriculares_agrupados = serializers.ListField(
+        child=serializers.IntegerField()
+    )
+
+
+class CodigosTurmasLoteSerializer(serializers.ListSerializer):
+    """Valida uma lista de códigos de turmas."""
+
+    child = serializers.CharField(allow_blank=False)
 
 
 class VigenciaComponenteSerializer(serializers.Serializer):

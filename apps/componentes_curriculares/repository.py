@@ -16,6 +16,7 @@ from apps.componentes_curriculares.models import (
     AgrupamentoAtribuicaoTerritorioSaber,
     AtribuicaoTerritorioSaber,
     ComponenteCurricular,
+    ComponenteCurricularApiEol,
     ComponenteCurricularPlanejamentoRegencia,
     ComponenteTurma,
     GradeComponenteCurricular,
@@ -47,6 +48,7 @@ from apps.componentes_curriculares.services.territorio_saber import (
     mesclar_agrupamentos_territorio,
     parse_csv,
 )
+from apps.turmas.models import Turma
 
 
 def _raw(sql: str, params: list, using: str = "default") -> list[dict]:
@@ -362,6 +364,37 @@ class ComponentesRepository:
     """Executa consultas ORM para componentes curriculares."""
 
     _DB = "default"
+
+    def listar_disciplinas_por_turma(
+        self,
+        codigo_turma: str,
+        codigos_disciplinas: list[int],
+    ) -> list[dict]:
+        """Lista disciplinas selecionadas vinculadas a uma turma.
+
+        Args:
+            codigo_turma: Código da turma consultada.
+            codigos_disciplinas: Códigos das disciplinas consultadas.
+
+        Returns:
+            Dados de território e experiência das disciplinas encontradas.
+        """
+        campos = (
+            "turma_codigo",
+            "desc_territorio_saber",
+            "desc_experiencia_pedagogica",
+            "componente_codigo",
+            "codigo_componente_territorio_saber",
+        )
+        return list(
+            ComponenteTurma.objects.using(self._DB)
+            .filter(
+                turma_codigo=codigo_turma,
+                componente_codigo__in=codigos_disciplinas,
+            )
+            .values(*campos)
+            .order_by("componente_codigo")
+        )
 
     @staticmethod
     def _ordenar_agrupamentos_legado(
@@ -1123,6 +1156,27 @@ class ComponentesRepository:
                 .order_by("codigo")
             )
         ]
+
+    def listar_componentes_api_eol(self) -> list[dict]:
+        """Lista componentes curriculares disponibilizados pela API EOL.
+
+        Returns:
+            Lista de componentes ordenada pelo identificador curricular.
+        """
+        campos = (
+            "id_relacao_origem",
+            "id_componente_curricular",
+            "eh_regencia",
+            "eh_territorio",
+            "descricao",
+            "id_componente_curricular_pai",
+            "vigencia",
+        )
+        return list(
+            ComponenteCurricularApiEol.objects.using(self._DB)
+            .values(*campos)
+            .order_by("id_componente_curricular")
+        )
 
     def listar_vigencia_componentes(
         self,
@@ -2095,6 +2149,175 @@ class ComponentesRepository:
             if escolhido is None:
                 continue
             resultado.append(agrupamento_para_dict(escolhido))
+        return resultado
+
+    def listar_atribuicoes_territorio_por_professor_ano(
+        self,
+        codigo_rf: str,
+        ano_letivo: int,
+    ) -> list[dict]:
+        """Lista atribuições agrupadas de território do professor.
+
+        Args:
+            codigo_rf: Registro funcional do professor.
+            ano_letivo: Ano letivo das atribuições.
+
+        Returns:
+            Atribuições enriquecidas com os dados cadastrais das turmas.
+        """
+        return self._listar_atribuicoes_territorio_por_professor(
+            codigo_rf,
+            ano_letivo,
+        )
+
+    def listar_atribuicoes_territorio_por_professor(
+        self,
+        codigo_rf: str,
+    ) -> list[dict]:
+        """Lista atribuições agrupadas de todos os anos do professor.
+
+        Args:
+            codigo_rf: Registro funcional do professor.
+
+        Returns:
+            Atribuições enriquecidas com os dados cadastrais das turmas.
+        """
+        return self._listar_atribuicoes_territorio_por_professor(codigo_rf)
+
+    def listar_atribuicoes_territorio_por_turma(
+        self,
+        codigo_turma: str,
+    ) -> list[dict]:
+        """Lista todas as atribuições agrupadas da turma.
+
+        Args:
+            codigo_turma: Código da turma consultada.
+
+        Returns:
+            Atribuições de todos os anos e períodos de vigência.
+        """
+        return self.listar_atribuicoes_territorio_por_turmas([codigo_turma])
+
+    def listar_atribuicoes_territorio_por_turmas(
+        self,
+        codigos_turmas: list[str],
+    ) -> list[dict]:
+        """Lista todas as atribuições agrupadas das turmas.
+
+        Args:
+            codigos_turmas: Códigos das turmas consultadas.
+
+        Returns:
+            Atribuições de todos os anos e períodos de vigência.
+        """
+        agrupamentos = (
+            AgrupamentoAtribuicaoTerritorioSaber.objects.using(self._DB)
+            .filter(cod_turma__in=codigos_turmas)
+            .order_by(
+                "cod_turma",
+                "ano_letivo",
+                "dt_inicio_atribuicao",
+                "cod_agrupamento",
+            )
+        )
+        return [
+            {
+                "cod_agrupamento": item.cod_agrupamento,
+                "codigo_territorio_saber": item.cod_territorio_saber,
+                "codigo_experiencia_pedagogica": (
+                    item.cod_experiencia_pedagogica
+                ),
+                "dt_inicio_atribuicao": item.dt_inicio_atribuicao,
+                "ano_atribuicao": item.ano_atribuicao,
+                "dt_fim_atribuicao": item.dt_fim_atribuicao,
+                "dt_fim_turma": item.dt_fim_turma,
+                "codigo_motivo_disponibilizacao": (
+                    item.cod_motivo_disponibilizacao
+                ),
+                "rf_professor": item.rf_professor,
+                "codigo_turma": item.cod_turma,
+                "ano_letivo": item.ano_letivo,
+                "codigos_componentes_curriculares": (
+                    item.cod_componentes_curriculares
+                ),
+                "descricao_territorio_saber": item.desc_territorio_saber,
+                "descricao_experiencia_pedagogica": (
+                    item.desc_experiencia_pedagogica
+                ),
+                "encerramento_atribuicao_via_atualizacao_"
+                "componentes_agrupados": (
+                    item.encerramento_atribuicao_agrupamento_atualizado
+                ),
+                "atribuicao_externa": False,
+                "componentes_curriculares_agrupados": parse_csv(
+                    item.cod_componentes_curriculares
+                ),
+            }
+            for item in agrupamentos
+        ]
+
+    def _listar_atribuicoes_territorio_por_professor(
+        self,
+        codigo_rf: str,
+        ano_letivo: int | None = None,
+    ) -> list[dict]:
+        consulta = AgrupamentoAtribuicaoTerritorioSaber.objects.using(
+            self._DB
+        ).filter(rf_professor=codigo_rf)
+        if ano_letivo is not None:
+            consulta = consulta.filter(ano_letivo=ano_letivo)
+        agrupamentos = list(
+            consulta.order_by(
+                "ano_letivo",
+                "cod_turma",
+                "dt_inicio_atribuicao",
+                "cod_agrupamento",
+            )
+        )
+        codigos_turmas = {
+            int(item.cod_turma)
+            for item in agrupamentos
+            if item.cod_turma and item.cod_turma.isdigit()
+        }
+        consulta_turmas = Turma.objects.using(self._DB).filter(
+            codigo__in=codigos_turmas
+        )
+        if ano_letivo is not None:
+            consulta_turmas = consulta_turmas.filter(ano_letivo=ano_letivo)
+        turmas = {str(turma.codigo): turma for turma in consulta_turmas}
+
+        resultado: list[dict] = []
+        for agrupamento in agrupamentos:
+            turma = turmas.get(agrupamento.cod_turma or "")
+            territorio = (agrupamento.desc_territorio_saber or "").strip()
+            experiencia = (
+                agrupamento.desc_experiencia_pedagogica or ""
+            ).strip()
+            disciplina_nome = (
+                f"{territorio} - {experiencia}" if experiencia else territorio
+            )
+            resultado.append(
+                {
+                    "codigo_turma": agrupamento.cod_turma,
+                    "ano_letivo": agrupamento.ano_letivo,
+                    "nome_turma": turma.nome_turma if turma else None,
+                    "data_inicio_atribuicao": (
+                        agrupamento.dt_inicio_atribuicao
+                    ),
+                    "data_fim_atribuicao": agrupamento.dt_fim_atribuicao,
+                    "data_fim_turma": (
+                        turma.data_fim if turma else agrupamento.dt_fim_turma
+                    ),
+                    "ano_atribuicao": agrupamento.ano_atribuicao,
+                    "codigo_rf": agrupamento.rf_professor,
+                    "disciplina_id": str(agrupamento.cod_agrupamento),
+                    "disciplina_nome": disciplina_nome,
+                    "disciplinas_agrupadas_ids": parse_csv(
+                        agrupamento.cod_componentes_curriculares
+                    ),
+                    "nome_professor": None,
+                }
+            )
         return resultado
 
     def validar_atribuicao_territorio_agrupado_professor(
