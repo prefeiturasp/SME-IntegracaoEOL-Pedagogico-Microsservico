@@ -288,7 +288,9 @@ class AgrupamentoAtribuicaoTerritorioSaber(ModeloBase):
     rf_professor = models.CharField(
         max_length=20, null=True, blank=True
     )  # NOSONAR
-    cod_turma = models.CharField(max_length=20, null=True, blank=True)
+    cod_turma = models.CharField(
+        max_length=20, null=True, blank=True
+    )  # NOSONAR
     cod_componentes_curriculares = models.CharField(max_length=500, null=True, blank=True)  # NOSONAR  # noqa: E501  # fmt: skip
     ano_letivo = models.IntegerField()
     cod_motivo_disponibilizacao = models.IntegerField(null=True, blank=True)
