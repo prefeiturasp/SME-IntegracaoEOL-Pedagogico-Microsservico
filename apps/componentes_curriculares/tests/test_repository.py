@@ -1868,7 +1868,7 @@ def _row_listagem(
         "tipo_grade_programa": 0,
         "codigo_grade_programa": 0,
         "data_inicio_turma": None,
-        "data_fim": None,
+        "data_fim_turma": None,
         "data_atualizacao": "2024-03-02T09:00:00",
         "turno_turma": 5,
         "ensino_especial": False,
