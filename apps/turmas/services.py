@@ -218,51 +218,61 @@ class TurmasService:
         self,
         ue_codigo: str,
         tipo_sala: str,
-        ano_letivo: int,
+        ano_letivo: str,
     ) -> list[dict]:
         """Retorna turmas de uma UE/ano letivo por tipo de sala.
 
         Args:
             ue_codigo: Código da unidade educacional.
             tipo_sala: Tipo de sala informado na rota (texto).
-            ano_letivo: Ano letivo consultado.
+            ano_letivo: Ano letivo informado na rota (texto).
 
         Returns:
-            Turmas encontradas no recorte.
+            Turmas encontradas no recorte; lista vazia se ``tipo_sala`` ou
+            ``ano_letivo`` não forem numéricos (não filtram nada, mesma
+            convenção para os dois parâmetros).
         """
         tipo_turma = int(tipo_sala) if tipo_sala.strip().isdigit() else 0
+        if not ano_letivo.strip().isdigit():
+            return []
         return self._repo.turmas_por_tipo_sala(
-            ue_codigo, tipo_turma, ano_letivo
+            ue_codigo, tipo_turma, int(ano_letivo)
         )
 
     def turmas_por_escola(
         self,
         ue_codigo: str,
-        ano_letivo: int,
+        ano_letivo: str,
     ) -> list[dict]:
         """Retorna turmas de uma UE/ano letivo cujo nome começa com dígito.
 
         Args:
             ue_codigo: Código da unidade educacional.
-            ano_letivo: Ano letivo consultado.
+            ano_letivo: Ano letivo informado na rota (texto).
 
         Returns:
-            Turmas encontradas, ordenadas por nome.
+            Turmas encontradas, ordenadas por nome; lista vazia se
+            ``ano_letivo`` não for numérico.
         """
-        return self._repo.turmas_por_escola(ue_codigo, ano_letivo)
+        if not ano_letivo.strip().isdigit():
+            return []
+        return self._repo.turmas_por_escola(ue_codigo, int(ano_letivo))
 
     def turmas_sondagem(
         self,
         ue_codigo: str,
-        ano_letivo: int,
+        ano_letivo: str,
     ) -> list[dict]:
         """Retorna turmas regulares de 5º ano do Fundamental para Sondagem.
 
         Args:
             ue_codigo: Código da unidade educacional.
-            ano_letivo: Ano letivo consultado.
+            ano_letivo: Ano letivo informado na rota (texto).
 
         Returns:
-            Turmas encontradas, ordenadas por nome.
+            Turmas encontradas, ordenadas por nome; lista vazia se
+            ``ano_letivo`` não for numérico.
         """
-        return self._repo.turmas_sondagem(ue_codigo, ano_letivo)
+        if not ano_letivo.strip().isdigit():
+            return []
+        return self._repo.turmas_sondagem(ue_codigo, int(ano_letivo))

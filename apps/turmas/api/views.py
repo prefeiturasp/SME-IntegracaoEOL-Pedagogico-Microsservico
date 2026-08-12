@@ -571,7 +571,7 @@ class TurmasPorTipoSalaView(BaseAPIView):
         _request: Request,
         ue_codigo: str,
         tipo_sala: str,
-        ano_letivo: int,
+        ano_letivo: str,
     ) -> Response:
         """Lista as turmas da UE/ano letivo filtradas por tipo de sala.
 
@@ -580,7 +580,8 @@ class TurmasPorTipoSalaView(BaseAPIView):
         Args:
             ue_codigo: Código da unidade educacional.
             tipo_sala: Tipo de sala (texto; não numérico não filtra nada).
-            ano_letivo: Ano letivo consultado.
+            ano_letivo: Ano letivo consultado (texto; não numérico não
+                filtra nada — mesma convenção de ``tipo_sala``).
 
         Returns:
             Turmas encontradas no recorte.
@@ -608,13 +609,14 @@ class TurmasPorEscolaView(BaseAPIView):
         self,
         _request: Request,
         ue_codigo: str,
-        ano_letivo: int,
+        ano_letivo: str,
     ) -> Response:
         """Lista as turmas da UE/ano letivo cujo nome começa com dígito.
 
         Args:
             ue_codigo: Código da unidade educacional.
-            ano_letivo: Ano letivo consultado.
+            ano_letivo: Ano letivo consultado (texto; não numérico não
+                filtra nada).
 
         Returns:
             Turmas encontradas, ordenadas por nome.
@@ -640,13 +642,14 @@ class TurmasSondagemView(BaseAPIView):
         self,
         _request: Request,
         ue_codigo: str,
-        ano_letivo: int,
+        ano_letivo: str,
     ) -> Response:
         """Lista as turmas regulares de 5º ano do Fundamental (Sondagem).
 
         Args:
             ue_codigo: Código da unidade educacional.
-            ano_letivo: Ano letivo consultado.
+            ano_letivo: Ano letivo consultado (texto; não numérico não
+                filtra nada).
 
         Returns:
             Turmas encontradas, ordenadas por nome.
