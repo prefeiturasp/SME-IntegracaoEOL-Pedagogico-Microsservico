@@ -775,11 +775,23 @@ class TestTurmasViews(TestCase):
         res = self.get("/escolas/000532/salas/1/anos-letivos/2024/")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         mock_svc.return_value.turmas_por_tipo_sala.assert_called_once_with(
-            "000532", "1", 2024
+            "000532", "1", "2024"
         )
 
     def test_turmas_por_tipo_sala_sem_api_key_retorna_401(self):
         self.assert_401("/escolas/000532/salas/1/anos-letivos/2024/")
+
+    @patch(_SVC)
+    def test_turmas_por_tipo_sala_ano_letivo_nao_numerico_retorna_200_vazio(
+        self, mock_svc
+    ):
+        mock_svc.return_value.turmas_por_tipo_sala.return_value = []
+        res = self.get("/escolas/dhhdf/salas/fdg/anos-letivos/as/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, [])
+        mock_svc.return_value.turmas_por_tipo_sala.assert_called_once_with(
+            "dhhdf", "fdg", "as"
+        )
 
     @patch(_SVC)
     def test_turmas_por_escola_retorna_200(self, mock_svc):
@@ -789,11 +801,23 @@ class TestTurmasViews(TestCase):
         res = self.get("/escolas/000532/anos-letivos/2024/")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         mock_svc.return_value.turmas_por_escola.assert_called_once_with(
-            "000532", 2024
+            "000532", "2024"
         )
 
     def test_turmas_por_escola_sem_api_key_retorna_401(self):
         self.assert_401("/escolas/000532/anos-letivos/2024/")
+
+    @patch(_SVC)
+    def test_turmas_por_escola_ano_letivo_nao_numerico_retorna_200_vazio(
+        self, mock_svc
+    ):
+        mock_svc.return_value.turmas_por_escola.return_value = []
+        res = self.get("/escolas/019487/anos-letivos/asdasd/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, [])
+        mock_svc.return_value.turmas_por_escola.assert_called_once_with(
+            "019487", "asdasd"
+        )
 
     @patch(_SVC)
     def test_turmas_sondagem_retorna_200(self, mock_svc):
@@ -803,10 +827,24 @@ class TestTurmasViews(TestCase):
         res = self.get("/escolas/000532/turmas-sondagem/anos-letivos/2024/")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         mock_svc.return_value.turmas_sondagem.assert_called_once_with(
-            "000532", 2024
+            "000532", "2024"
         )
 
     def test_turmas_sondagem_sem_api_key_retorna_401(self):
         self.assert_401(
             "/escolas/000532/turmas-sondagem/anos-letivos/2024/"
+        )
+
+    @patch(_SVC)
+    def test_turmas_sondagem_ano_letivo_nao_numerico_retorna_200_vazio(
+        self, mock_svc
+    ):
+        mock_svc.return_value.turmas_sondagem.return_value = []
+        res = self.get(
+            "/escolas/019487/turmas-sondagem/anos-letivos/wewe/"
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, [])
+        mock_svc.return_value.turmas_sondagem.assert_called_once_with(
+            "019487", "wewe"
         )

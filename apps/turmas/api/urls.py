@@ -100,17 +100,17 @@ urlpatterns = [
         name="modalidades-ensino",
     ),
     path(
-        "escolas/<str:ue_codigo>/salas/<str:tipo_sala>/anos-letivos/<int:ano_letivo>/",
+        "escolas/<str:ue_codigo>/salas/<str:tipo_sala>/anos-letivos/<str:ano_letivo>/",
         TurmasPorTipoSalaView.as_view(),
         name="turmas-por-tipo-sala",
     ),
     path(
-        "escolas/<str:ue_codigo>/anos-letivos/<int:ano_letivo>/",
+        "escolas/<str:ue_codigo>/anos-letivos/<str:ano_letivo>/",
         TurmasPorEscolaView.as_view(),
         name="turmas-por-escola",
     ),
     path(
-        "escolas/<str:ue_codigo>/turmas-sondagem/anos-letivos/<int:ano_letivo>/",
+        "escolas/<str:ue_codigo>/turmas-sondagem/anos-letivos/<str:ano_letivo>/",
         TurmasSondagemView.as_view(),
         name="turmas-sondagem",
     ),
