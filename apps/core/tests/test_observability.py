@@ -124,8 +124,10 @@ def test_middleware_com_diferentes_status_codes() -> None:
             headers={"X-Request-ID": f"test-{status_code}"},
         )
 
-        def view_with_status(_request: HttpRequest) -> HttpResponse:
-            return HttpResponse(status=status_code)
+        def view_with_status(
+            _request: HttpRequest, code: int = status_code
+        ) -> HttpResponse:
+            return HttpResponse(status=code)
 
         response = _process_request(request, view_with_status)
 
