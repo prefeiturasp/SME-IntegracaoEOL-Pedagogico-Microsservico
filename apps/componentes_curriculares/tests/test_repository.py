@@ -9,6 +9,7 @@ from apps.componentes_curriculares.models import (
     AgrupamentoAtribuicaoTerritorioSaber,
     AtribuicaoTerritorioSaber,
     ComponenteCurricular,
+    ComponenteCurricularApiEol,
     ComponenteCurricularPlanejamentoRegencia,
     ComponenteTurma,
     GradeComponenteCurricular,
@@ -24,6 +25,7 @@ from apps.componentes_curriculares.services.territorio_saber import (
     agrupamento_para_dict,
     parse_csv,
 )
+from apps.turmas.models import Turma
 
 
 def _make_agrupamento(**kwargs):
@@ -59,6 +61,209 @@ def _make_atribuicao_territorio(**kwargs):
     }
     defaults.update(kwargs)
     return AtribuicaoTerritorioSaber.objects.create(**defaults)
+
+
+class TestDisciplinasPorTurmaRepository(TestCase):
+    """Valida a consulta de disciplinas selecionadas por turma."""
+
+    def test_filtra_turma_e_codigos_e_retorna_campos_esperados(self) -> None:
+        """Retorna somente disciplinas solicitadas pertencentes à turma."""
+        ComponenteTurma.objects.create(
+            turma_codigo="3022108",
+            componente_codigo=1214,
+            codigo_componente_territorio_saber=1519,
+            desc_territorio_saber="Território",
+            desc_experiencia_pedagogica="Experiência",
+        )
+        ComponenteTurma.objects.create(
+            turma_codigo="3022108",
+            componente_codigo=9999,
+        )
+        ComponenteTurma.objects.create(
+            turma_codigo="OUTRA",
+            componente_codigo=1215,
+        )
+
+        resultado = ComponentesRepository().listar_disciplinas_por_turma(
+            "3022108",
+            [1214, 1215],
+        )
+
+        self.assertEqual(
+            resultado,
+            [
+                {
+                    "turma_codigo": "3022108",
+                    "desc_territorio_saber": "Território",
+                    "desc_experiencia_pedagogica": "Experiência",
+                    "componente_codigo": 1214,
+                    "codigo_componente_territorio_saber": 1519,
+                }
+            ],
+        )
+
+    def test_retorna_lista_vazia_quando_nao_encontra(self) -> None:
+        """Retorna lista vazia quando nenhuma disciplina corresponde."""
+        resultado = ComponentesRepository().listar_disciplinas_por_turma(
+            "3022108",
+            [1214],
+        )
+
+        self.assertEqual(resultado, [])
+
+
+class TestAtribuicoesTerritorioProfessorAnoRepository(TestCase):
+    """Valida a listagem anual de atribuições de território."""
+
+    def test_filtra_rf_ano_e_enriquece_com_turma(self) -> None:
+        """Retorna somente o RF e ano informados com dados da turma."""
+        fim_turma = datetime(2024, 12, 20, tzinfo=UTC)
+        Turma.objects.create(
+            codigo=123,
+            ano_letivo=2024,
+            tipo_turma=1,
+            nome_turma="7A",
+            ue_codigo="UE1",
+            data_fim=fim_turma,
+        )
+        _make_agrupamento(
+            cod_agrupamento=9001,
+            cod_turma="123",
+            rf_professor="RF1",
+            cod_componentes_curriculares="1214, 1215",
+        )
+        _make_agrupamento(rf_professor="RF2")
+        _make_agrupamento(rf_professor="RF1", ano_letivo=2023)
+
+        repository = ComponentesRepository()
+        resultado = repository.listar_atribuicoes_territorio_por_professor_ano(
+            "RF1", 2024
+        )
+
+        self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0]["codigo_turma"], "123")
+        self.assertEqual(resultado[0]["nome_turma"], "7A")
+        self.assertEqual(resultado[0]["data_fim_turma"], fim_turma)
+        self.assertEqual(resultado[0]["disciplina_id"], "9001")
+        self.assertEqual(
+            resultado[0]["disciplinas_agrupadas_ids"],
+            [1214, 1215],
+        )
+        self.assertEqual(resultado[0]["disciplina_nome"], "TS - EP")
+        self.assertIsNone(resultado[0]["nome_professor"])
+
+    def test_sem_ano_retorna_atribuicoes_de_todos_os_anos(self) -> None:
+        """Retorna todos os anos do RF em ordem crescente."""
+        _make_agrupamento(
+            cod_agrupamento=9002,
+            rf_professor="RF1",
+            ano_letivo=2024,
+        )
+        _make_agrupamento(
+            cod_agrupamento=9001,
+            rf_professor="RF1",
+            ano_letivo=2023,
+        )
+        _make_agrupamento(
+            cod_agrupamento=9003,
+            rf_professor="RF2",
+            ano_letivo=2022,
+        )
+
+        repository = ComponentesRepository()
+        resultado = repository.listar_atribuicoes_territorio_por_professor(
+            "RF1"
+        )
+
+        self.assertEqual(
+            [item["ano_letivo"] for item in resultado],
+            [2023, 2024],
+        )
+
+    def test_por_turma_retorna_todos_os_anos_e_campos_do_contrato(
+        self,
+    ) -> None:
+        """Retorna todas as atribuições da turma no contrato completo."""
+        inicio = datetime(2023, 2, 1, tzinfo=UTC)
+        fim = datetime(2023, 8, 1, tzinfo=UTC)
+        _make_agrupamento(
+            cod_agrupamento=9001,
+            cod_turma="T1",
+            ano_letivo=2023,
+            ano_atribuicao=2023,
+            dt_inicio_atribuicao=inicio,
+            dt_fim_atribuicao=fim,
+            rf_professor="RF1",
+            cod_territorio_saber=10,
+            cod_experiencia_pedagogica=20,
+            cod_motivo_disponibilizacao=3,
+            cod_componentes_curriculares="1214, 1215",
+            encerramento_atribuicao_agrupamento_atualizado=True,
+        )
+        _make_agrupamento(
+            cod_agrupamento=9002,
+            cod_turma="T1",
+            ano_letivo=2024,
+            rf_professor="RF2",
+        )
+        _make_agrupamento(cod_turma="T2", rf_professor="RF1")
+
+        repository = ComponentesRepository()
+        resultado = repository.listar_atribuicoes_territorio_por_turma("T1")
+
+        self.assertEqual(
+            [item["ano_letivo"] for item in resultado], [2023, 2024]
+        )
+        primeira = resultado[0]
+        self.assertEqual(primeira["cod_agrupamento"], 9001)
+        self.assertEqual(primeira["codigo_territorio_saber"], 10)
+        self.assertEqual(primeira["codigo_experiencia_pedagogica"], 20)
+        self.assertEqual(primeira["dt_inicio_atribuicao"], inicio)
+        self.assertEqual(primeira["dt_fim_atribuicao"], fim)
+        self.assertEqual(primeira["codigo_motivo_disponibilizacao"], 3)
+        self.assertEqual(primeira["rf_professor"], "RF1")
+        self.assertEqual(
+            primeira["componentes_curriculares_agrupados"],
+            [1214, 1215],
+        )
+        self.assertTrue(
+            primeira[
+                "encerramento_atribuicao_via_atualizacao_"
+                "componentes_agrupados"
+            ]
+        )
+        self.assertNotIn("criado_em", primeira)
+        self.assertNotIn("alterado_em", primeira)
+        self.assertFalse(primeira["atribuicao_externa"])
+
+    def test_por_turmas_retorna_somente_as_turmas_informadas(self) -> None:
+        """Retorna atribuições de todas as turmas consultadas."""
+        _make_agrupamento(
+            cod_agrupamento=9101,
+            cod_turma="T1",
+            ano_letivo=2024,
+        )
+        _make_agrupamento(
+            cod_agrupamento=9102,
+            cod_turma="T2",
+            ano_letivo=2025,
+        )
+        _make_agrupamento(
+            cod_agrupamento=9103,
+            cod_turma="T3",
+            ano_letivo=2025,
+        )
+
+        resultado = (
+            ComponentesRepository().listar_atribuicoes_territorio_por_turmas(
+                ["T1", "T2"]
+            )
+        )
+
+        self.assertEqual(
+            [item["codigo_turma"] for item in resultado],
+            ["T1", "T2"],
+        )
 
 
 _DESCRICOES_TERRITORIO = {
@@ -1034,6 +1239,51 @@ class TestComponentesRepository(TestCase):
             ],
         )
 
+    def test_listar_componentes_api_eol(self) -> None:
+        """Lista componentes da API EOL ordenados pelo identificador."""
+        vigencia = datetime(2025, 1, 1, tzinfo=UTC)
+        ComponenteCurricularApiEol.objects.create(
+            id_componente_curricular=2,
+            eh_regencia=False,
+            eh_territorio=True,
+            descricao="Território",
+        )
+        ComponenteCurricularApiEol.objects.create(
+            id_relacao_origem=10,
+            id_componente_curricular=1,
+            eh_regencia=True,
+            eh_territorio=False,
+            descricao="Regência",
+            id_componente_curricular_pai=3,
+            vigencia=vigencia,
+        )
+
+        resultado = self.repo.listar_componentes_api_eol()
+
+        self.assertEqual(
+            resultado,
+            [
+                {
+                    "id_relacao_origem": 10,
+                    "id_componente_curricular": 1,
+                    "eh_regencia": True,
+                    "eh_territorio": False,
+                    "descricao": "Regência",
+                    "id_componente_curricular_pai": 3,
+                    "vigencia": vigencia,
+                },
+                {
+                    "id_relacao_origem": None,
+                    "id_componente_curricular": 2,
+                    "eh_regencia": False,
+                    "eh_territorio": True,
+                    "descricao": "Território",
+                    "id_componente_curricular_pai": None,
+                    "vigencia": None,
+                },
+            ],
+        )
+
     @patch("apps.componentes_curriculares.repository._raw")
     def test_listar_vigencia_componentes_vazio(self, mock_raw) -> None:
         """Retorna lista vazia sem componentes curriculares."""
@@ -1618,7 +1868,7 @@ def _row_listagem(
         "tipo_grade_programa": 0,
         "codigo_grade_programa": 0,
         "data_inicio_turma": None,
-        "data_fim": None,
+        "data_fim_turma": None,
         "data_atualizacao": "2024-03-02T09:00:00",
         "turno_turma": 5,
         "ensino_especial": False,

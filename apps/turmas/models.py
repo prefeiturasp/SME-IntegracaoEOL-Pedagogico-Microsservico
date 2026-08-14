@@ -17,6 +17,7 @@ class Turma(ModeloBase):
     tipo_turno = models.IntegerField(null=True, blank=True)
     data_inicio_turma = models.DateTimeField(null=True, blank=True)
     data_fim = models.DateTimeField(null=True, blank=True)
+    data_fim_turma = models.DateTimeField(null=True, blank=True)
     extinta = models.BooleanField(default=False)
     situacao = models.CharField(max_length=1, null=True, blank=True)  # NOSONAR
     ue_codigo = models.CharField(max_length=20)
@@ -58,6 +59,21 @@ class Turma(ModeloBase):
 
     def __str__(self) -> str:
         return f"{self.codigo} - {self.nome_turma}"
+
+
+class EtapaEnsino(ModeloBase):
+    """Catálogo de etapas de ensino."""
+
+    codigo = models.IntegerField(unique=True)
+    descricao = models.CharField(max_length=300)
+
+    class Meta:
+        db_table = "etapa_ensino"
+        verbose_name = "etapa ensino"
+        verbose_name_plural = "etapas ensino"
+
+    def __str__(self) -> str:
+        return f"{self.codigo} - {self.descricao}"
 
 
 class TurmaItinerarioEnsinoMedio(models.Model):

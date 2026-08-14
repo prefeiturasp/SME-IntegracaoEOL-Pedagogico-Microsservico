@@ -7,16 +7,20 @@ from apps.turmas.api.views import (
     CodigosTurmasContagemView,
     ItinerarioEnsinoMedioView,
     ListarTurmasView,
+    ModalidadesEnsinoView,
     TodasTurmasAtribuidasDreUeView,
     TurmaDadosView,
     TurmasAtribuidasDreUeView,
     TurmasElegiveisView,
     TurmasHistoricasProfessorView,
     TurmaSincronizacoesInstitucionaisView,
+    TurmasPorEscolaView,
+    TurmasPorTipoSalaView,
     TurmasProgramaView,
     TurmasRecorteFundMedioEjaView,
     TurmasRecortePorTipoView,
     TurmasRegularesView,
+    TurmasSondagemView,
 )
 
 urlpatterns = [
@@ -89,5 +93,25 @@ urlpatterns = [
         "itinerario/ensino-medio/",
         ItinerarioEnsinoMedioView.as_view(),
         name="itinerario-ensino-medio",
+    ),
+    path(
+        "escolas/modalidades-ensino/",
+        ModalidadesEnsinoView.as_view(),
+        name="modalidades-ensino",
+    ),
+    path(
+        "escolas/<str:ue_codigo>/salas/<str:tipo_sala>/anos-letivos/<str:ano_letivo>/",
+        TurmasPorTipoSalaView.as_view(),
+        name="turmas-por-tipo-sala",
+    ),
+    path(
+        "escolas/<str:ue_codigo>/anos-letivos/<str:ano_letivo>/",
+        TurmasPorEscolaView.as_view(),
+        name="turmas-por-escola",
+    ),
+    path(
+        "escolas/<str:ue_codigo>/turmas-sondagem/anos-letivos/<str:ano_letivo>/",
+        TurmasSondagemView.as_view(),
+        name="turmas-sondagem",
     ),
 ]

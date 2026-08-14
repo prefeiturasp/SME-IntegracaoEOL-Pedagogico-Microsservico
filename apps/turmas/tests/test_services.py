@@ -150,3 +150,70 @@ class TestTurmasService(TestCase):
 
         self.assertEqual(self.service.itinerarios_ensino_medio(), [{"id": 7}])
         self.repo.itinerarios_ensino_medio.assert_called_once_with()
+
+    def test_modalidades_ensino(self) -> None:
+        self.repo.modalidades_ensino.return_value = ["Infantil"]
+
+        self.assertEqual(self.service.modalidades_ensino(), ["Infantil"])
+        self.repo.modalidades_ensino.assert_called_once_with()
+
+    def test_turmas_por_tipo_sala_converte_tipo_numerico(self) -> None:
+        self.repo.turmas_por_tipo_sala.return_value = [{"codigo_turma": 1}]
+
+        resultado = self.service.turmas_por_tipo_sala("000532", "3", "2024")
+
+        self.assertEqual(resultado, [{"codigo_turma": 1}])
+        self.repo.turmas_por_tipo_sala.assert_called_once_with(
+            "000532", 3, 2024
+        )
+
+    def test_turmas_por_tipo_sala_nao_numerico_zera_filtro(self) -> None:
+        self.repo.turmas_por_tipo_sala.return_value = []
+
+        self.service.turmas_por_tipo_sala("000532", "abc", "2024")
+
+        self.repo.turmas_por_tipo_sala.assert_called_once_with(
+            "000532", 0, 2024
+        )
+
+    def test_turmas_por_tipo_sala_ano_letivo_nao_numerico_retorna_vazio(
+        self,
+    ) -> None:
+        resultado = self.service.turmas_por_tipo_sala(
+            "000532", "3", "asdfaf"
+        )
+
+        self.assertEqual(resultado, [])
+        self.repo.turmas_por_tipo_sala.assert_not_called()
+
+    def test_turmas_por_escola(self) -> None:
+        self.repo.turmas_por_escola.return_value = [{"codigo_turma": 1}]
+
+        resultado = self.service.turmas_por_escola("000532", "2024")
+
+        self.assertEqual(resultado, [{"codigo_turma": 1}])
+        self.repo.turmas_por_escola.assert_called_once_with("000532", 2024)
+
+    def test_turmas_por_escola_ano_letivo_nao_numerico_retorna_vazio(
+        self,
+    ) -> None:
+        resultado = self.service.turmas_por_escola("000532", "asdasd")
+
+        self.assertEqual(resultado, [])
+        self.repo.turmas_por_escola.assert_not_called()
+
+    def test_turmas_sondagem(self) -> None:
+        self.repo.turmas_sondagem.return_value = [{"codigo_turma": 1}]
+
+        resultado = self.service.turmas_sondagem("000532", "2024")
+
+        self.assertEqual(resultado, [{"codigo_turma": 1}])
+        self.repo.turmas_sondagem.assert_called_once_with("000532", 2024)
+
+    def test_turmas_sondagem_ano_letivo_nao_numerico_retorna_vazio(
+        self,
+    ) -> None:
+        resultado = self.service.turmas_sondagem("000532", "wewe")
+
+        self.assertEqual(resultado, [])
+        self.repo.turmas_sondagem.assert_not_called()

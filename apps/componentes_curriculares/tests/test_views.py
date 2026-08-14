@@ -38,6 +38,50 @@ class TestComponentesViews(TestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     @patch(_SVC)
+    def test_lista_disciplinas_por_turma(self, mock_service) -> None:
+        """Repassa a turma e os códigos das disciplinas ao serviço."""
+        metodo = mock_service.return_value.listar_disciplinas_por_turma
+        metodo.return_value = [
+            {
+                "turma_codigo": "3022108",
+                "desc_territorio_saber": "Território",
+                "desc_experiencia_pedagogica": "Experiência",
+                "componente_codigo": 1214,
+                "codigo_componente_territorio_saber": 1519,
+            }
+        ]
+
+        response = self.get(
+            "/turmas/3022108/componentes-turma/"
+            "?codigos_componentes=1214&codigos_componentes=1215"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, metodo.return_value)
+        metodo.assert_called_once_with("3022108", [1214, 1215])
+
+    def test_lista_disciplinas_por_turma_exige_codigos(self) -> None:
+        """Rejeita a consulta sem códigos de disciplinas."""
+        response = self.get("/turmas/3022108/componentes-turma/")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_lista_disciplinas_por_turma_rejeita_codigo_invalido(self) -> None:
+        """Rejeita um código de disciplina não numérico."""
+        response = self.get(
+            "/turmas/3022108/componentes-turma/"
+            "?codigos_componentes=invalido"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_lista_disciplinas_por_turma_exige_api_key(self) -> None:
+        """Rejeita a consulta sem API Key."""
+        self.assert_unauthorized(
+            "/turmas/3022108/componentes-turma/?codigos_componentes=1214"
+        )
+
+    @patch(_SVC)
     def test_ep1_lista_componentes(self, mock_service):
         """Lista componentes do funcionário."""
         service = mock_service.return_value
@@ -57,6 +101,165 @@ class TestComponentesViews(TestCase):
     def test_ep1_sem_api_key(self):
         """Valida rejeição de requisição sem API Key."""
         self.assert_unauthorized("/funcionarios/f1/?idPerfil=p1")
+
+    @patch(_SVC)
+    def test_lista_atribuicoes_territorio_por_professor_ano(
+        self,
+        mock_service,
+    ) -> None:
+        """Retorna atribuições e repassa RF e ano ao serviço."""
+        metodo = (
+            mock_service.return_value.listar_atribuicoes_territorio_por_professor_ano
+        )
+        metodo.return_value = [{"codigo_rf": "RF1", "ano_letivo": 2024}]
+
+        response = self.get(
+            "/professores/RF1/anos-letivos/2024/"
+            "atribuicoes-territorio-saber/"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data,
+            [{"codigo_rf": "RF1", "ano_letivo": 2024}],
+        )
+        metodo.assert_called_once_with("RF1", 2024)
+
+    def test_atribuicoes_territorio_exige_api_key(self) -> None:
+        """Rejeita a listagem de atribuições sem API Key."""
+        self.assert_unauthorized(
+            "/professores/RF1/anos-letivos/2024/"
+            "atribuicoes-territorio-saber/"
+        )
+
+    @patch(_SVC)
+    def test_lista_atribuicoes_territorio_sem_filtro_de_ano(
+        self,
+        mock_service,
+    ) -> None:
+        """Lista atribuições repassando somente o RF ao serviço."""
+        metodo = (
+            mock_service.return_value.listar_atribuicoes_territorio_por_professor
+        )
+        metodo.return_value = [
+            {"codigo_rf": "RF1", "ano_letivo": 2023},
+            {"codigo_rf": "RF1", "ano_letivo": 2024},
+        ]
+
+        response = self.get("/professores/RF1/atribuicoes-territorio-saber/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        metodo.assert_called_once_with("RF1")
+
+    def test_atribuicoes_territorio_sem_ano_exige_api_key(self) -> None:
+        """Rejeita a listagem sem ano quando não há API Key."""
+        self.assert_unauthorized(
+            "/professores/RF1/atribuicoes-territorio-saber/"
+        )
+
+    @patch(_SVC)
+    def test_lista_atribuicoes_territorio_por_turma(
+        self,
+        mock_service,
+    ) -> None:
+        """Lista atribuições repassando somente o código da turma."""
+        metodo = (
+            mock_service.return_value.listar_atribuicoes_territorio_por_turma
+        )
+        metodo.return_value = [
+            {
+                "cod_agrupamento": 9001,
+                "codigo_turma": "T1",
+                "ano_letivo": 2024,
+            }
+        ]
+
+        response = self.get("/turmas/T1/atribuicoes-territorio-saber/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data,
+            [
+                {
+                    "cod_agrupamento": 9001,
+                    "codigo_turma": "T1",
+                    "ano_letivo": 2024,
+                }
+            ],
+        )
+        metodo.assert_called_once_with("T1")
+
+    def test_atribuicoes_territorio_por_turma_exige_api_key(self) -> None:
+        """Rejeita a listagem por turma quando não há API Key."""
+        self.assert_unauthorized("/turmas/T1/atribuicoes-territorio-saber/")
+
+    @patch(_SVC)
+    def test_lista_atribuicoes_territorio_por_turmas(
+        self,
+        mock_service,
+    ) -> None:
+        """Lista atribuições repassando os códigos das turmas."""
+        metodo = (
+            mock_service.return_value.listar_atribuicoes_territorio_por_turmas
+        )
+        metodo.return_value = [
+            {"codigo_turma": "T1", "ano_letivo": 2024},
+            {"codigo_turma": "T2", "ano_letivo": 2024},
+        ]
+
+        response = self.get(
+            "/turmas/atribuicoes-territorio-saber/"
+            "?codigo_turma=T1&codigo_turma=T2"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        metodo.assert_called_once_with(["T1", "T2"])
+
+    @patch(_SVC)
+    def test_atribuicoes_territorio_por_turmas_exige_codigo(
+        self,
+        mock_service,
+    ) -> None:
+        """Rejeita consulta sem código de turma."""
+        response = self.get("/turmas/atribuicoes-territorio-saber/")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        mock_service.assert_not_called()
+
+    def test_atribuicoes_territorio_por_turmas_exige_api_key(self) -> None:
+        """Rejeita a listagem em lote quando não há API Key."""
+        self.assert_unauthorized(
+            "/turmas/atribuicoes-territorio-saber/",
+        )
+
+    @patch(_SVC)
+    def test_lista_componentes_api_eol(self, mock_service):
+        """Lista componentes curriculares da API EOL."""
+        dados = [
+            {
+                "id_relacao_origem": None,
+                "id_componente_curricular": 1,
+                "eh_regencia": True,
+                "eh_territorio": False,
+                "descricao": "Regência",
+                "id_componente_curricular_pai": None,
+                "vigencia": None,
+            }
+        ]
+        service = mock_service.return_value
+        service.listar_componentes_api_eol.return_value = dados
+
+        response = self.get("/api-eol/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, dados)
+        service.listar_componentes_api_eol.assert_called_once_with()
+
+    def test_componentes_api_eol_sem_api_key(self):
+        """Rejeita consulta da API EOL sem autenticação."""
+        self.assert_unauthorized("/api-eol/")
 
     @patch(_SVC)
     def test_ep14_corpo_invalido(self, _mock_service):

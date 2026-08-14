@@ -13,7 +13,7 @@ from apps.componentes_curriculares.constants import (
     TIPO_TURMA_PROGRAMA,
     TIPO_TURMA_REGULAR,
 )
-from apps.turmas.repository import TurmasRepository, _nome_filtro
+from apps.turmas.repository import TurmasRepository, _etapa_eja, _nome_filtro
 
 
 class FakeQuerySet:
@@ -86,6 +86,7 @@ def _turma(**kwargs):
         "duracao_turno": None,
         "tipo_turno": None,
         "data_fim": None,
+        "data_fim_turma": None,
         "codigo_tipo_programa": None,
         "codigo_modalidade_etapa": None,
         "codigo_etapa_ensino": None,
@@ -200,6 +201,32 @@ class TestTurmasRepository(TestCase):
         )
 
         self.assertEqual(resultado, "3A EF - 3 ano")
+
+    def test_etapa_eja_fora_da_modalidade_eja_retorna_zero(self):
+        resultado = _etapa_eja(
+            _turma(modalidade="Fundamental", serie_ensino="EJA I - Ciclo")
+        )
+        self.assertEqual(resultado, 0)
+
+    def test_etapa_eja_ciclo_i_por_marcador_espaco_i_espaco(self):
+        resultado = _etapa_eja(
+            _turma(modalidade="EJA", serie_ensino="EJA I - Ciclo")
+        )
+        self.assertEqual(resultado, 1)
+
+    def test_etapa_eja_ciclo_ii_por_marcador_espaco_ii(self):
+        resultado = _etapa_eja(
+            _turma(modalidade="EJA", serie_ensino="EJA II - Ciclo")
+        )
+        self.assertEqual(resultado, 2)
+
+    def test_etapa_eja_sem_serie_ensino_retorna_zero(self):
+        resultado = _etapa_eja(_turma(modalidade="EJA", serie_ensino=None))
+        self.assertEqual(resultado, 0)
+
+    def test_etapa_eja_serie_curta_retorna_zero(self):
+        resultado = _etapa_eja(_turma(modalidade="EJA", serie_ensino="I"))
+        self.assertEqual(resultado, 0)
 
     @patch("apps.turmas.repository.Turma.objects.using")
     def test_turmas_regulares_filtra_tipo_e_mapeia_lista(self, mock_using):
@@ -646,7 +673,7 @@ class TestTurmasRepository(TestCase):
                     codigo_grade_programa=10,
                     descricao_grade_programa="GRADE EMEI",
                     tipo_grade_programa=1,
-                    data_fim="2026-12-20",
+                    data_fim_turma="2026-12-20",
                 )
             ]
         )
@@ -980,3 +1007,117 @@ class TestTurmasRepository(TestCase):
 
         self.assertEqual(resultado[0], {"id": 1, "nome": "B", "serie": "2"})
         self.assertEqual(qs.calls[0], ("order_by", ("id",), {}))
+
+    @patch("apps.turmas.repository.EtapaEnsino.objects.using")
+    def test_modalidades_ensino_ordena_por_codigo(self, mock_using):
+        qs = FakeQuerySet(
+            values=["Infantil", "Fundamental"], values_list_mode=True
+        )
+        mock_using.return_value = qs
+
+        resultado = self.repo.modalidades_ensino()
+
+        self.assertEqual(resultado, ["Infantil", "Fundamental"])
+        self.assertEqual(qs.calls[0], ("order_by", ("codigo",), {}))
+        self.assertEqual(
+            qs.calls[1], ("values_list", ("descricao",), {"flat": True})
+        )
+
+    @patch("apps.turmas.repository.Turma.objects.using")
+    def test_turmas_por_tipo_sala_sem_filtro_de_situacao(self, mock_using):
+        qs = FakeQuerySet([_turma(situacao="E", extinta=True)])
+        mock_using.return_value = qs
+
+        resultado = self.repo.turmas_por_tipo_sala("000532", 1, 2024)
+
+        self.assertEqual(
+            qs.calls[0],
+            (
+                "filter",
+                (),
+                {
+                    "ue_codigo": "000532",
+                    "tipo_turma": 1,
+                    "ano_letivo": 2024,
+                },
+            ),
+        )
+        self.assertEqual(
+            resultado[0],
+            {
+                "codigo_turma": 2112345,
+                "nome_turma": "3A EF",
+                "tipo_turma": TIPO_TURMA_REGULAR,
+                "situacao": "E",
+                "data_inicio_turma": None,
+                "data_fim_turma": None,
+            },
+        )
+
+    @patch("apps.turmas.repository.Turma.objects.using")
+    def test_turmas_por_escola_calcula_sigla_e_nome(self, mock_using):
+        qs = FakeQuerySet(
+            [_turma(modalidade="Fundamental", nome_turma="3A")]
+        )
+        mock_using.return_value = qs
+
+        resultado = self.repo.turmas_por_escola("000532", 2024)
+
+        self.assertEqual(
+            qs.calls[0][2],
+            {
+                "ue_codigo": "000532",
+                "ano_letivo": 2024,
+                "tipo_turma": TIPO_TURMA_REGULAR,
+                "nome_turma__regex": r"^[1-9]",
+            },
+        )
+        self.assertEqual(qs.calls[1], ("order_by", ("nome_turma",), {}))
+        self.assertEqual(
+            resultado[0],
+            {
+                "codigo_turma": 2112345,
+                "nome_turma_eol": "3A",
+                "nome_turma": "EF - 3A",
+                "tipo_turma": TIPO_TURMA_REGULAR,
+                "situacao": "A",
+                "data_inicio_turma": None,
+                "data_fim_turma": None,
+                "sigla_modalidade": "EF",
+            },
+        )
+
+    @patch("apps.turmas.repository.Turma.objects.using")
+    def test_turmas_por_escola_sem_sigla_mantem_nome_original(
+        self, mock_using
+    ):
+        qs = FakeQuerySet([_turma(modalidade=None, nome_turma="3A")])
+        mock_using.return_value = qs
+
+        resultado = self.repo.turmas_por_escola("000532", 2024)
+
+        self.assertEqual(resultado[0]["nome_turma"], "3A")
+        self.assertIsNone(resultado[0]["sigla_modalidade"])
+
+    @patch("apps.turmas.repository.Turma.objects.using")
+    def test_turmas_sondagem_filtra_etapa_tipo_e_exclui_extinta(
+        self, mock_using
+    ):
+        qs = FakeQuerySet([_turma(codigo_etapa_ensino=5)])
+        mock_using.return_value = qs
+
+        resultado = self.repo.turmas_sondagem("000532", 2024)
+
+        self.assertEqual(
+            qs.calls[0][2],
+            {
+                "ue_codigo": "000532",
+                "ano_letivo": 2024,
+                "codigo_etapa_ensino": 5,
+                "tipo_turma": TIPO_TURMA_REGULAR,
+                "nome_turma__regex": r"^[1-9]",
+            },
+        )
+        self.assertEqual(qs.calls[1], ("exclude", (), {"situacao": "E"}))
+        self.assertEqual(qs.calls[2], ("order_by", ("nome_turma",), {}))
+        self.assertEqual(resultado[0]["codigo_turma"], 2112345)

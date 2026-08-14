@@ -15,6 +15,8 @@ from apps.turmas.serializers import (
     TurmaHistoricaSerializer,
     TurmaItinerarioSerializer,
     TurmaListSerializer,
+    TurmaPorEscolaSerializer,
+    TurmaPorTipoSalaSerializer,
     TurmasElegiveisRequestSerializer,
     TurmaSincronizacaoSerializer,
 )
@@ -528,4 +530,129 @@ class ItinerarioEnsinoMedioView(BaseAPIView):
             Itinerários do Ensino Médio.
         """
         dados = TurmasService().itinerarios_ensino_medio()
+        return Response(dados)
+
+
+class ModalidadesEnsinoView(BaseAPIView):
+    """Lista as descrições do catálogo de etapas de ensino."""
+
+    @extend_schema(
+        tags=_TAG,
+        summary="Modalidades de ensino (catálogo etapa_ensino)",
+        responses={200: {"type": "array", "items": {"type": "string"}}},
+        operation_id="modalidades_ensino",
+    )
+    def get(self, _request: Request) -> Response:
+        """Lista as descrições das modalidades (etapas) de ensino.
+
+        Returns:
+            Descrições das etapas de ensino.
+        """
+        dados = TurmasService().modalidades_ensino()
+        return Response(dados)
+
+
+class TurmasPorTipoSalaView(BaseAPIView):
+    """Lista turmas de uma UE/ano letivo por tipo de sala."""
+
+    @extend_schema(
+        tags=_TAG,
+        summary="Turmas por UE/tipo de sala/ano letivo",
+        parameters=[
+            OpenApiParameter("ue_codigo", str, OpenApiParameter.PATH),
+            OpenApiParameter("tipo_sala", str, OpenApiParameter.PATH),
+            OpenApiParameter("ano_letivo", int, OpenApiParameter.PATH),
+        ],
+        responses={200: TurmaPorTipoSalaSerializer(many=True)},
+        operation_id="turmas_por_tipo_sala",
+    )
+    def get(
+        self,
+        _request: Request,
+        ue_codigo: str,
+        tipo_sala: str,
+        ano_letivo: str,
+    ) -> Response:
+        """Lista as turmas da UE/ano letivo filtradas por tipo de sala.
+
+        Sem filtro de situação — inclui turmas extintas/canceladas.
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+            tipo_sala: Tipo de sala (texto; não numérico não filtra nada).
+            ano_letivo: Ano letivo consultado (texto; não numérico não
+                filtra nada — mesma convenção de ``tipo_sala``).
+
+        Returns:
+            Turmas encontradas no recorte.
+        """
+        dados = TurmasService().turmas_por_tipo_sala(
+            ue_codigo, tipo_sala, ano_letivo
+        )
+        return Response(dados)
+
+
+class TurmasPorEscolaView(BaseAPIView):
+    """Lista turmas de uma UE/ano letivo cujo nome começa com dígito."""
+
+    @extend_schema(
+        tags=_TAG,
+        summary="Turmas por UE/ano letivo",
+        parameters=[
+            OpenApiParameter("ue_codigo", str, OpenApiParameter.PATH),
+            OpenApiParameter("ano_letivo", int, OpenApiParameter.PATH),
+        ],
+        responses={200: TurmaPorEscolaSerializer(many=True)},
+        operation_id="turmas_por_escola",
+    )
+    def get(
+        self,
+        _request: Request,
+        ue_codigo: str,
+        ano_letivo: str,
+    ) -> Response:
+        """Lista as turmas da UE/ano letivo cujo nome começa com dígito.
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+            ano_letivo: Ano letivo consultado (texto; não numérico não
+                filtra nada).
+
+        Returns:
+            Turmas encontradas, ordenadas por nome.
+        """
+        dados = TurmasService().turmas_por_escola(ue_codigo, ano_letivo)
+        return Response(dados)
+
+
+class TurmasSondagemView(BaseAPIView):
+    """Lista turmas regulares de 5º ano do Fundamental para Sondagem."""
+
+    @extend_schema(
+        tags=_TAG,
+        summary="Turmas de Sondagem por UE/ano letivo",
+        parameters=[
+            OpenApiParameter("ue_codigo", str, OpenApiParameter.PATH),
+            OpenApiParameter("ano_letivo", int, OpenApiParameter.PATH),
+        ],
+        responses={200: TurmaPorTipoSalaSerializer(many=True)},
+        operation_id="turmas_sondagem",
+    )
+    def get(
+        self,
+        _request: Request,
+        ue_codigo: str,
+        ano_letivo: str,
+    ) -> Response:
+        """Lista as turmas regulares de 5º ano do Fundamental (Sondagem).
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+            ano_letivo: Ano letivo consultado (texto; não numérico não
+                filtra nada).
+
+        Returns:
+            Turmas encontradas, ordenadas por nome.
+        """
+        dados = TurmasService().turmas_sondagem(ue_codigo, ano_letivo)
         return Response(dados)

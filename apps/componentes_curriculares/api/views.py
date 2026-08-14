@@ -9,17 +9,205 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.componentes_curriculares.serializers import (
+    AtribuicaoTerritorioTurmaSerializer,
+    CodigosDisciplinasSerializer,
+    CodigosTurmasLoteSerializer,
+    ComponenteCurricularApiEolSerializer,
     ComponenteCurricularSerializer,
     ComponenteRegenciaSerializer,
     ComponenteSimplificadoSerializer,
+    ComponenteTurmaDisciplinaSerializer,
     GradeCurricularSerializer,
     ListagemTurmasComponentesPaginadoSerializer,
+    TurmaAtribuidaAnoSerializer,
     VigenciaComponenteSerializer,
 )
 from apps.componentes_curriculares.services import ComponentesService
 from apps.core.views import BaseAPIView
 
 _TAG = ["ComponentesCurriculares"]
+
+
+class DisciplinasPorTurmaView(BaseAPIView):
+    """Lista disciplinas selecionadas vinculadas a uma turma."""
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "codigos_componentes",
+                OpenApiTypes.INT,
+                OpenApiParameter.QUERY,
+                many=True,
+                required=True,
+                description=(
+                    "Código da disciplina. Repita o parâmetro para "
+                    "consultar mais de uma disciplina."
+                ),
+            )
+        ],
+        responses={200: ComponenteTurmaDisciplinaSerializer(many=True)},
+        description="Lista disciplinas selecionadas vinculadas à turma.",
+        tags=_TAG,
+        operation_id="disciplinas_por_turma",
+    )
+    def get(self, request: Request, codigo_turma: str) -> Response:
+        """Lista disciplinas selecionadas vinculadas a uma turma.
+
+        Args:
+            request: Requisição HTTP com os códigos das disciplinas.
+            codigo_turma: Código da turma consultada.
+
+        Returns:
+            Dados das disciplinas encontradas na turma.
+        """
+        codigos = request.query_params.getlist(
+            "codigos_componentes"
+        ) or request.query_params.getlist("codigosComponentes")
+        serializer = CodigosDisciplinasSerializer(
+            data=codigos,
+            allow_empty=False,
+        )
+        serializer.is_valid(raise_exception=True)
+        dados = ComponentesService().listar_disciplinas_por_turma(
+            codigo_turma,
+            serializer.validated_data,
+        )
+        return Response(dados)
+
+
+class AtribuicoesTerritorioTurmaView(BaseAPIView):
+    """Lista todas as atribuições de Território do Saber da turma."""
+
+    @extend_schema(
+        responses={200: AtribuicaoTerritorioTurmaSerializer(many=True)},
+        description=(
+            "Lista todas as atribuições agrupadas de Território do "
+            "Saber da turma, sem filtro de ano letivo ou vigência. O "
+            "campo atribuicao_externa é retornado como falso."
+        ),
+        tags=_TAG,
+        operation_id="atribuicoes_territorio_turma",
+    )
+    def get(self, _request: Request, codigo_turma: str) -> Response:
+        """Retorna todas as atribuições da turma.
+
+        Args:
+            codigo_turma: Código da turma consultada.
+
+        Returns:
+            Atribuições agrupadas de Território do Saber.
+        """
+        service = ComponentesService()
+        dados = service.listar_atribuicoes_territorio_por_turma(codigo_turma)
+        return Response(dados)
+
+
+class AtribuicoesTerritorioTurmasLoteView(BaseAPIView):
+    """Lista atribuições de Território do Saber de várias turmas."""
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "codigo_turma",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                description=(
+                    "Código de turma. Repita o parâmetro para consultar "
+                    "mais de uma turma."
+                ),
+                required=True,
+                many=True,
+            )
+        ],
+        responses={200: AtribuicaoTerritorioTurmaSerializer(many=True)},
+        description=(
+            "Lista todas as atribuições agrupadas de Território do Saber "
+            "das turmas informadas, sem filtro de ano letivo ou vigência."
+        ),
+        tags=_TAG,
+        operation_id="atribuicoes_territorio_turmas_lote",
+    )
+    def get(self, request: Request) -> Response:
+        """Retorna todas as atribuições das turmas informadas.
+
+        Args:
+            request: Requisição HTTP com os códigos de turmas.
+
+        Returns:
+            Atribuições agrupadas de Território do Saber.
+        """
+        serializer = CodigosTurmasLoteSerializer(
+            data=request.query_params.getlist("codigo_turma"),
+            allow_empty=False,
+        )
+        serializer.is_valid(raise_exception=True)
+        dados = ComponentesService().listar_atribuicoes_territorio_por_turmas(
+            serializer.validated_data
+        )
+        return Response(dados)
+
+
+class AtribuicoesTerritorioProfessorView(BaseAPIView):
+    """Lista atribuições de Território do Saber do professor."""
+
+    @extend_schema(
+        responses={200: TurmaAtribuidaAnoSerializer(many=True)},
+        description=(
+            "Lista todas as atribuições agrupadas de Território do "
+            "Saber do professor, sem restringir o ano letivo. O nome do "
+            "professor não está materializado e é retornado como nulo."
+        ),
+        tags=_TAG,
+        operation_id="atribuicoes_territorio_professor",
+    )
+    def get(self, _request: Request, codigo_rf: str) -> Response:
+        """Retorna todas as atribuições do professor.
+
+        Args:
+            codigo_rf: Registro funcional do professor.
+
+        Returns:
+            Atribuições agrupadas de Território do Saber.
+        """
+        service = ComponentesService()
+        dados = service.listar_atribuicoes_territorio_por_professor(codigo_rf)
+        return Response(dados)
+
+
+class AtribuicoesTerritorioProfessorAnoView(BaseAPIView):
+    """Lista atribuições de Território do Saber do professor."""
+
+    @extend_schema(
+        responses={200: TurmaAtribuidaAnoSerializer(many=True)},
+        description=(
+            "Lista atribuições agrupadas de Território do Saber por "
+            "professor e ano letivo. O nome do professor não está "
+            "materializado e é retornado como nulo."
+        ),
+        tags=_TAG,
+        operation_id="atribuicoes_territorio_professor_ano",
+    )
+    def get(
+        self,
+        _request: Request,
+        codigo_rf: str,
+        ano_letivo: int,
+    ) -> Response:
+        """Retorna as atribuições do professor no ano letivo.
+
+        Args:
+            codigo_rf: Registro funcional do professor.
+            ano_letivo: Ano letivo consultado.
+
+        Returns:
+            Atribuições agrupadas de Território do Saber.
+        """
+        service = ComponentesService()
+        dados = service.listar_atribuicoes_territorio_por_professor_ano(
+            codigo_rf,
+            ano_letivo,
+        )
+        return Response(dados)
 
 
 def _query_bool(request: Request, *nomes: str, default: bool = False) -> bool:
@@ -600,6 +788,31 @@ class ComponentesCatalogoView(BaseAPIView):
         """
         service = ComponentesService()
         dados = service.listar_catalogo()
+        return Response(dados)
+
+
+class ComponentesApiEolView(BaseAPIView):
+    """Lista componentes curriculares disponibilizados pela API EOL."""
+
+    @extend_schema(
+        responses={
+            200: ComponenteCurricularApiEolSerializer(many=True),
+        },
+        description="Lista os componentes curriculares da API EOL.",
+        tags=_TAG,
+        operation_id="componentes_api_eol",
+    )
+    def get(self, _request: Request) -> Response:
+        """Lista componentes curriculares da API EOL.
+
+        Args:
+            _request: Requisição HTTP.
+
+        Returns:
+            Resposta com componentes curriculares da API EOL.
+        """
+        service = ComponentesService()
+        dados = service.listar_componentes_api_eol()
         return Response(dados)
 
 

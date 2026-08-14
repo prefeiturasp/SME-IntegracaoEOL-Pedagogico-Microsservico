@@ -28,6 +28,7 @@ from apps.turmas.constants import (
     TIPOS_ESCOLA_TURMAS_HISTORICAS_PROFESSOR,
 )
 from apps.turmas.models import (
+    EtapaEnsino,
     Turma,
     TurmaAtribuidaDreUe,
     TurmaItinerarioEnsinoMedio,
@@ -40,6 +41,17 @@ _ETAPAS_RECORTE_FUND_MEDIO_EJA = frozenset(
 )
 _TIPOS_ESCOLA_TURMAS_ELEGIVEIS = frozenset({1, 3, 4, 16})
 _SITUACOES_TURMAS_ELEGIVEIS = ("A", "C", "O")
+
+# Sigla exibida por turma (Turma.modalidade materializado pelo ETL).
+_SIGLAS_MODALIDADE = {
+    "Infantil": "EI",
+    "EJA": "EJA",
+    "Fundamental": "EF",
+    "Médio": "EM",
+}
+_NOME_TURMA_COMECA_COM_DIGITO = r"^[1-9]"
+_ETAPA_ENSINO_SONDAGEM = 5
+_SITUACAO_EXTINTA = "E"
 
 
 def _nome_filtro(
@@ -134,6 +146,36 @@ def _turma_para_dados(t: Turma) -> dict:
     }
 
 
+def _etapa_eja(turma: Turma) -> int:
+    """Deriva o ciclo EJA (I/II) a partir do texto da série ensino.
+
+    Só se aplica a turmas de modalidade EJA. O ciclo não é uma coluna do
+    EOL: é inferido de marcadores romanos (" I "/" II") presentes no texto
+    de ``serie_ensino``.
+
+    Args:
+        turma: Turma consultada.
+
+    Returns:
+        1 para ciclo I, 2 para ciclo II, 0 quando não aplicável/detectável.
+    """
+    serie = turma.serie_ensino
+    if turma.modalidade != "EJA" or not serie or len(serie) <= 2:
+        return 0
+    etapa = serie[-2:].strip()
+    index_primeiro_ciclo = serie.find(" I ")
+    index_segundo_ciclo = serie.find(" II")
+    if (etapa == "I" and index_segundo_ciclo < 0) or (
+        index_primeiro_ciclo >= 0 and index_segundo_ciclo < 0
+    ):
+        return 1
+    if (etapa == "II" and index_primeiro_ciclo < 0) or (
+        index_primeiro_ciclo < 0 and index_segundo_ciclo >= 0
+    ):
+        return 2
+    return 0
+
+
 def _turma_para_sincronizacao(
     t: Turma,
     componentes: list[dict],
@@ -150,9 +192,9 @@ def _turma_para_sincronizacao(
         "semestre": t.semestre or 0,
         "duracao_turno": t.duracao_turno,
         "tipo_turno": t.tipo_turno,
-        "data_fim_turma": t.data_fim,
+        "data_fim_turma": t.data_fim_turma,
         "ensino_especial": t.ensino_especial,
-        "etapa_eja": 0,
+        "etapa_eja": _etapa_eja(t),
         "serie_ensino": t.serie_ensino,
         "codigo_serie_ensino": t.codigo_serie_ensino,
         "data_inicio_turma": t.data_inicio_turma,
@@ -169,6 +211,36 @@ def _turma_para_sincronizacao(
         "codigo_grade_programa": t.codigo_grade_programa,
         "nome_filtro": _nome_filtro(t, itinerario),
         "componentes": componentes,
+    }
+
+
+def _turma_para_sala(t: Turma) -> dict:
+    return {
+        "codigo_turma": t.codigo,
+        "nome_turma": t.nome_turma,
+        "tipo_turma": t.tipo_turma,
+        "situacao": t.situacao,
+        "data_inicio_turma": t.data_inicio_turma,
+        "data_fim_turma": t.data_fim_turma,
+    }
+
+
+def _sigla_modalidade(turma: Turma) -> str | None:
+    return _SIGLAS_MODALIDADE.get(turma.modalidade or "")
+
+
+def _turma_para_escola(t: Turma) -> dict:
+    sigla = _sigla_modalidade(t)
+    nome_turma = f"{sigla} - {t.nome_turma}" if sigla else t.nome_turma
+    return {
+        "codigo_turma": t.codigo,
+        "nome_turma_eol": t.nome_turma,
+        "nome_turma": nome_turma,
+        "tipo_turma": t.tipo_turma,
+        "situacao": t.situacao,
+        "data_inicio_turma": t.data_inicio_turma,
+        "data_fim_turma": t.data_fim_turma,
+        "sigla_modalidade": sigla,
     }
 
 
@@ -516,7 +588,9 @@ class TurmasRepository:
         if not ues_codigos:
             return []
         ano_letivo_filtro = (
-            ano_letivo if ano_letivo and ano_letivo > 0 else datetime.now(UTC).year
+            ano_letivo
+            if ano_letivo and ano_letivo > 0
+            else datetime.now(UTC).year
         )
         consulta = (
             Turma.objects.using(self._DB)
@@ -825,3 +899,98 @@ class TurmasRepository:
                 self._DB
             ).order_by("id")
         ]
+
+    def modalidades_ensino(self) -> list[str]:
+        """Lista as descrições do catálogo de etapas de ensino.
+
+        Returns:
+            Descrições das etapas de ensino, ordenadas por código.
+        """
+        return list(
+            EtapaEnsino.objects.using(self._DB)
+            .order_by("codigo")
+            .values_list("descricao", flat=True)
+        )
+
+    def turmas_por_tipo_sala(
+        self,
+        ue_codigo: str,
+        tipo_turma: int,
+        ano_letivo: int,
+    ) -> list[dict]:
+        """Lista turmas de uma UE/ano letivo por tipo de sala.
+
+        Sem filtro de situação — inclui turmas extintas/canceladas.
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+            tipo_turma: Tipo de turma (sala) filtrado.
+            ano_letivo: Ano letivo consultado.
+
+        Returns:
+            Turmas encontradas no recorte.
+        """
+        turmas = Turma.objects.using(self._DB).filter(
+            ue_codigo=ue_codigo,
+            tipo_turma=tipo_turma,
+            ano_letivo=ano_letivo,
+        )
+        return [_turma_para_sala(t) for t in turmas]
+
+    def turmas_por_escola(
+        self,
+        ue_codigo: str,
+        ano_letivo: int,
+    ) -> list[dict]:
+        """Lista turmas de uma UE/ano letivo cujo nome começa com dígito.
+
+        Só turmas regulares: turmas de Educação Física, Programa e outros
+        tipos administrativos nunca têm série/grade curricular vinculada no
+        EOL.
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+            ano_letivo: Ano letivo consultado.
+
+        Returns:
+            Turmas encontradas, ordenadas por nome.
+        """
+        turmas = (
+            Turma.objects.using(self._DB)
+            .filter(
+                ue_codigo=ue_codigo,
+                ano_letivo=ano_letivo,
+                tipo_turma=TIPO_TURMA_REGULAR,
+                nome_turma__regex=_NOME_TURMA_COMECA_COM_DIGITO,
+            )
+            .order_by("nome_turma")
+        )
+        return [_turma_para_escola(t) for t in turmas]
+
+    def turmas_sondagem(
+        self,
+        ue_codigo: str,
+        ano_letivo: int,
+    ) -> list[dict]:
+        """Lista turmas regulares de 5º ano do Fundamental para Sondagem.
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+            ano_letivo: Ano letivo consultado.
+
+        Returns:
+            Turmas encontradas, ordenadas por nome.
+        """
+        turmas = (
+            Turma.objects.using(self._DB)
+            .filter(
+                ue_codigo=ue_codigo,
+                ano_letivo=ano_letivo,
+                codigo_etapa_ensino=_ETAPA_ENSINO_SONDAGEM,
+                tipo_turma=TIPO_TURMA_REGULAR,
+                nome_turma__regex=_NOME_TURMA_COMECA_COM_DIGITO,
+            )
+            .exclude(situacao=_SITUACAO_EXTINTA)
+            .order_by("nome_turma")
+        )
+        return [_turma_para_sala(t) for t in turmas]

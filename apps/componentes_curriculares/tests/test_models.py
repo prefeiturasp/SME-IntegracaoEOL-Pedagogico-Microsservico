@@ -7,6 +7,7 @@ from apps.componentes_curriculares.models import (
     AtribuicaoComponente,
     ComponenteCurricular,
     ComponenteCurricularAgrupamento,
+    ComponenteCurricularApiEol,
     ComponenteTurma,
     GradeComponenteCurricular,
 )
@@ -69,3 +70,14 @@ class TestModelStr(TestCase):
             str(obj),
             "agrupamento=333 territorio=444 ano_letivo=2024",
         )
+
+
+class TestComponenteCurricularApiEol(TestCase):
+    """Valida os metadados do componente curricular da API EOL."""
+
+    def test_descricao_preserva_nulabilidade_da_tabela_etl(self) -> None:
+        """Valida que a descrição aceita valores nulos e em branco."""
+        campo = ComponenteCurricularApiEol._meta.get_field("descricao")
+
+        self.assertTrue(campo.null)
+        self.assertTrue(campo.blank)
