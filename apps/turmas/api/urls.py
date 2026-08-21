@@ -10,6 +10,7 @@ from apps.turmas.api.views import (
     ModalidadesEnsinoView,
     TodasTurmasAtribuidasDreUeView,
     TurmaDadosView,
+    TurmasAtribuidasDreUePorTurmasView,
     TurmasAtribuidasDreUeView,
     TurmasElegiveisView,
     TurmasHistoricasProfessorView,
@@ -48,6 +49,11 @@ urlpatterns = [
         "turmas-atribuidas-dre-ue/todas/",
         TodasTurmasAtribuidasDreUeView.as_view(),
         name="todas-turmas-atribuidas-dre-ue",
+    ),
+    path(
+        "turmas-atribuidas-dre-ue/por-turmas/",
+        TurmasAtribuidasDreUePorTurmasView.as_view(),
+        name="turmas-atribuidas-dre-ue-por-turmas",
     ),
     path(
         "turmas-elegiveis/",
