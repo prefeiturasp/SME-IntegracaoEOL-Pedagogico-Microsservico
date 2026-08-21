@@ -52,6 +52,59 @@ class TurmaAtribuidaDreUeSerializer(serializers.Serializer):
     tipo_turno = serializers.IntegerField(allow_null=True)
 
 
+class TurmaAbrangenciaSerializer(serializers.Serializer):
+    """Serializa turma no contrato de abrangência (DRE→UE→turma).
+
+    Campos em ``camelCase`` de propósito: o gateway repassa este payload
+    quase sem tradução (``TurmaDTO``).
+    """
+
+    ano = serializers.CharField(allow_null=True)
+    anoLetivo = serializers.IntegerField(allow_null=True)
+    codigo = serializers.IntegerField(allow_null=True)
+    tipoTurma = serializers.IntegerField()
+    modalidade = serializers.CharField(allow_null=True)
+    codigoModalidade = serializers.IntegerField()
+    nomeTurma = serializers.CharField(allow_null=True)
+    semestre = serializers.IntegerField(allow_null=True)
+    duracaoTurno = serializers.IntegerField(allow_null=True)
+    tipoTurno = serializers.IntegerField(allow_null=True)
+    dataFim = serializers.DateTimeField(allow_null=True)
+    ehistorico = serializers.BooleanField()
+    ensinoEspecial = serializers.BooleanField()
+    etapaEJA = serializers.IntegerField()
+    serieEnsino = serializers.CharField(allow_null=True)
+    dataInicioTurma = serializers.DateTimeField(allow_null=True)
+    extinta = serializers.BooleanField()
+    situacao = serializers.CharField(allow_null=True)
+    ueCodigo = serializers.CharField(allow_null=True)
+
+
+class UeAbrangenciaSerializer(serializers.Serializer):
+    """Serializa UE no contrato de abrangência (DRE→UE→turma)."""
+
+    codigo = serializers.CharField(allow_null=True)
+    nome = serializers.CharField(allow_null=True)
+    codTipoEscola = serializers.IntegerField(allow_null=True)
+    turmas = TurmaAbrangenciaSerializer(many=True)
+
+
+class DreAbrangenciaSerializer(serializers.Serializer):
+    """Serializa DRE no contrato de abrangência (DRE→UE→turma)."""
+
+    abreviacao = serializers.CharField(allow_null=True)
+    codigo = serializers.CharField(allow_null=True)
+    nome = serializers.CharField(allow_null=True)
+    ues = UeAbrangenciaSerializer(many=True)
+
+
+class EstruturaAbrangenciaSerializer(serializers.Serializer):
+    """Serializa a estrutura de abrangência agrupada por DRE/UE/turma."""
+
+    abrangencia = serializers.JSONField(allow_null=True, required=False)
+    dres = DreAbrangenciaSerializer(many=True)
+
+
 class TurmasElegiveisRequestSerializer(serializers.Serializer):
     """Valida filtros de turmas elegíveis."""
 

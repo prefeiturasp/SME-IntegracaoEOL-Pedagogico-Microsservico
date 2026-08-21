@@ -82,6 +82,7 @@ def _turma(**kwargs):
         "codigo_serie_ensino": 3,
         "situacao": "A",
         "extinta": False,
+        "data_inicio": None,
         "data_inicio_turma": None,
         "duracao_turno": None,
         "tipo_turno": None,
@@ -104,17 +105,17 @@ def _turma(**kwargs):
 
 def _turma_atribuida(**kwargs):
     defaults = {
-        "codigo_escola": "019362",
-        "codigo_turma": 3011229,
+        "codigo_escola": "000001",
+        "codigo_turma": 9000001,
         "ano_letivo": 2026,
         "modalidade": "Fundamental",
         "semestre": 0,
         "codigo_modalidade": 5,
-        "codigo_dre": "108900",
-        "dre": "DIRETORIA REGIONAL DE EDUCACAO PENHA",
-        "dre_abreviacao": "P",
-        "ue": "EMEF TESTE",
-        "ue_abreviacao": "EMEF TESTE",
+        "codigo_dre": "100000",
+        "dre": "DIRETORIA REGIONAL FICTICIA",
+        "dre_abreviacao": "X",
+        "ue": "EMEF FICTICIA DE TESTE",
+        "ue_abreviacao": "EMEF FICTICIA DE TESTE",
         "nome_turma": "5A",
         "ano": "5",
         "tipo_ue": "DIRETA",
@@ -280,12 +281,12 @@ class TestTurmasRepository(TestCase):
         qs = FakeQuerySet([_turma_atribuida()])
         mock_using.return_value = qs
 
-        resultado = self.repo.turmas_atribuidas_dre_ue(["019362"])
+        resultado = self.repo.turmas_atribuidas_dre_ue(["000001"])
 
-        self.assertEqual(resultado[0]["codigo_escola"], "019362")
-        self.assertEqual(resultado[0]["codigo_turma"], 3011229)
-        self.assertEqual(resultado[0]["codigo_dre"], "108900")
-        self.assertEqual(qs.calls[0][2], {"codigo_escola__in": ["019362"]})
+        self.assertEqual(resultado[0]["codigo_escola"], "000001")
+        self.assertEqual(resultado[0]["codigo_turma"], 9000001)
+        self.assertEqual(resultado[0]["codigo_dre"], "100000")
+        self.assertEqual(qs.calls[0][2], {"codigo_escola__in": ["000001"]})
         self.assertEqual(
             qs.calls[1],
             (
@@ -313,11 +314,151 @@ class TestTurmasRepository(TestCase):
         resultado = self.repo.todas_turmas_atribuidas_dre_ue()
 
         turma = resultado["dres"][0]["ues"][0]["turmas"][0]
-        self.assertEqual(turma["codigo"], 3011229)
-        self.assertEqual(resultado["dres"][0]["codigo"], "108900")
+        self.assertEqual(turma["codigo"], 9000001)
+        self.assertEqual(resultado["dres"][0]["codigo"], "100000")
         self.assertEqual(
             qs.calls[0],
-            ("filter", (), {"codigo_tipo_escola__in": _TIPOS_ESCOLA_SGP}),
+            (
+                "filter",
+                (),
+                {
+                    "codigo_tipo_escola__in": _TIPOS_ESCOLA_SGP,
+                    "ano_letivo": datetime.now(UTC).year,
+                },
+            ),
+        )
+
+    @patch("apps.turmas.repository.Turma.objects.using")
+    @patch("apps.turmas.repository.TurmaAtribuidaDreUe.objects.using")
+    def test_todas_turmas_atribuidas_dre_ue_enriquece_com_turma(
+        self, mock_using_atribuida, mock_using_turma
+    ):
+        """Completa tipoTurma/dataFim/etc. a partir de ``Turma``."""
+        mock_using_atribuida.return_value = FakeQuerySet(
+            [_turma_atribuida()]
+        )
+        mock_using_turma.return_value = FakeQuerySet(
+            [
+                _turma(
+                    codigo=9000001,
+                    tipo_turma=1,
+                    data_fim=datetime(2026, 12, 18, tzinfo=UTC),
+                    data_inicio=datetime(2026, 2, 2, tzinfo=UTC),
+                    extinta=False,
+                    ensino_especial=True,
+                    modalidade="EJA",
+                    serie_ensino="EJA II - Ciclo",
+                )
+            ]
+        )
+
+        resultado = self.repo.todas_turmas_atribuidas_dre_ue()
+
+        turma = resultado["dres"][0]["ues"][0]["turmas"][0]
+        self.assertEqual(turma["tipoTurma"], 1)
+        self.assertEqual(
+            turma["dataFim"], datetime(2026, 12, 18, tzinfo=UTC)
+        )
+        self.assertEqual(
+            turma["dataInicioTurma"], datetime(2026, 2, 2, tzinfo=UTC)
+        )
+        self.assertFalse(turma["extinta"])
+        self.assertTrue(turma["ensinoEspecial"])
+        self.assertEqual(turma["etapaEJA"], 2)
+        self.assertIsNone(turma["serieEnsino"])
+        self.assertIsNone(turma["situacao"])
+        self.assertIsNone(turma["ueCodigo"])
+        self.assertFalse(turma["ehistorico"])
+
+    @patch("apps.turmas.repository.TurmaAtribuidaDreUe.objects.using")
+    def test_todas_turmas_atribuidas_dre_ue_sem_turma_usa_defaults(
+        self, mock_using
+    ):
+        """Sem ``Turma`` correspondente, mantém os defaults antigos."""
+        mock_using.return_value = FakeQuerySet([_turma_atribuida()])
+
+        resultado = self.repo.todas_turmas_atribuidas_dre_ue()
+
+        turma = resultado["dres"][0]["ues"][0]["turmas"][0]
+        self.assertEqual(turma["tipoTurma"], 0)
+        self.assertIsNone(turma["dataFim"])
+        self.assertIsNone(turma["dataInicioTurma"])
+        self.assertFalse(turma["extinta"])
+        self.assertFalse(turma["ensinoEspecial"])
+        self.assertEqual(turma["etapaEJA"], 0)
+
+    @patch("apps.turmas.repository.Turma.objects.using")
+    @patch("apps.turmas.repository.TurmaAtribuidaDreUe.objects.using")
+    def test_turmas_atribuidas_dre_ue_por_dre_filtra_dre_e_tipo_escola(
+        self, mock_using_atribuida, mock_using_turma
+    ):
+        from apps.turmas.repository import _TIPOS_ESCOLA_SGP
+
+        qs = FakeQuerySet([_turma_atribuida()])
+        mock_using_atribuida.return_value = qs
+        mock_using_turma.return_value = FakeQuerySet([])
+
+        resultado = self.repo.turmas_atribuidas_dre_ue_por_dre("100000")
+
+        self.assertEqual(resultado["dres"][0]["codigo"], "100000")
+        self.assertEqual(
+            qs.calls[0],
+            (
+                "filter",
+                (),
+                {
+                    "codigo_tipo_escola__in": _TIPOS_ESCOLA_SGP,
+                    "codigo_dre": "100000",
+                    "ano_letivo": datetime.now(UTC).year,
+                },
+            ),
+        )
+
+    @patch("apps.turmas.repository.Turma.objects.using")
+    @patch("apps.turmas.repository.TurmaAtribuidaDreUe.objects.using")
+    def test_turmas_atribuidas_dre_ue_por_dre_sem_resultado_retorna_vazio(
+        self, mock_using_atribuida, mock_using_turma
+    ):
+        mock_using_atribuida.return_value = FakeQuerySet([])
+        mock_using_turma.return_value = FakeQuerySet([])
+
+        resultado = self.repo.turmas_atribuidas_dre_ue_por_dre("999999")
+
+        self.assertEqual(resultado, {"abrangencia": None, "dres": []})
+
+    def test_turmas_atribuidas_dre_ue_por_turmas_sem_codigos_retorna_vazio(
+        self,
+    ):
+        resultado = self.repo.turmas_atribuidas_dre_ue_por_turmas([])
+
+        self.assertEqual(resultado, {"abrangencia": None, "dres": []})
+
+    @patch("apps.turmas.repository.Turma.objects.using")
+    @patch("apps.turmas.repository.TurmaAtribuidaDreUe.objects.using")
+    def test_turmas_atribuidas_dre_ue_por_turmas_filtra_turmas_e_tipo_escola(
+        self, mock_using_atribuida, mock_using_turma
+    ):
+        from apps.turmas.repository import _TIPOS_ESCOLA_SGP
+
+        qs = FakeQuerySet([_turma_atribuida()])
+        mock_using_atribuida.return_value = qs
+        mock_using_turma.return_value = FakeQuerySet([])
+
+        resultado = self.repo.turmas_atribuidas_dre_ue_por_turmas([9000001])
+
+        turma = resultado["dres"][0]["ues"][0]["turmas"][0]
+        self.assertEqual(turma["codigo"], 9000001)
+        self.assertEqual(
+            qs.calls[0],
+            (
+                "filter",
+                (),
+                {
+                    "codigo_turma__in": [9000001],
+                    "codigo_tipo_escola__in": _TIPOS_ESCOLA_SGP,
+                    "ano_letivo": datetime.now(UTC).year,
+                },
+            ),
         )
 
     @patch("apps.turmas.repository.Turma.objects.using")
