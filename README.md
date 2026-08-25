@@ -129,7 +129,7 @@ curl -H "X-API-Key: dev-key-default" http://localhost:8001/api/componentes-curri
 
 | Método | Path | Descrição |
 |--------|------|-----------|
-| GET | `/api/abrangencia/ciclo-ensino` | Lista o catálogo de ciclos de ensino |
+| GET | `/api/v1/pedagogico/abrangencia/ciclo-ensino/` | Lista o catálogo de ciclos de ensino |
 
 ### Turmas
 

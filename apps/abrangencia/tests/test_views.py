@@ -13,7 +13,7 @@ from apps.abrangencia.models import CicloEnsino
 class CiclosEnsinoViewTest(TestCase):
     """Valida o contrato de listagem dos ciclos de ensino."""
 
-    _URL = "/api/abrangencia/ciclo-ensino"
+    _URL = "/api/v1/pedagogico/abrangencia/ciclo-ensino/"
 
     def setUp(self) -> None:
         self.client = APIClient()
