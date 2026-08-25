@@ -9,7 +9,7 @@ from rest_framework.permissions import AllowAny
 
 urlpatterns = [
     path(
-        "api/abrangencia/",
+        "api/v1/pedagogico/abrangencia/",
         include("apps.abrangencia.api.urls"),
     ),
     path(

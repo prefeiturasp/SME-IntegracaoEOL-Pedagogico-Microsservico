@@ -6,7 +6,7 @@ from apps.abrangencia.api.views import CiclosEnsinoView
 
 urlpatterns = [
     path(
-        "ciclo-ensino",
+        "ciclo-ensino/",
         CiclosEnsinoView.as_view(),
         name="abrangencia-ciclo-ensino",
     ),
