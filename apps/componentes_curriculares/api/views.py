@@ -279,7 +279,7 @@ class ComponentesPorFuncionarioView(BaseAPIView):
         parameters=[
             OpenApiParameter(
                 "id_perfil",
-                OpenApiTypes.STR,
+                OpenApiTypes.UUID,
                 OpenApiParameter.QUERY,
                 description="Perfil do usuário (GUID)",
             ),
