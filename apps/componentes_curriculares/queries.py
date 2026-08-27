@@ -82,7 +82,11 @@ NOT EXISTS (
 SQL_COMPONENTES_TURMA_COM_ATRIBUICAO = f"""\
 SELECT {COMPONENTE_TURMA_CAMPOS_RESPOSTA},
        {SQL_COMPONENTE_NAO_VIGENTE} AS exibir_componente_eol,
-       ac.professor
+       ac.professor,
+       ac.dt_atribuicao,
+       ac.dt_disponibilizacao,
+       ac.cd_motivo_disponibilizacao,
+       t.data_fim_turma
   FROM componente_turma ct
   LEFT JOIN componente_curricular cc
     ON cc.codigo = ct.componente_codigo

@@ -237,7 +237,8 @@ def _normalizar_componente_atribuido(row: dict) -> dict:
         row: Linha retornada pela consulta.
 
     Returns:
-        Componente preservando o código retornado pela atribuição.
+        Componente preservando o código retornado pela atribuição, com a
+        vigência da atribuição do professor (status e datas).
     """
     item = _componente_para_dict(row)
     if (
@@ -245,6 +246,19 @@ def _normalizar_componente_atribuido(row: dict) -> dict:
         == CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL
     ):
         item["regencia"] = True
+        item["descricao"] = DESCRICAO_COMPONENTE_REGENCIA_CLASSE_INFANTIL
+
+    dt_disponibilizacao = item.pop("dt_disponibilizacao", None)
+    cd_motivo_disponibilizacao = item.pop("cd_motivo_disponibilizacao", None)
+    data_fim_turma = item.pop("data_fim_turma", None)
+    item["atribuicao_ativa"] = (
+        dt_disponibilizacao is None
+        or cd_motivo_disponibilizacao
+        == MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO
+    )
+    item["inicio_atribuicao"] = item.pop("dt_atribuicao", None)
+    item["fim_atribuicao"] = dt_disponibilizacao or data_fim_turma
+
     return item
 
 

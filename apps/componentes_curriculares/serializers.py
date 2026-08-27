@@ -22,6 +22,11 @@ class ComponenteCurricularSerializer(serializers.Serializer):
     codigos_territorios_agrupamento = serializers.ListField(
         child=serializers.IntegerField(), default=list
     )
+    atribuicao_ativa = serializers.BooleanField(default=False)
+    inicio_atribuicao = serializers.DateTimeField(
+        allow_null=True, default=None
+    )
+    fim_atribuicao = serializers.DateTimeField(allow_null=True, default=None)
 
 
 class ComponenteTurmaDisciplinaSerializer(serializers.Serializer):
