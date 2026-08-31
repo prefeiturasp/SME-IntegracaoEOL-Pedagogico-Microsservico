@@ -59,6 +59,32 @@ class TurmasService:
         """Retorna turmas atribuídas."""
         return self._repo.todas_turmas_atribuidas_dre_ue()
 
+    def turmas_atribuidas_dre_ue_por_dre(
+        self, codigo_dre: str
+    ) -> dict[str, Any]:
+        """Retorna a abrangência de uma DRE.
+
+        Args:
+            codigo_dre: Código EOL da DRE.
+
+        Returns:
+            Estrutura agrupada por DRE/UE/turma.
+        """
+        return self._repo.turmas_atribuidas_dre_ue_por_dre(codigo_dre)
+
+    def turmas_atribuidas_dre_ue_por_turmas(
+        self, codigos_turma: list[int]
+    ) -> dict[str, Any]:
+        """Retorna a abrangência de uma lista de turmas.
+
+        Args:
+            codigos_turma: Códigos das turmas a consultar.
+
+        Returns:
+            Estrutura agrupada por DRE/UE/turma.
+        """
+        return self._repo.turmas_atribuidas_dre_ue_por_turmas(codigos_turma)
+
     def turmas_elegiveis(
         self,
         codigo_rf: str,

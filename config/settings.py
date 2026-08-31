@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "apps.core.apps.CoreConfig",
+    "apps.abrangencia.apps.AbrangenciaConfig",
     "apps.componentes_curriculares",
     "apps.turmas",
 ]

@@ -9,6 +9,10 @@ from rest_framework.permissions import AllowAny
 
 urlpatterns = [
     path(
+        "api/v1/pedagogico/abrangencia/",
+        include("apps.abrangencia.api.urls"),
+    ),
+    path(
         "pedagogico/api/v1/schema/",
         SpectacularAPIView.as_view(
             authentication_classes=[],

@@ -5,6 +5,9 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
+from apps.componentes_curriculares.constants import (
+    MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO,
+)
 from apps.componentes_curriculares.models import (
     AgrupamentoAtribuicaoTerritorioSaber,
     AtribuicaoTerritorioSaber,
@@ -451,11 +454,128 @@ class TestComponentesRepository(TestCase):
         )
 
     @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_atribuicao_ativa(
+        self,
+        mock_raw,
+    ) -> None:
+        """Marca atribuição como ativa quando não foi disponibilizada."""
+        mock_raw.return_value = [
+            {
+                "codigo": 900001,
+                "descricao": "Componente Curricular Fictício",
+                "codigo_componente_territorio_saber": None,
+                "codigo_componente_curricular_pai": 512,
+                "exibir_componente_eol": True,
+                "professor": "RF1",
+                "dt_atribuicao": datetime(2025, 12, 23, tzinfo=UTC),
+                "dt_disponibilizacao": None,
+                "cd_motivo_disponibilizacao": None,
+                "data_fim_turma": datetime(2026, 12, 22, tzinfo=UTC),
+            }
+        ]
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        self.assertTrue(resultado[0]["atribuicao_ativa"])
+        self.assertEqual(
+            resultado[0]["inicio_atribuicao"],
+            datetime(2025, 12, 23, tzinfo=UTC),
+        )
+        self.assertEqual(
+            resultado[0]["fim_atribuicao"], datetime(2026, 12, 22, tzinfo=UTC)
+        )
+        self.assertNotIn("dt_atribuicao", resultado[0])
+        self.assertNotIn("dt_disponibilizacao", resultado[0])
+        self.assertNotIn("cd_motivo_disponibilizacao", resultado[0])
+        self.assertNotIn("data_fim_turma", resultado[0])
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_atribuicao_ativa_fim_ano_letivo(
+        self,
+        mock_raw,
+    ) -> None:
+        """Considera ativa a atribuição disponibilizada por fim de ano."""
+        mock_raw.return_value = [
+            {
+                "codigo": 900001,
+                "descricao": "Componente Curricular Fictício",
+                "codigo_componente_territorio_saber": None,
+                "codigo_componente_curricular_pai": 512,
+                "exibir_componente_eol": True,
+                "professor": "RF1",
+                "dt_atribuicao": datetime(2025, 12, 23, tzinfo=UTC),
+                "dt_disponibilizacao": datetime(2026, 12, 22, tzinfo=UTC),
+                "cd_motivo_disponibilizacao": (
+                    MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO
+                ),
+                "data_fim_turma": datetime(2026, 12, 22, tzinfo=UTC),
+            }
+        ]
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        self.assertTrue(resultado[0]["atribuicao_ativa"])
+        self.assertEqual(
+            resultado[0]["fim_atribuicao"], datetime(2026, 12, 22, tzinfo=UTC)
+        )
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_atribuicao_encerrada(
+        self,
+        mock_raw,
+    ) -> None:
+        """Marca atribuição como encerrada quando disponibilizada de fato."""
+        mock_raw.return_value = [
+            {
+                "codigo": 900001,
+                "descricao": "Componente Curricular Fictício",
+                "codigo_componente_territorio_saber": None,
+                "codigo_componente_curricular_pai": 512,
+                "exibir_componente_eol": True,
+                "professor": "RF1",
+                "dt_atribuicao": datetime(2025, 12, 23, tzinfo=UTC),
+                "dt_disponibilizacao": datetime(2026, 3, 10, tzinfo=UTC),
+                "cd_motivo_disponibilizacao": 1,
+                "data_fim_turma": datetime(2026, 12, 22, tzinfo=UTC),
+            }
+        ]
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        self.assertFalse(resultado[0]["atribuicao_ativa"])
+        self.assertEqual(
+            resultado[0]["fim_atribuicao"], datetime(2026, 3, 10, tzinfo=UTC)
+        )
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_listar_por_turma_funcionario_sem_dados_de_vigencia(
+        self,
+        mock_raw,
+    ) -> None:
+        """Usa defaults quando a linha não traz colunas de vigência."""
+        mock_raw.return_value = [
+            {
+                "codigo": 900001,
+                "descricao": "Componente Curricular Fictício",
+                "codigo_componente_territorio_saber": None,
+                "codigo_componente_curricular_pai": None,
+                "exibir_componente_eol": True,
+                "professor": "RF1",
+            }
+        ]
+
+        resultado = self.repo.listar_por_turma_funcionario("T1", "RF1")
+
+        self.assertTrue(resultado[0]["atribuicao_ativa"])
+        self.assertIsNone(resultado[0]["inicio_atribuicao"])
+        self.assertIsNone(resultado[0]["fim_atribuicao"])
+
+    @patch("apps.componentes_curriculares.repository._raw")
     def test_listar_por_turma_funcionario_preserva_regencia_infantil(
         self,
         mock_raw,
     ) -> None:
-        """Preserva filhos de regência infantil por funcionário."""
+        """Mantém filhos de regência infantil como itens distintos."""
         mock_raw.return_value = [
             {
                 "codigo": 512,
@@ -482,7 +602,9 @@ class TestComponentesRepository(TestCase):
         self.assertTrue(resultado[0]["regencia"])
         self.assertEqual(resultado[0]["tipo_escola"], "2")
         self.assertEqual(resultado[1]["codigo"], 513)
-        self.assertEqual(resultado[1]["descricao"], "ED.INF. EMEI 2 HS")
+        self.assertEqual(
+            resultado[1]["descricao"], "Regência de classe infantil"
+        )
         self.assertTrue(resultado[1]["regencia"])
         self.assertEqual(resultado[1]["tipo_escola"], "2")
         self.assertEqual(resultado[0]["professor"], "RF1")

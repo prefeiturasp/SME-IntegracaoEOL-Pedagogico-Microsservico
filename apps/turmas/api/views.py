@@ -9,6 +9,7 @@ from apps.core.views import BaseAPIView
 from apps.turmas.constants import MENSAGEM_COMPORTAMENTO_INESPERADO
 from apps.turmas.serializers import (
     AnosLetivosVigenteQuerySerializer,
+    EstruturaAbrangenciaSerializer,
     TurmaAtribuidaDreUeSerializer,
     TurmaDadosSerializer,
     TurmaElegivelSerializer,
@@ -140,24 +141,73 @@ class TurmasAtribuidasDreUeView(BaseAPIView):
 
 
 class TodasTurmasAtribuidasDreUeView(BaseAPIView):
-    """Lista turmas atribuídas."""
+    """Lista turmas atribuídas, com recorte opcional por DRE."""
 
     @extend_schema(
         tags=_TAG,
-        summary="Listar turmas atribuídas",
-        responses={200: TurmaAtribuidaDreUeSerializer(many=True)},
+        summary="Listar turmas atribuídas (abrangência SME ou por DRE)",
+        parameters=[
+            OpenApiParameter(
+                "codigo_dre", str, OpenApiParameter.QUERY, required=False
+            ),
+        ],
+        responses={200: EstruturaAbrangenciaSerializer},
         operation_id="todas_turmas_atribuidas_dre_ue",
     )
     def get(self, request: Request) -> Response:
-        """Retorna turmas atribuídas.
+        """Retorna a abrangência de turmas, de toda a SME ou de uma DRE.
 
         Args:
-            request: Requisição recebida.
+            request: Requisição recebida; ``codigo_dre`` (query, opcional)
+                restringe o resultado a uma única DRE.
 
         Returns:
-            Turmas atribuídas.
+            Estrutura agrupada por DRE/UE/turma.
         """
-        return Response(TurmasService().todas_turmas_atribuidas_dre_ue())
+        codigo_dre = request.query_params.get(
+            "codigo_dre"
+        ) or request.query_params.get("codigoDre")
+        service = TurmasService()
+        if codigo_dre and codigo_dre.strip():
+            dados = service.turmas_atribuidas_dre_ue_por_dre(
+                codigo_dre.strip()
+            )
+        else:
+            dados = service.todas_turmas_atribuidas_dre_ue()
+        return Response(dados)
+
+
+class TurmasAtribuidasDreUePorTurmasView(BaseAPIView):
+    """Lista a abrangência de uma lista de códigos de turma."""
+
+    @extend_schema(
+        tags=_TAG,
+        summary="Abrangência de turmas por lista de códigos",
+        request={
+            "application/json": {"type": "array", "items": {"type": "integer"}}
+        },
+        responses={200: EstruturaAbrangenciaSerializer},
+        operation_id="turmas_atribuidas_dre_ue_por_turmas",
+    )
+    def post(self, request: Request) -> Response:
+        """Retorna a abrangência das turmas informadas.
+
+        Args:
+            request: Requisição com a lista de códigos de turma no corpo.
+
+        Returns:
+            Estrutura agrupada por DRE/UE/turma; ``dres`` vazio quando a
+            lista é vazia ou nenhuma turma está no recorte.
+        """
+        codigos: list[int] = [
+            int(codigo)
+            for codigo in (
+                request.data if isinstance(request.data, list) else []
+            )
+            if str(codigo).strip().lstrip("-").isdigit()
+        ]
+        dados = TurmasService().turmas_atribuidas_dre_ue_por_turmas(codigos)
+        return Response(dados)
 
 
 class TurmasElegiveisView(BaseAPIView):

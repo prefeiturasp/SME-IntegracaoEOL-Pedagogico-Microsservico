@@ -1,6 +1,6 @@
 """Repositório do domínio Turmas."""
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
 from typing import Any, cast
 
@@ -334,32 +334,61 @@ _CAMPOS_TURMA_ATRIBUIDA = (
 )
 
 
-def _turma_abrangencia(item: dict) -> dict:
-    """Monta a turma no contrato de abrangência."""
+def _turma_abrangencia(item: dict, turma: Turma | None) -> dict:
+    """Monta a turma no contrato de abrangência.
+
+    Args:
+        item: Linha achatada de ``turma_atribuida_dre_ue``.
+        turma: Turma correspondente em ``turma`` (mesmo banco), usada para
+            completar os campos que a tabela pré-agregada não carrega;
+            ``None`` quando a turma não é encontrada (mantém os defaults).
+    """
     return {
         "ano": item.get("ano"),
         "anoLetivo": item.get("ano_letivo"),
         "codigo": item.get("codigo_turma"),
-        "tipoTurma": 0,
+        "tipoTurma": turma.tipo_turma if turma else 0,
         "modalidade": item.get("modalidade"),
         "codigoModalidade": item.get("codigo_modalidade") or 0,
         "nomeTurma": item.get("nome_turma"),
         "semestre": item.get("semestre"),
         "duracaoTurno": item.get("duracao_turno"),
         "tipoTurno": item.get("tipo_turno"),
-        "dataFim": None,
+        "dataFim": turma.data_fim if turma else None,
         "ehistorico": False,
-        "ensinoEspecial": False,
-        "etapaEJA": 0,
+        "ensinoEspecial": turma.ensino_especial if turma else False,
+        "etapaEJA": _etapa_eja(turma) if turma else 0,
         "serieEnsino": None,
-        "dataInicioTurma": None,
-        "extinta": False,
+        "dataInicioTurma": turma.data_inicio if turma else None,
+        "extinta": turma.extinta if turma else False,
         "situacao": None,
         "ueCodigo": None,
     }
 
 
-def _agrupar_abrangencia_dre_ue(rows: Any) -> dict:
+def _turmas_por_codigo(
+    db: str, codigos: Iterable[int]
+) -> dict[int, Turma]:
+    """Monta um lookup código -> Turma para completar a abrangência.
+
+    Args:
+        db: Alias do banco Django a consultar.
+        codigos: Códigos de turma a buscar.
+
+    Returns:
+        Dicionário código -> ``Turma``; códigos sem turma correspondente
+        ficam de fora.
+    """
+    codigos_unicos = {codigo for codigo in codigos if codigo is not None}
+    if not codigos_unicos:
+        return {}
+    turmas = Turma.objects.using(db).filter(codigo__in=codigos_unicos)
+    return {turma.codigo: turma for turma in turmas}
+
+
+def _agrupar_abrangencia_dre_ue(
+    rows: Any, turmas_por_codigo: dict[int, Turma]
+) -> dict:
     """Agrupa as turmas atribuídas por DRE e UE no contrato de abrangência.
 
     Feito no domínio para o gateway apenas repassar, evitando reprocessar
@@ -401,7 +430,8 @@ def _agrupar_abrangencia_dre_ue(rows: Any) -> dict:
         if chave_turma in turmas_vistas:
             continue
         turmas_vistas.add(chave_turma)
-        ue["turmas"].append(_turma_abrangencia(item))
+        turma = turmas_por_codigo.get(item.get("codigo_turma"))
+        ue["turmas"].append(_turma_abrangencia(item, turma))
 
     return {"abrangencia": None, "dres": list(dres.values())}
 
@@ -499,13 +529,80 @@ class TurmasRepository:
         return list(turmas)
 
     def todas_turmas_atribuidas_dre_ue(self) -> dict:
-        """Abrangência SME agrupada por DRE/UE (recorte de tipo de escola)."""
-        turmas = (
+        """Abrangência SME agrupada por DRE/UE (recorte de tipo de escola).
+
+        ``turma_atribuida_dre_ue`` é recarregada pelo MS-ETL para todos os
+        anos letivos presentes no EOL, não só o corrente — outros consumos
+        dessa tabela dependem do histórico. Como este endpoint é a estrutura
+        *vigente*, o filtro de ano corrente é aplicado aqui.
+        """
+        turmas = list(
             TurmaAtribuidaDreUe.objects.using(self._DB)
-            .filter(codigo_tipo_escola__in=_TIPOS_ESCOLA_SGP)
+            .filter(
+                codigo_tipo_escola__in=_TIPOS_ESCOLA_SGP,
+                ano_letivo=datetime.now(UTC).year,
+            )
             .values(*_CAMPOS_TURMA_ATRIBUIDA)
         )
-        return _agrupar_abrangencia_dre_ue(turmas)
+        turmas_por_codigo = _turmas_por_codigo(
+            self._DB, (t["codigo_turma"] for t in turmas)
+        )
+        return _agrupar_abrangencia_dre_ue(turmas, turmas_por_codigo)
+
+    def turmas_atribuidas_dre_ue_por_dre(self, codigo_dre: str) -> dict:
+        """Abrangência SME vigente de uma DRE (recorte de tipo de escola).
+
+        Args:
+            codigo_dre: Código EOL da DRE.
+
+        Returns:
+            Estrutura agrupada por DRE/UE/turma do ano letivo corrente;
+            ``dres`` vazio quando a DRE não tem turmas no recorte de tipo
+            de escola.
+        """
+        turmas = list(
+            TurmaAtribuidaDreUe.objects.using(self._DB)
+            .filter(
+                codigo_tipo_escola__in=_TIPOS_ESCOLA_SGP,
+                codigo_dre=codigo_dre,
+                ano_letivo=datetime.now(UTC).year,
+            )
+            .values(*_CAMPOS_TURMA_ATRIBUIDA)
+        )
+        turmas_por_codigo = _turmas_por_codigo(
+            self._DB, (t["codigo_turma"] for t in turmas)
+        )
+        return _agrupar_abrangencia_dre_ue(turmas, turmas_por_codigo)
+
+    def turmas_atribuidas_dre_ue_por_turmas(
+        self, codigos_turma: list[int]
+    ) -> dict:
+        """Abrangência SME vigente de uma lista de turmas (recorte de tipo
+        de escola).
+
+        Args:
+            codigos_turma: Códigos das turmas a consultar.
+
+        Returns:
+            Estrutura agrupada por DRE/UE/turma do ano letivo corrente;
+            ``dres`` vazio quando a lista é vazia ou nenhuma turma está no
+            recorte de tipo de escola.
+        """
+        if not codigos_turma:
+            return {"abrangencia": None, "dres": []}
+        turmas = list(
+            TurmaAtribuidaDreUe.objects.using(self._DB)
+            .filter(
+                codigo_turma__in=codigos_turma,
+                codigo_tipo_escola__in=_TIPOS_ESCOLA_SGP,
+                ano_letivo=datetime.now(UTC).year,
+            )
+            .values(*_CAMPOS_TURMA_ATRIBUIDA)
+        )
+        turmas_por_codigo = _turmas_por_codigo(
+            self._DB, (t["codigo_turma"] for t in turmas)
+        )
+        return _agrupar_abrangencia_dre_ue(turmas, turmas_por_codigo)
 
     def turmas_recorte_fund_medio_eja(self, codigos: list[int]) -> list[dict]:
         """Lista turmas no recorte de etapa (Fund/Médio/EJA).

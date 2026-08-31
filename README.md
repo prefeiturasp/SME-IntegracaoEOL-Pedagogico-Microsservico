@@ -125,6 +125,12 @@ curl -H "X-API-Key: dev-key-default" http://localhost:8001/api/componentes-curri
 
 ## Endpoints Implementados
 
+### Abrangência
+
+| Método | Path | Descrição |
+|--------|------|-----------|
+| GET | `/api/v1/pedagogico/abrangencia/ciclo-ensino/` | Lista o catálogo de ciclos de ensino |
+
 ### Turmas
 
 | ID | Método | Path | Descrição |

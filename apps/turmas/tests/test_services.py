@@ -37,14 +37,42 @@ class TestTurmasService(TestCase):
 
     def test_turmas_atribuidas_dre_ue(self) -> None:
         self.repo.turmas_atribuidas_dre_ue.return_value = [
-            {"codigo_turma": 3011229}
+            {"codigo_turma": 9000001}
         ]
 
         self.assertEqual(
-            self.service.turmas_atribuidas_dre_ue(["019362"]),
-            [{"codigo_turma": 3011229}],
+            self.service.turmas_atribuidas_dre_ue(["000001"]),
+            [{"codigo_turma": 9000001}],
         )
-        self.repo.turmas_atribuidas_dre_ue.assert_called_once_with(["019362"])
+        self.repo.turmas_atribuidas_dre_ue.assert_called_once_with(["000001"])
+
+    def test_turmas_atribuidas_dre_ue_por_dre(self) -> None:
+        self.repo.turmas_atribuidas_dre_ue_por_dre.return_value = {
+            "abrangencia": None,
+            "dres": [{"codigo": "100000"}],
+        }
+
+        self.assertEqual(
+            self.service.turmas_atribuidas_dre_ue_por_dre("100000"),
+            {"abrangencia": None, "dres": [{"codigo": "100000"}]},
+        )
+        self.repo.turmas_atribuidas_dre_ue_por_dre.assert_called_once_with(
+            "100000"
+        )
+
+    def test_turmas_atribuidas_dre_ue_por_turmas(self) -> None:
+        self.repo.turmas_atribuidas_dre_ue_por_turmas.return_value = {
+            "abrangencia": None,
+            "dres": [{"codigo": "100000"}],
+        }
+
+        self.assertEqual(
+            self.service.turmas_atribuidas_dre_ue_por_turmas([9000001]),
+            {"abrangencia": None, "dres": [{"codigo": "100000"}]},
+        )
+        self.repo.turmas_atribuidas_dre_ue_por_turmas.assert_called_once_with(
+            [9000001]
+        )
 
     def test_turmas_elegiveis(self) -> None:
         self.repo.turmas_elegiveis.return_value = [{"cod_turma": 3011229}]
