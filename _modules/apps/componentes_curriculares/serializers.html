@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>apps.componentes_curriculares.serializers &#8212; SME-IntegracaoEOL Pedagogico</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+    <script src="../../../_static/documentation_options.js?v=2346ddef"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/translations.js?v=71a39b36"></script>
+    <link rel="index" title="Índice" href="../../../genindex.html" />
+    <link rel="search" title="Buscar" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Código-fonte para apps.componentes_curriculares.serializers</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Serializers do domínio Componentes Curriculares."""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">rest_framework</span><span class="w"> </span><span class="kn">import</span> <span class="n">serializers</span>
+
+
+<div class="viewcode-block" id="ComponenteCurricularSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.componentes_curriculares.serializers.ComponenteCurricularSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponenteCurricularSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa dados completos de componente curricular."""</span>
+
+    <span class="n">codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">codigo_componente_territorio_saber</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">codigo_componente_curricular_pai</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>
+        <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">descricao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">()</span>
+    <span class="n">regencia</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">()</span>
+    <span class="n">planejamento_regencia</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">()</span>
+    <span class="n">territorio_saber</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">()</span>
+    <span class="n">turma_codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">tipo_escola</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">exibir_componente_eol</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">()</span>
+    <span class="n">professor</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">codigos_territorios_agrupamento</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">ListField</span><span class="p">(</span>
+        <span class="n">child</span><span class="o">=</span><span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="nb">list</span>
+    <span class="p">)</span>
+    <span class="n">atribuicao_ativa</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">inicio_atribuicao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span>
+        <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">)</span>
+    <span class="n">fim_atribuicao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ComponenteTurmaDisciplinaSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.componentes_curriculares.serializers.ComponenteTurmaDisciplinaSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponenteTurmaDisciplinaSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa dados de uma disciplina vinculada a uma turma."""</span>
+
+    <span class="n">turma_codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">()</span>
+    <span class="n">desc_territorio_saber</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">desc_experiencia_pedagogica</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">componente_codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">codigo_componente_territorio_saber</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>
+        <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="CodigosDisciplinasSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.componentes_curriculares.serializers.CodigosDisciplinasSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CodigosDisciplinasSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">ListSerializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Valida uma lista de códigos de disciplinas."""</span>
+
+    <span class="n">child</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ComponenteSimplificadoSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.componentes_curriculares.serializers.ComponenteSimplificadoSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponenteSimplificadoSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa dados simplificados de componente curricular."""</span>
+
+    <span class="n">codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">descricao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="ComponenteCurricularApiEolSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.componentes_curriculares.serializers.ComponenteCurricularApiEolSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponenteCurricularApiEolSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa dados de componente curricular da API EOL."""</span>
+
+    <span class="n">id_relacao_origem</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">id_componente_curricular</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">eh_regencia</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">()</span>
+    <span class="n">eh_territorio</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">()</span>
+    <span class="n">descricao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">id_componente_curricular_pai</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">vigencia</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ComponenteRegenciaSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.componentes_curriculares.serializers.ComponenteRegenciaSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponenteRegenciaSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa dados de componente de regência."""</span>
+
+    <span class="n">ano_turma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">ano_letivo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">codigo_componente_territorio_saber</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">descricao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">()</span>
+    <span class="n">territorio_saber</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">()</span>
+    <span class="n">tipo_escola</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">turno_turma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">componente_planejamento_regencia</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">()</span>
+    <span class="n">turma_codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">professor</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">inicio_atribuicao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">fim_atribuicao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="TurmaAtribuidaAnoSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.componentes_curriculares.serializers.TurmaAtribuidaAnoSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TurmaAtribuidaAnoSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa uma atribuição agrupada de Território do Saber."""</span>
+
+    <span class="n">codigo_turma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">ano_letivo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">nome_turma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">data_inicio_atribuicao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">()</span>
+    <span class="n">data_fim_atribuicao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">data_fim_turma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">ano_atribuicao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">codigo_rf</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">disciplina_id</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">()</span>
+    <span class="n">disciplina_nome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">()</span>
+    <span class="n">disciplinas_agrupadas_ids</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">ListField</span><span class="p">(</span>
+        <span class="n">child</span><span class="o">=</span><span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="p">)</span>
+    <span class="n">nome_professor</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="AtribuicaoTerritorioTurmaSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.componentes_curriculares.serializers.AtribuicaoTerritorioTurmaSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AtribuicaoTerritorioTurmaSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa uma atribuição de Território do Saber da turma."""</span>
+
+    <span class="n">cod_agrupamento</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">codigo_territorio_saber</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">codigo_experiencia_pedagogica</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">dt_inicio_atribuicao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">()</span>
+    <span class="n">ano_atribuicao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">dt_fim_atribuicao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">dt_fim_turma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">codigo_motivo_disponibilizacao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">rf_professor</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">codigo_turma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">ano_letivo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">codigos_componentes_curriculares</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">descricao_territorio_saber</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">descricao_experiencia_pedagogica</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">encerramento_atribuicao_via_atualizacao_componentes_agrupados</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">atribuicao_externa</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">()</span>
+    <span class="n">componentes_curriculares_agrupados</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">ListField</span><span class="p">(</span>
+        <span class="n">child</span><span class="o">=</span><span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="CodigosTurmasLoteSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.componentes_curriculares.serializers.CodigosTurmasLoteSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CodigosTurmasLoteSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">ListSerializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Valida uma lista de códigos de turmas."""</span>
+
+    <span class="n">child</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_blank</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="VigenciaComponenteSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.componentes_curriculares.serializers.VigenciaComponenteSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">VigenciaComponenteSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa dados de vigência de componente curricular."""</span>
+
+    <span class="n">componente_codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">()</span>
+    <span class="n">componente_descricao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">()</span>
+    <span class="n">turma_codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">()</span>
+    <span class="n">data_inicio_turma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="GradeCurricularSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.componentes_curriculares.serializers.GradeCurricularSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GradeCurricularSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa dados de grade curricular."""</span>
+
+    <span class="n">codigo_componente_curricular</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">descricao_componente_curricular</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">()</span>
+    <span class="n">codigo_ano_turma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">descricao_serie_ensino</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">codigo_serie_ensino</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">modalidade</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ListagemTurmaComponenteSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.componentes_curriculares.serializers.ListagemTurmaComponenteSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ListagemTurmaComponenteSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa um item da listagem turma×componente."""</span>
+
+    <span class="nb">id</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">registro_funcional</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">turma_codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">modalidade</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">nome_turma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">ano</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">complemento_turma_eja</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_blank</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">nome_componente_curricular</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">componente_curricular_codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">turno</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">territorio_saber</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">()</span>
+    <span class="n">componente_curricular_territorio_saber_codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">ano_letivo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">tipo_turma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">tipo_escola</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">situacao_turma_escola</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">data_status_turma_escola</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">codigo_escola</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">etapa_ensino</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">ciclo_ensino</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">serie_ensino</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">tipo_grade_programa</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">codigo_grade_programa</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">descricao_grade_programa</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">data_inicio_turma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">data_fim_turma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">data_atualizacao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">duracao_turno</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">ensino_especial</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">semestre</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">extinta</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ListagemTurmasComponentesPaginadoSerializer">
+<a class="viewcode-back" href="../../../api.html#apps.componentes_curriculares.serializers.ListagemTurmasComponentesPaginadoSerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ListagemTurmasComponentesPaginadoSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Serializa a resposta paginada da listagem turma×componente."""</span>
+
+    <span class="n">items</span> <span class="o">=</span> <span class="n">ListagemTurmaComponenteSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">total_registros</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">total_paginas</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">SME-IntegracaoEOL-Pedagogico-Microsservico</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Ir" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navegação</h3>
+<p class="caption" role="heading"><span class="caption-text">Dominios</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../dominios/pedagogico/index.html">Dominio Pedagogico</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Referencia de codigo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Referência de código</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Código do módulo</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

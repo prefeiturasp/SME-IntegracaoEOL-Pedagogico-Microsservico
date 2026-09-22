@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR" data-content_root="../../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>apps.componentes_curriculares.api.views &#8212; SME-IntegracaoEOL Pedagogico</title>
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
+    <script src="../../../../_static/documentation_options.js?v=2346ddef"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/translations.js?v=71a39b36"></script>
+    <link rel="index" title="Índice" href="../../../../genindex.html" />
+    <link rel="search" title="Buscar" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Código-fonte para apps.componentes_curriculares.api.views</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Views do domínio Componentes Curriculares."""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span><span class="p">,</span> <span class="n">datetime</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.utils.dateparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">parse_date</span><span class="p">,</span> <span class="n">parse_datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">drf_spectacular.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenApiTypes</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">drf_spectacular.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenApiParameter</span><span class="p">,</span> <span class="n">extend_schema</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">rest_framework.request</span><span class="w"> </span><span class="kn">import</span> <span class="n">Request</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">rest_framework.response</span><span class="w"> </span><span class="kn">import</span> <span class="n">Response</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">apps.componentes_curriculares.serializers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">AtribuicaoTerritorioTurmaSerializer</span><span class="p">,</span>
+    <span class="n">CodigosDisciplinasSerializer</span><span class="p">,</span>
+    <span class="n">CodigosTurmasLoteSerializer</span><span class="p">,</span>
+    <span class="n">ComponenteCurricularApiEolSerializer</span><span class="p">,</span>
+    <span class="n">ComponenteCurricularSerializer</span><span class="p">,</span>
+    <span class="n">ComponenteRegenciaSerializer</span><span class="p">,</span>
+    <span class="n">ComponenteSimplificadoSerializer</span><span class="p">,</span>
+    <span class="n">ComponenteTurmaDisciplinaSerializer</span><span class="p">,</span>
+    <span class="n">GradeCurricularSerializer</span><span class="p">,</span>
+    <span class="n">ListagemTurmasComponentesPaginadoSerializer</span><span class="p">,</span>
+    <span class="n">TurmaAtribuidaAnoSerializer</span><span class="p">,</span>
+    <span class="n">VigenciaComponenteSerializer</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">apps.componentes_curriculares.services</span><span class="w"> </span><span class="kn">import</span> <span class="n">ComponentesService</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">apps.core.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseAPIView</span>
+
+<span class="n">_TAG</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"ComponentesCurriculares"</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="DisciplinasPorTurmaView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.DisciplinasPorTurmaView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DisciplinasPorTurmaView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Lista disciplinas selecionadas vinculadas a uma turma."""</span>
+
+<div class="viewcode-block" id="DisciplinasPorTurmaView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.DisciplinasPorTurmaView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"codigos_componentes"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">INT</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="p">(</span>
+                    <span class="s2">"Código da disciplina. Repita o parâmetro para "</span>
+                    <span class="s2">"consultar mais de uma disciplina."</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
+        <span class="p">],</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">ComponenteTurmaDisciplinaSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Lista disciplinas selecionadas vinculadas à turma."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"disciplinas_por_turma"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">codigo_turma</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Lista disciplinas selecionadas vinculadas a uma turma.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request: Requisição HTTP com os códigos das disciplinas.</span>
+<span class="sd">            codigo_turma: Código da turma consultada.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dados das disciplinas encontradas na turma.</span>
+<span class="sd">        """</span>
+        <span class="n">codigos</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span>
+            <span class="s2">"codigos_componentes"</span>
+        <span class="p">)</span> <span class="ow">or</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span><span class="s2">"codigosComponentes"</span><span class="p">)</span>
+        <span class="n">serializer</span> <span class="o">=</span> <span class="n">CodigosDisciplinasSerializer</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">codigos</span><span class="p">,</span>
+            <span class="n">allow_empty</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">serializer</span><span class="o">.</span><span class="n">is_valid</span><span class="p">(</span><span class="n">raise_exception</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span><span class="o">.</span><span class="n">listar_disciplinas_por_turma</span><span class="p">(</span>
+            <span class="n">codigo_turma</span><span class="p">,</span>
+            <span class="n">serializer</span><span class="o">.</span><span class="n">validated_data</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="AtribuicoesTerritorioTurmaView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.AtribuicoesTerritorioTurmaView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AtribuicoesTerritorioTurmaView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Lista todas as atribuições de Território do Saber da turma."""</span>
+
+<div class="viewcode-block" id="AtribuicoesTerritorioTurmaView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.AtribuicoesTerritorioTurmaView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">AtribuicaoTerritorioTurmaSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Lista todas as atribuições agrupadas de Território do "</span>
+            <span class="s2">"Saber da turma, sem filtro de ano letivo ou vigência. O "</span>
+            <span class="s2">"campo atribuicao_externa é retornado como falso."</span>
+        <span class="p">),</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"atribuicoes_territorio_turma"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">codigo_turma</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Retorna todas as atribuições da turma.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            codigo_turma: Código da turma consultada.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Atribuições agrupadas de Território do Saber.</span>
+<span class="sd">        """</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_atribuicoes_territorio_por_turma</span><span class="p">(</span><span class="n">codigo_turma</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="AtribuicoesTerritorioTurmasLoteView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.AtribuicoesTerritorioTurmasLoteView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AtribuicoesTerritorioTurmasLoteView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Lista atribuições de Território do Saber de várias turmas."""</span>
+
+<div class="viewcode-block" id="AtribuicoesTerritorioTurmasLoteView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.AtribuicoesTerritorioTurmasLoteView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"codigo_turma"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">STR</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="p">(</span>
+                    <span class="s2">"Código de turma. Repita o parâmetro para consultar "</span>
+                    <span class="s2">"mais de uma turma."</span>
+                <span class="p">),</span>
+                <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">],</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">AtribuicaoTerritorioTurmaSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Lista todas as atribuições agrupadas de Território do Saber "</span>
+            <span class="s2">"das turmas informadas, sem filtro de ano letivo ou vigência."</span>
+        <span class="p">),</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"atribuicoes_territorio_turmas_lote"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Retorna todas as atribuições das turmas informadas.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request: Requisição HTTP com os códigos de turmas.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Atribuições agrupadas de Território do Saber.</span>
+<span class="sd">        """</span>
+        <span class="n">serializer</span> <span class="o">=</span> <span class="n">CodigosTurmasLoteSerializer</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span><span class="s2">"codigo_turma"</span><span class="p">),</span>
+            <span class="n">allow_empty</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">serializer</span><span class="o">.</span><span class="n">is_valid</span><span class="p">(</span><span class="n">raise_exception</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span><span class="o">.</span><span class="n">listar_atribuicoes_territorio_por_turmas</span><span class="p">(</span>
+            <span class="n">serializer</span><span class="o">.</span><span class="n">validated_data</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="AtribuicoesTerritorioProfessorView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.AtribuicoesTerritorioProfessorView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AtribuicoesTerritorioProfessorView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Lista atribuições de Território do Saber do professor."""</span>
+
+<div class="viewcode-block" id="AtribuicoesTerritorioProfessorView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.AtribuicoesTerritorioProfessorView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">TurmaAtribuidaAnoSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Lista todas as atribuições agrupadas de Território do "</span>
+            <span class="s2">"Saber do professor, sem restringir o ano letivo. O nome do "</span>
+            <span class="s2">"professor não está materializado e é retornado como nulo."</span>
+        <span class="p">),</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"atribuicoes_territorio_professor"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">codigo_rf</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Retorna todas as atribuições do professor.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            codigo_rf: Registro funcional do professor.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Atribuições agrupadas de Território do Saber.</span>
+<span class="sd">        """</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_atribuicoes_territorio_por_professor</span><span class="p">(</span><span class="n">codigo_rf</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="AtribuicoesTerritorioProfessorAnoView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.AtribuicoesTerritorioProfessorAnoView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AtribuicoesTerritorioProfessorAnoView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Lista atribuições de Território do Saber do professor."""</span>
+
+<div class="viewcode-block" id="AtribuicoesTerritorioProfessorAnoView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.AtribuicoesTerritorioProfessorAnoView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">TurmaAtribuidaAnoSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Lista atribuições agrupadas de Território do Saber por "</span>
+            <span class="s2">"professor e ano letivo. O nome do professor não está "</span>
+            <span class="s2">"materializado e é retornado como nulo."</span>
+        <span class="p">),</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"atribuicoes_territorio_professor_ano"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">_request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+        <span class="n">codigo_rf</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">ano_letivo</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Retorna as atribuições do professor no ano letivo.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            codigo_rf: Registro funcional do professor.</span>
+<span class="sd">            ano_letivo: Ano letivo consultado.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Atribuições agrupadas de Território do Saber.</span>
+<span class="sd">        """</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_atribuicoes_territorio_por_professor_ano</span><span class="p">(</span>
+            <span class="n">codigo_rf</span><span class="p">,</span>
+            <span class="n">ano_letivo</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_query_bool</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="o">*</span><span class="n">nomes</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Lê um booleano de query params aceitando snake_case e camelCase.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        request: Requisição HTTP.</span>
+<span class="sd">        nomes: Nomes de parâmetro aceitos, em ordem de precedência.</span>
+<span class="sd">        default: Valor usado quando nenhum parâmetro está presente.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Valor booleano interpretado do parâmetro.</span>
+<span class="sd">    """</span>
+    <span class="k">for</span> <span class="n">nome</span> <span class="ow">in</span> <span class="n">nomes</span><span class="p">:</span>
+        <span class="n">valor</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">nome</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">valor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">valor</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"true"</span>
+    <span class="k">return</span> <span class="n">default</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_query_int</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="o">*</span><span class="n">nomes</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Lê um inteiro de query params aceitando snake_case e camelCase.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        request: Requisição HTTP.</span>
+<span class="sd">        nomes: Nomes de parâmetro aceitos, em ordem de precedência.</span>
+<span class="sd">        default: Valor usado quando ausente ou inválido.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Valor inteiro interpretado do parâmetro.</span>
+<span class="sd">    """</span>
+    <span class="k">for</span> <span class="n">nome</span> <span class="ow">in</span> <span class="n">nomes</span><span class="p">:</span>
+        <span class="n">valor</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">nome</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">valor</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">valor</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">default</span>
+    <span class="k">return</span> <span class="n">default</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_query_datetime</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="o">*</span><span class="n">nomes</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Lê uma data/hora ISO de query params (snake_case e camelCase).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        request: Requisição HTTP.</span>
+<span class="sd">        nomes: Nomes de parâmetro aceitos, em ordem de precedência.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Data/hora interpretada ou None quando ausente/ inválida.</span>
+<span class="sd">    """</span>
+    <span class="k">for</span> <span class="n">nome</span> <span class="ow">in</span> <span class="n">nomes</span><span class="p">:</span>
+        <span class="n">valor</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">nome</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">valor</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">analisado</span> <span class="o">=</span> <span class="n">parse_datetime</span><span class="p">(</span><span class="n">valor</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">analisado</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">analisado</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">parse_date</span><span class="p">(</span><span class="n">valor</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">datetime</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">year</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">month</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">day</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="ComponentesPorFuncionarioView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesPorFuncionarioView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponentesPorFuncionarioView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Lista componentes curriculares do funcionário."""</span>
+
+<div class="viewcode-block" id="ComponentesPorFuncionarioView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesPorFuncionarioView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"id_perfil"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">UUID</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Perfil do usuário (GUID)"</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"codigo_turma"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">STR</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Filtra componentes pela turma"</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"agrupa_componente_curricular"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">BOOL</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Agrupa componentes por pai"</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"checa_motivo_disponibilizacao"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">BOOL</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Verifica motivo de disponibilização"</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"considera_turma_infantil"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">BOOL</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Aplica regras de educação infantil"</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"planejamento"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">BOOL</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Substitui regência pelos filhos de planejamento"</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">],</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">ComponenteCurricularSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Lista componentes curriculares do funcionário."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"componentes_funcionario"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">login</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Lista componentes curriculares do funcionário.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request: Requisição HTTP.</span>
+<span class="sd">            login: Login (RF) do funcionário.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta com componentes curriculares do funcionário.</span>
+<span class="sd">        """</span>
+        <span class="n">codigo_turma</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">"codigo_turma"</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"codigoTurma"</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">planejamento</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"planejamento"</span><span class="p">,</span> <span class="s2">"false"</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"true"</span>
+        <span class="p">)</span>
+        <span class="n">agrupamento</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">"agrupa_componente_curricular"</span><span class="p">,</span>
+                <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                    <span class="s2">"agrupaComponenteCurricular"</span><span class="p">,</span> <span class="s2">"false"</span>
+                <span class="p">),</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="o">==</span> <span class="s2">"true"</span>
+        <span class="p">)</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_componentes_por_funcionario</span><span class="p">(</span>
+            <span class="n">login</span><span class="p">,</span>
+            <span class="n">codigo_turma</span><span class="o">=</span><span class="n">codigo_turma</span><span class="p">,</span>
+            <span class="n">planejamento</span><span class="o">=</span><span class="n">planejamento</span><span class="p">,</span>
+            <span class="n">agrupamento</span><span class="o">=</span><span class="n">agrupamento</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ComponentesRegenciaView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesRegenciaView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponentesRegenciaView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Lista componentes curriculares de regência por ano de turma."""</span>
+
+<div class="viewcode-block" id="ComponentesRegenciaView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesRegenciaView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">ComponenteRegenciaSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Lista componentes de regência por ano de turma."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"componentes_regencia"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">ano_turma</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Lista componentes curriculares de regência.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            _request: Requisição HTTP.</span>
+<span class="sd">            ano_turma: Ano escolar da turma.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta com componentes de regência.</span>
+<span class="sd">        """</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_regencia_por_ano_turma</span><span class="p">(</span><span class="n">ano_turma</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ValidarPapView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ValidarPapView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ValidarPapView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Verifica se a turma possui componente curricular PAP."""</span>
+
+<div class="viewcode-block" id="ValidarPapView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ValidarPapView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"login"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">STR</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Login (RF) do funcionário"</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"id_perfil"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">STR</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Identificador do perfil"</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">],</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="kc">None</span><span class="p">},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Verifica se a turma possui componente PAP."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"validar_pap"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">codigo_turma</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Verifica se a turma possui componente PAP.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request: Requisição HTTP.</span>
+<span class="sd">            codigo_turma: Código da turma.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta booleana indicando presença de componente PAP.</span>
+<span class="sd">        """</span>
+        <span class="n">login</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"login"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">resultado</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">turma_possui_componente_pap</span><span class="p">(</span><span class="n">codigo_turma</span><span class="p">,</span> <span class="n">login</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">resultado</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ComponentesPorUeAnosEscolaresView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesPorUeAnosEscolaresView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponentesPorUeAnosEscolaresView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Lista componentes curriculares por UE, modalidade e anos escolares."""</span>
+
+<div class="viewcode-block" id="ComponentesPorUeAnosEscolaresView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesPorUeAnosEscolaresView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"anos_escolares"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">STR</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Lista de anos escolares"</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">],</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">ComponenteCurricularSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Lista componentes da grade por UE, modalidade e séries."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"componentes_ue_anos_escolares"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+        <span class="n">ue_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">modalidade</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">ano_letivo</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Lista componentes por UE, modalidade e anos escolares.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request: Requisição HTTP.</span>
+<span class="sd">            ue_id: Código da unidade educacional.</span>
+<span class="sd">            modalidade: Código da modalidade.</span>
+<span class="sd">            ano_letivo: Ano letivo consultado.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta com componentes curriculares encontrados.</span>
+<span class="sd">        """</span>
+        <span class="n">anos_escolares</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span>
+            <span class="s2">"anos_escolares"</span>
+        <span class="p">)</span> <span class="ow">or</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span><span class="s2">"anosEscolares"</span><span class="p">)</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_por_ue_modalidade_ano_e_anos_escolares</span><span class="p">(</span>
+            <span class="n">ue_id</span><span class="p">,</span> <span class="n">modalidade</span><span class="p">,</span> <span class="n">ano_letivo</span><span class="p">,</span> <span class="n">anos_escolares</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ComponentesTurmaProgramaView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesTurmaProgramaView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponentesTurmaProgramaView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Lista componentes curriculares de turmas programa."""</span>
+
+<div class="viewcode-block" id="ComponentesTurmaProgramaView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesTurmaProgramaView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">ComponenteCurricularSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Lista componentes de turmas programa."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"componentes_turma_programa"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">_request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+        <span class="n">ue_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">modalidade</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">ano_letivo</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Lista componentes de turmas programa.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            _request: Requisição HTTP.</span>
+<span class="sd">            ue_id: Código da unidade educacional.</span>
+<span class="sd">            modalidade: Código da modalidade.</span>
+<span class="sd">            ano_letivo: Ano letivo consultado.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta com componentes de turmas programa.</span>
+<span class="sd">        """</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_turma_programa_por_ue_modalidade_ano</span><span class="p">(</span>
+            <span class="n">ue_id</span><span class="p">,</span> <span class="n">modalidade</span><span class="p">,</span> <span class="n">ano_letivo</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ListagemTurmasComponentesView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ListagemTurmasComponentesView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ListagemTurmasComponentesView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Lista turmas e componentes por UE, modalidade e ano letivo."""</span>
+
+<div class="viewcode-block" id="ListagemTurmasComponentesView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ListagemTurmasComponentesView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"codigo_turma"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">INT</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Filtra por uma turma específica"</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"qtde_registros"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">INT</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Tamanho da página (usado no total de páginas)"</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"qtde_registros_ignorados"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">INT</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="p">(</span>
+                    <span class="s2">"Número de registros a ignorar "</span>
+                    <span class="s2">"(usado no total de páginas)"</span>
+                <span class="p">),</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"eh_professor"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">BOOL</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Restringe os componentes ao RF informado"</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"codigo_rf"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">STR</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"RF do professor usado no filtro e no território"</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"considera_historico"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">BOOL</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Inclui turmas históricas (situação C/E)"</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"periodo_escolar_inicio"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">DATETIME</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Início do período escolar (turmas extintas)"</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"anos_infantil_desconsiderar"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">STR</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Anos de turma removidos do retorno"</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">],</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">ListagemTurmasComponentesPaginadoSerializer</span><span class="p">},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Lista turmas e componentes por UE, modalidade e ano."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"listagem_turmas_componentes"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+        <span class="n">ue_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">modalidade</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">ano_letivo</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Lista turmas e componentes por UE, modalidade e ano letivo.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request: Requisição HTTP.</span>
+<span class="sd">            ue_id: Código da unidade educacional.</span>
+<span class="sd">            modalidade: Código da modalidade de ensino.</span>
+<span class="sd">            ano_letivo: Ano letivo consultado.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta paginada com os componentes das turmas encontradas.</span>
+<span class="sd">        """</span>
+        <span class="n">eh_professor</span> <span class="o">=</span> <span class="n">_query_bool</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s2">"eh_professor"</span><span class="p">,</span> <span class="s2">"ehProfessor"</span><span class="p">)</span>
+        <span class="n">codigo_rf</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">"codigo_rf"</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"codigoRf"</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">anos_infantil</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span>
+            <span class="s2">"anos_infantil_desconsiderar"</span>
+        <span class="p">)</span> <span class="ow">or</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span><span class="s2">"anosInfantilDesconsiderar"</span><span class="p">)</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_turmas_componentes_por_ue_modalidade_ano</span><span class="p">(</span>
+            <span class="n">ue_id</span><span class="p">,</span>
+            <span class="n">modalidade</span><span class="p">,</span>
+            <span class="n">ano_letivo</span><span class="p">,</span>
+            <span class="n">codigo_turma</span><span class="o">=</span><span class="n">_query_int</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s2">"codigo_turma"</span><span class="p">,</span> <span class="s2">"codigoTurma"</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">qtde_registros</span><span class="o">=</span><span class="n">_query_int</span><span class="p">(</span>
+                <span class="n">request</span><span class="p">,</span> <span class="s2">"qtde_registros"</span><span class="p">,</span> <span class="s2">"qtdeRegistros"</span>
+            <span class="p">),</span>
+            <span class="n">eh_professor</span><span class="o">=</span><span class="n">eh_professor</span><span class="p">,</span>
+            <span class="n">codigo_rf</span><span class="o">=</span><span class="n">codigo_rf</span> <span class="k">if</span> <span class="n">eh_professor</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">considera_historico</span><span class="o">=</span><span class="n">_query_bool</span><span class="p">(</span>
+                <span class="n">request</span><span class="p">,</span> <span class="s2">"considera_historico"</span><span class="p">,</span> <span class="s2">"consideraHistorico"</span>
+            <span class="p">),</span>
+            <span class="n">periodo_escolar_inicio</span><span class="o">=</span><span class="n">_query_datetime</span><span class="p">(</span>
+                <span class="n">request</span><span class="p">,</span> <span class="s2">"periodo_escolar_inicio"</span><span class="p">,</span> <span class="s2">"periodoEscolarInicio"</span>
+            <span class="p">),</span>
+            <span class="n">anos_infantil_desconsiderar</span><span class="o">=</span><span class="n">anos_infantil</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ComponentesPorUeTurmasView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesPorUeTurmasView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponentesPorUeTurmasView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Lista componentes curriculares por UE e turmas."""</span>
+
+<div class="viewcode-block" id="ComponentesPorUeTurmasView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesPorUeTurmasView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"turmas"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">STR</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Lista de códigos de turmas"</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">],</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">ComponenteSimplificadoSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Lista componentes simplificados por UE e turmas."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"componentes_ue_turmas"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">ue_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Lista componentes simplificados por UE e turmas.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request: Requisição HTTP.</span>
+<span class="sd">            ue_id: Código da unidade educacional.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta com componentes simplificados.</span>
+<span class="sd">        """</span>
+        <span class="n">turmas</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span><span class="s2">"turmas"</span><span class="p">)</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_por_ue_e_turmas</span><span class="p">(</span><span class="n">ue_id</span><span class="p">,</span> <span class="n">turmas</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ComponentesPorListaTurmasView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesPorListaTurmasView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponentesPorListaTurmasView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Lista componentes curriculares para planejamento por lista de turmas."""</span>
+
+<div class="viewcode-block" id="ComponentesPorListaTurmasView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesPorListaTurmasView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"codigo_turmas"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">STR</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Lista de códigos de turmas"</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"adicionar_componentes_planejamento"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">BOOL</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Inclui componentes de planejamento"</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"incluir_extintas"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">BOOL</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Inclui turmas extintas no resultado"</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">],</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">ComponenteCurricularSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Lista componentes de múltiplas turmas para planejamento."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"componentes_lista_turmas"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Lista componentes para planejamento por lista de turmas.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request: Requisição HTTP.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta com componentes das turmas informadas.</span>
+<span class="sd">        """</span>
+        <span class="n">codigos_turmas</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span>
+            <span class="s2">"codigo_turmas"</span>
+        <span class="p">)</span> <span class="ow">or</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span><span class="s2">"codigoTurmas"</span><span class="p">)</span>
+
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">adicionar_componentes_planejamento</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">"adicionar_componentes_planejamento"</span><span class="p">,</span>
+                <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                    <span class="s2">"adicionarComponentesPlanejamento"</span><span class="p">,</span> <span class="s2">"true"</span>
+                <span class="p">),</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="o">==</span> <span class="s2">"true"</span>
+        <span class="p">)</span>
+        <span class="n">incluir_extintas</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">"incluir_extintas"</span><span class="p">,</span>
+                <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"incluirExtintas"</span><span class="p">,</span> <span class="s2">"false"</span><span class="p">),</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="o">==</span> <span class="s2">"true"</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">incluir_extintas</span><span class="p">:</span>
+            <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_por_lista_turmas_incluindo_extintas</span><span class="p">(</span>
+                <span class="n">codigos_turmas</span><span class="p">,</span>
+                <span class="n">adicionar_componentes_planejamento</span><span class="o">=</span><span class="p">(</span>
+                    <span class="n">adicionar_componentes_planejamento</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_por_lista_turmas</span><span class="p">(</span>
+                <span class="n">codigos_turmas</span><span class="p">,</span>
+                <span class="n">adicionar_componentes_planejamento</span><span class="o">=</span><span class="p">(</span>
+                    <span class="n">adicionar_componentes_planejamento</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ComponentesTurmasBrutosView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesTurmasBrutosView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponentesTurmasBrutosView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Lista componentes curriculares sem pós-processamento."""</span>
+
+<div class="viewcode-block" id="ComponentesTurmasBrutosView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesTurmasBrutosView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"codigo_turmas"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">STR</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Lista de códigos de turmas"</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">],</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">ComponenteCurricularSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Lista componentes de turmas sem pós-processamento."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"componentes_turmas_brutos"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Lista componentes de turmas sem pós-processamento.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request: Requisição HTTP.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta com componentes brutos das turmas.</span>
+<span class="sd">        """</span>
+        <span class="n">codigos</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span>
+            <span class="s2">"codigo_turmas"</span>
+        <span class="p">)</span> <span class="ow">or</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span><span class="s2">"codigoTurmas"</span><span class="p">)</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_turmas_brutos</span><span class="p">(</span><span class="n">codigos</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ComponentesCatalogoView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesCatalogoView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponentesCatalogoView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Lista o catálogo de componentes curriculares."""</span>
+
+<div class="viewcode-block" id="ComponentesCatalogoView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesCatalogoView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">ComponenteSimplificadoSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Lista todos os componentes curriculares."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"catalogo_componentes"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Lista o catálogo completo de componentes.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            _request: Requisição HTTP.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta com catálogo de componentes curriculares.</span>
+<span class="sd">        """</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_catalogo</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ComponentesApiEolView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesApiEolView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponentesApiEolView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Lista componentes curriculares disponibilizados pela API EOL."""</span>
+
+<div class="viewcode-block" id="ComponentesApiEolView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesApiEolView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span>
+            <span class="mi">200</span><span class="p">:</span> <span class="n">ComponenteCurricularApiEolSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+        <span class="p">},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Lista os componentes curriculares da API EOL."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"componentes_api_eol"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Lista componentes curriculares da API EOL.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            _request: Requisição HTTP.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta com componentes curriculares da API EOL.</span>
+<span class="sd">        """</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_componentes_api_eol</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="VigenciaComponentesView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.VigenciaComponentesView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">VigenciaComponentesView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Retorna vigência de componentes curriculares por turma e UE."""</span>
+
+<div class="viewcode-block" id="VigenciaComponentesView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.VigenciaComponentesView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"ue_codigo"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">STR</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Código da Unidade Educacional"</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"ano_letivo"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">INT</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Ano letivo"</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"componentes_curriculares"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">STR</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Lista de códigos dos componentes curriculares"</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"semestre"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">INT</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Semestre (1 ou 2)"</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">],</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">VigenciaComponenteSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Retorna vigência de componentes por turma e UE."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"vigencia_componentes"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Lista vigência de componentes por turma e UE.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request: Requisição HTTP.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta com vigências de componentes.</span>
+<span class="sd">        """</span>
+        <span class="n">ue_codigo</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">"ue_codigo"</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ueCodigo"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">ano_letivo</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+            <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">"ano_letivo"</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"anoLetivo"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">componentes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span>
+            <span class="s2">"componentes_curriculares"</span>
+        <span class="p">)</span> <span class="ow">or</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span><span class="s2">"componentesCurriculares"</span><span class="p">)</span>
+        <span class="n">semestre_raw</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"semestre"</span><span class="p">)</span>
+        <span class="n">semestre</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">semestre_raw</span><span class="p">)</span> <span class="k">if</span> <span class="n">semestre_raw</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_vigencia_componentes</span><span class="p">(</span>
+            <span class="n">ue_codigo</span><span class="p">,</span> <span class="n">ano_letivo</span><span class="p">,</span> <span class="n">componentes</span><span class="p">,</span> <span class="n">semestre</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="GradeCurricularView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.GradeCurricularView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GradeCurricularView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Lista a grade curricular por ano letivo."""</span>
+
+<div class="viewcode-block" id="GradeCurricularView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.GradeCurricularView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">GradeCurricularSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Lista grade curricular completa por ano letivo."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"grade_curricular"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">ano_letivo</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Lista grade curricular por ano letivo.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            _request: Requisição HTTP.</span>
+<span class="sd">            ano_letivo: Ano letivo consultado.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta com grade curricular do ano letivo.</span>
+<span class="sd">        """</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_grade_curricular</span><span class="p">(</span><span class="n">ano_letivo</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ComponentesSemAtribuicaoView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesSemAtribuicaoView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponentesSemAtribuicaoView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Lista componentes sem atribuição em uma turma."""</span>
+
+<div class="viewcode-block" id="ComponentesSemAtribuicaoView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponentesSemAtribuicaoView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"data_base"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">DATE</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Data de referência ISO 8601 (yyyy-MM-dd)"</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">],</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">ComponenteSimplificadoSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Lista componentes sem professor atribuído."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"componentes_sem_atribuicao"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">codigo_turma</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Lista componentes sem professor atribuído.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request: Requisição HTTP.</span>
+<span class="sd">            codigo_turma: Código da turma.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta com códigos dos componentes sem atribuição.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: Quando `data_base` não estiver em formato ISO.</span>
+<span class="sd">        """</span>
+        <span class="n">data_base</span> <span class="o">=</span> <span class="n">date</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="p">[</span><span class="s2">"data_base"</span><span class="p">])</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_componentes_sem_atribuicao</span><span class="p">(</span>
+            <span class="n">codigo_turma</span><span class="p">,</span>
+            <span class="n">data_base</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="AgrupamentosCorrelacionadosView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.AgrupamentosCorrelacionadosView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AgrupamentosCorrelacionadosView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Retorna agrupamentos correlacionados por componente."""</span>
+
+<div class="viewcode-block" id="AgrupamentosCorrelacionadosView.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.AgrupamentosCorrelacionadosView.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"data_base"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">DATE</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Data de referência ISO 8601 (yyyy-MM-dd)"</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">],</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">ComponenteCurricularSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Retorna agrupamentos correlacionados por componente."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"agrupamentos_correlacionados"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+        <span class="n">codigo_componente</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Retorna agrupamentos correlacionados por componente.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request: Requisição HTTP.</span>
+<span class="sd">            codigo_componente: Código do agrupamento ou componente de origem.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta com agrupamentos correlacionados.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: Quando `data_base` não estiver em formato ISO.</span>
+<span class="sd">        """</span>
+        <span class="n">data_base_raw</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">"data_base"</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"dataBase"</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">data_base</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">data_base_raw</span><span class="p">:</span>
+            <span class="n">data_base</span> <span class="o">=</span> <span class="n">date</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">data_base_raw</span><span class="p">)</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_agrupamentos_correlacionados</span><span class="p">(</span>
+            <span class="n">codigo_componente</span><span class="p">,</span> <span class="n">data_base</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="AgrupamentosCorrelacionadosLoteView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.AgrupamentosCorrelacionadosLoteView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AgrupamentosCorrelacionadosLoteView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Retorna agrupamentos correlacionados em lote."""</span>
+
+<div class="viewcode-block" id="AgrupamentosCorrelacionadosLoteView.post">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.AgrupamentosCorrelacionadosLoteView.post">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">OpenApiParameter</span><span class="p">(</span>
+                <span class="s2">"data_base"</span><span class="p">,</span>
+                <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">DATE</span><span class="p">,</span>
+                <span class="n">OpenApiParameter</span><span class="o">.</span><span class="n">QUERY</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Data de referência ISO 8601 (yyyy-MM-dd)"</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">],</span>
+        <span class="n">request</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">"application/json"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"array"</span><span class="p">,</span>
+                <span class="s2">"items"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">ComponenteCurricularSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Retorna agrupamentos correlacionados em lote."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"agrupamentos_correlacionados_lote"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">post</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Retorna agrupamentos correlacionados em lote.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request: Requisição HTTP com lista de códigos no corpo.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta com agrupamentos correlacionados sem duplicatas.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: Quando `data_base` não estiver em formato ISO.</span>
+<span class="sd">        """</span>
+        <span class="n">codigos</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">data</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">codigos</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">Response</span><span class="p">(</span>
+                <span class="p">{</span><span class="s2">"detail"</span><span class="p">:</span> <span class="s2">"O corpo deve ser uma lista de inteiros."</span><span class="p">},</span>
+                <span class="n">status</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="n">data_base_raw</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="s2">"data_base"</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"dataBase"</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">data_base</span><span class="p">:</span> <span class="n">date</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">data_base_raw</span><span class="p">:</span>
+            <span class="n">data_base</span> <span class="o">=</span> <span class="n">date</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">data_base_raw</span><span class="p">)</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_agrupamentos_correlacionados_lote</span><span class="p">(</span>
+            <span class="n">codigos</span><span class="p">,</span> <span class="n">data_base</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="AgrupamentosTerritorioLoteView">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.AgrupamentosTerritorioLoteView">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AgrupamentosTerritorioLoteView</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Retorna agrupamentos de território do saber por IDs."""</span>
+
+<div class="viewcode-block" id="AgrupamentosTerritorioLoteView.post">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.AgrupamentosTerritorioLoteView.post">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">request</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">"application/json"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"array"</span><span class="p">,</span>
+                <span class="s2">"items"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"integer"</span><span class="p">},</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">ComponenteCurricularSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Retorna agrupamentos de Território do Saber por IDs."</span><span class="p">,</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"agrupamentos_territorio"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">post</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Retorna agrupamentos de território do saber por IDs.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request: Requisição HTTP com lista de IDs no corpo.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta com agrupamentos de território do saber.</span>
+<span class="sd">        """</span>
+        <span class="n">ids</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">data</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ids</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">Response</span><span class="p">(</span>
+                <span class="p">{</span><span class="s2">"detail"</span><span class="p">:</span> <span class="s2">"O corpo deve ser uma lista de inteiros."</span><span class="p">},</span>
+                <span class="n">status</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_agrupamentos_territorio</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">dados</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ComponenteCurricularTurmaProfessorValidarAtribuicaoData">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponenteCurricularTurmaProfessorValidarAtribuicaoData">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ComponenteCurricularTurmaProfessorValidarAtribuicaoData</span><span class="p">(</span><span class="n">BaseAPIView</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Validar territorio saber esta atribuido professor na data."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validar_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Valida uma data no formato YYYY-MM-DD.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data_str: Data em formato de string (YYYY-MM-DD).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``True`` se a data for válida. Caso contrário, retorna ``False``.</span>
+<span class="sd">        """</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">data_str</span><span class="p">,</span> <span class="s2">"%Y-%m-</span><span class="si">%d</span><span class="s2">"</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="ComponenteCurricularTurmaProfessorValidarAtribuicaoData.get">
+<a class="viewcode-back" href="../../../../api.html#apps.componentes_curriculares.api.views.ComponenteCurricularTurmaProfessorValidarAtribuicaoData.get">[documentos]</a>
+    <span class="nd">@extend_schema</span><span class="p">(</span>
+        <span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">200</span><span class="p">:</span> <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">BOOL</span><span class="p">,</span> <span class="mi">400</span><span class="p">:</span> <span class="n">OpenApiTypes</span><span class="o">.</span><span class="n">STR</span><span class="p">},</span>
+        <span class="n">description</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Valida se o território do saber está atribuído ao"</span>
+            <span class="s2">"professor na data."</span>
+        <span class="p">),</span>
+        <span class="n">tags</span><span class="o">=</span><span class="n">_TAG</span><span class="p">,</span>
+        <span class="n">operation_id</span><span class="o">=</span><span class="s2">"validar_atribuicao_territorio_saber_professor"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+        <span class="n">codigo_componente</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">codigo_turma</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">codigo_rf</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Validar territorio saber esta atribuido professor na data.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request: Requisição HTTP.</span>
+<span class="sd">            codigo_componente: Código do componente curricular.</span>
+<span class="sd">            codigo_turma: Código da turma.</span>
+<span class="sd">            codigo_rf: Código do professor (RF).</span>
+<span class="sd">            data: Data de referência no formato ISO 8601 (yyyy-MM-dd).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Resposta se o território está atribuído ao professor na data.</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validar_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="s2">"Deve ser informada uma data valida."</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="mi">400</span><span class="p">)</span>
+
+        <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
+        <span class="n">resultado</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">validar_atribuicao_territorio_saber_professor</span><span class="p">(</span>
+            <span class="n">codigo_componente</span><span class="p">,</span> <span class="n">codigo_turma</span><span class="p">,</span> <span class="n">codigo_rf</span><span class="p">,</span> <span class="n">data</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">resultado</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../../index.html">SME-IntegracaoEOL-Pedagogico-Microsservico</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Ir" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navegação</h3>
+<p class="caption" role="heading"><span class="caption-text">Dominios</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dominios/pedagogico/index.html">Dominio Pedagogico</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Referencia de codigo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api.html">Referência de código</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Código do módulo</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

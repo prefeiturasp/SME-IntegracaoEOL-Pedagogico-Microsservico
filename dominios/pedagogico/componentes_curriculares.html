@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Componentes curriculares &#8212; SME-IntegracaoEOL Pedagogico</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
+    <script src="../../_static/documentation_options.js?v=2346ddef"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/translations.js?v=71a39b36"></script>
+    <link rel="index" title="Índice" href="../../genindex.html" />
+    <link rel="search" title="Buscar" href="../../search.html" />
+    <link rel="next" title="Referência de código" href="../../api.html" />
+    <link rel="prev" title="Dominio Pedagogico" href="index.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="componentes-curriculares">
+<h1>Componentes curriculares<a class="headerlink" href="#componentes-curriculares" title="Link para este cabeçalho">¶</a></h1>
+<section id="objetivo">
+<h2>Objetivo<a class="headerlink" href="#objetivo" title="Link para este cabeçalho">¶</a></h2>
+<p>O dominio de componentes curriculares atende consultas usadas pelo Transition
+Gateway para preservar o contrato do legado pedagogico. O MS le dados
+materializados pelo ETL e aplica regras de compatibilidade quando o contrato
+externo exige uma forma especifica de resposta.</p>
+</section>
+<section id="capacidades-atendidas">
+<h2>Capacidades atendidas<a class="headerlink" href="#capacidades-atendidas" title="Link para este cabeçalho">¶</a></h2>
+<p>O dominio responde consultas de catalogo de componentes, grade curricular,
+componentes por turma, componentes por funcionario, componentes de programas e
+agrupamentos de Territorio do Saber. O Transition Gateway mantem o formato
+legado quando a chamada vem por contratos externos.</p>
+</section>
+<section id="fontes-materializadas">
+<h2>Fontes materializadas<a class="headerlink" href="#fontes-materializadas" title="Link para este cabeçalho">¶</a></h2>
+<p>O MS nao consulta diretamente o EOL. Ele depende das tabelas carregadas pelo
+ETL pedagogico, principalmente:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">componente_curricular</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">componente_turma</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">atribuicao_componente</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">atribuicao_territorio_saber</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">grade_componente_curricular</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">componente_curricular_hierarquia</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">componente_curricular_pap</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">componente_curricular_planejamento_regencia</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">componente_curricular_agrupamento</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">agrupamento_atribuicao_territorio_saber</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">turma</span></code>.</p></li>
+</ul>
+<p>A tabela <code class="docutils literal notranslate"><span class="pre">atribuicao_componente</span></code> representa a relacao entre professor,
+turma e componente curricular. Ela deve carregar vinculos SME, externos,
+regulares, de programa e os casos historicos/disponibilizados necessarios aos
+endpoints. A decisao sobre quais registros existem nessa tabela pertence ao
+ETL; o MS apenas aplica filtros de consulta compativeis com o legado.</p>
+<p>A tabela <code class="docutils literal notranslate"><span class="pre">atribuicao_territorio_saber</span></code> representa as atribuicoes individuais
+de componentes de Territorio do Saber. Ela e usada principalmente para montar
+os componentes filhos nos endpoints de agrupamentos correlacionados, incluindo
+o RF do professor e as descricoes contextuais quando o componente existe na
+turma.</p>
+</section>
+<section id="regras-de-compatibilidade">
+<h2>Regras de compatibilidade<a class="headerlink" href="#regras-de-compatibilidade" title="Link para este cabeçalho">¶</a></h2>
+<section id="componente-pai-e-deduplicacao">
+<h3>Componente pai e deduplicacao<a class="headerlink" href="#componente-pai-e-deduplicacao" title="Link para este cabeçalho">¶</a></h3>
+<p>Alguns componentes possuem hierarquia no EOL. O legado normaliza componentes
+filhos para o componente pai e depois remove duplicidades por:</p>
+<p><code class="docutils literal notranslate"><span class="pre">codigo_componente_curricular_pai</span></code> quando houver pai valido, caso contrario
+<code class="docutils literal notranslate"><span class="pre">codigo</span></code>.</p>
+<p>No MS, essa regra aparece nos endpoints que retornam componentes completos,
+especialmente <code class="docutils literal notranslate"><span class="pre">ComponentesRepository.listar_por_funcionario</span></code> e consultas de
+grade/turma programa. O objetivo e manter o mesmo contrato do legado, onde o
+cliente recebe o componente agrupador em vez de varias linhas filhas.</p>
+<p>Ponto de atencao: quando o mesmo professor possui o mesmo componente em varias
+turmas, a deduplicacao preserva uma unica turma. O legado usa <code class="docutils literal notranslate"><span class="pre">DistinctBy</span></code> e
+mantem o primeiro item retornado pela query. Como o MS usa dados
+materializados, a ordem precisa ser definida explicitamente quando o valor de
+<code class="docutils literal notranslate"><span class="pre">turma_codigo</span></code> fizer parte da comparacao de homologacao.</p>
+</section>
+<section id="regencia-e-planejamento-de-regencia">
+<h3>Regencia e planejamento de regencia<a class="headerlink" href="#regencia-e-planejamento-de-regencia" title="Link para este cabeçalho">¶</a></h3>
+<p>Componentes com <code class="docutils literal notranslate"><span class="pre">regencia</span> <span class="pre">=</span> <span class="pre">true</span></code> podem ser expandidos para componentes de
+planejamento de regencia. A expansao usa a tabela
+<code class="docutils literal notranslate"><span class="pre">componente_curricular_planejamento_regencia</span></code>.</p>
+<p>A regra de busca e:</p>
+<ul class="simple">
+<li><p>para anos maiores que zero, buscar configuracoes com <code class="docutils literal notranslate"><span class="pre">ano</span> <span class="pre">=</span> <span class="pre">ano_turma</span></code>;</p></li>
+<li><p>para ano zero ou nulo, usar configuracoes genericas com <code class="docutils literal notranslate"><span class="pre">ano</span> <span class="pre">IS</span> <span class="pre">NULL</span></code>;</p></li>
+<li><p>quando a consulta vem de turma, considerar tambem <code class="docutils literal notranslate"><span class="pre">turno</span></code> quando houver
+configuracao especifica;</p></li>
+<li><p>se nao houver regra especifica por ano/turno, usar a regra generica.</p></li>
+</ul>
+<p>O componente <code class="docutils literal notranslate"><span class="pre">512</span></code> recebe tratamento especial para compatibilizar a resposta
+com o legado:</p>
+<ul class="simple">
+<li><p>codigo pai igual ao proprio <code class="docutils literal notranslate"><span class="pre">512</span></code>;</p></li>
+<li><p>descricao <code class="docutils literal notranslate"><span class="pre">Regencia</span> <span class="pre">de</span> <span class="pre">classe</span> <span class="pre">infantil</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">regencia</span> <span class="pre">=</span> <span class="pre">true</span></code>.</p></li>
+</ul>
+<p>Essa regra existe para preservar a forma esperada pelos consumidores do
+legado, mesmo quando o dado materializado vem com descricao ou hierarquia
+diferente.</p>
+</section>
+<section id="componentes-por-funcionario">
+<h3>Componentes por funcionario<a class="headerlink" href="#componentes-por-funcionario" title="Link para este cabeçalho">¶</a></h3>
+<p>O endpoint sem turma retorna os componentes do professor no ano corrente. O
+filtro vigente usado pelo MS e:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">professor</span> <span class="pre">=</span> <span class="pre">login</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ano_letivo</span> <span class="pre">=</span> <span class="pre">ano</span> <span class="pre">atual</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dt_cancelamento</span> <span class="pre">IS</span> <span class="pre">NULL</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dt_disponibilizacao</span> <span class="pre">IS</span> <span class="pre">NULL</span></code>.</p></li>
+</ul>
+<p>Depois da consulta, o MS:</p>
+<ul class="simple">
+<li><p>normaliza componente pai;</p></li>
+<li><p>aplica regra de regencia infantil;</p></li>
+<li><p>remove duplicidades por componente pai/codigo;</p></li>
+<li><p>retorna <code class="docutils literal notranslate"><span class="pre">professor</span> <span class="pre">=</span> <span class="pre">null</span></code>, como o legado.</p></li>
+</ul>
+<p>Esse endpoint nao deve ser interpretado como uma listagem de todas as turmas do
+professor. Ele entrega uma lista de componentes atribuídos ao funcionario, e
+<code class="docutils literal notranslate"><span class="pre">turma_codigo</span></code> e apenas um campo preservado do primeiro vinculo escolhido
+pela regra de deduplicacao.</p>
+</section>
+<section id="territorio-do-saber">
+<h3>Territorio do Saber<a class="headerlink" href="#territorio-do-saber" title="Link para este cabeçalho">¶</a></h3>
+<p>Os endpoints de agrupamento de Territorio do Saber trabalham com o
+<code class="docutils literal notranslate"><span class="pre">cod_agrupamento</span></code> materializado em
+<code class="docutils literal notranslate"><span class="pre">agrupamento_atribuicao_territorio_saber</span></code>. Esse valor e o ID publico usado
+pelo contrato legado; ele nao e necessariamente unico como linha fisica, pois
+pode existir mais de uma ocorrencia para professores ou recortes historicos
+distintos.</p>
+<p>No endpoint de componentes por turma/funcionario, quando
+<code class="docutils literal notranslate"><span class="pre">agrupaComponenteCurricular=true</span></code>, o MS deve retornar o item agrupado do
+professor consultado e preservar os componentes individuais de outros
+professores quando a regra de atribuicao exigir. O campo
+<code class="docutils literal notranslate"><span class="pre">exibirComponenteEOL</span></code> deve permanecer <code class="docutils literal notranslate"><span class="pre">false</span></code> para esses itens de
+Territorio do Saber.</p>
+<p>A descricao dos componentes de Territorio do Saber e contextual da turma. Para
+componentes individuais, a query prioriza <code class="docutils literal notranslate"><span class="pre">componente_turma.desc_territorio_saber</span></code>
+e <code class="docutils literal notranslate"><span class="pre">componente_turma.desc_experiencia_pedagogica</span></code> quando esses campos foram
+preenchidos pelo ETL. A descricao final fica no formato
+<code class="docutils literal notranslate"><span class="pre">desc_territorio_saber</span> <span class="pre">-</span> <span class="pre">desc_experiencia_pedagogica</span></code>; se a experiencia nao
+existir, usa apenas <code class="docutils literal notranslate"><span class="pre">desc_territorio_saber</span></code>. Apenas quando esses dados nao
+existem o MS usa a descricao generica de <code class="docutils literal notranslate"><span class="pre">componente_curricular</span></code>.</p>
+<p>Essa compatibilidade corresponde ao comportamento do
+<code class="docutils literal notranslate"><span class="pre">AdicionarComponentesTerritorioAsync</span></code> no legado:</p>
+<ul class="simple">
+<li><p>quando o professor possui agrupamento de Territorio do Saber com 2 ou mais
+componentes, os componentes individuais agrupados sao removidos da resposta;</p></li>
+<li><p>o agrupamento correspondente entra no retorno usando <code class="docutils literal notranslate"><span class="pre">cod_agrupamento</span></code> no
+campo <code class="docutils literal notranslate"><span class="pre">codigo</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">codigosTerritoriosAgrupamento</span></code> recebe a lista de componentes do grupo;</p></li>
+<li><p>atribuicoes de Territorio do Saber com componente unico continuam como
+componentes individuais.</p></li>
+</ul>
+<p>No endpoint de componentes por funcionario sem turma, o SELECT do legado nao
+inclui RF do professor na resposta. Por compatibilidade, o MS retorna
+<code class="docutils literal notranslate"><span class="pre">professor</span> <span class="pre">=</span> <span class="pre">null</span></code> nesse contrato.</p>
+<p>Nos endpoints
+<code class="docutils literal notranslate"><span class="pre">territorio-saber/agrupamentos-correlacionados</span></code>:</p>
+<ul class="simple">
+<li><p>a entrada e sempre <code class="docutils literal notranslate"><span class="pre">cod_agrupamento</span></code>. Um codigo de componente curricular
+como <code class="docutils literal notranslate"><span class="pre">1216</span></code> nao deve ser usado como origem, a menos que tambem exista como
+agrupamento;</p></li>
+<li><p>a resposta inclui a linha agrupada de origem e os componentes individuais
+derivados de <code class="docutils literal notranslate"><span class="pre">cod_componentes_curriculares</span></code>;</p></li>
+<li><p>os itens individuais retornam <code class="docutils literal notranslate"><span class="pre">codigo</span></code> igual ao componente e
+<code class="docutils literal notranslate"><span class="pre">codigosTerritoriosAgrupamento</span></code> singleton, por exemplo <code class="docutils literal notranslate"><span class="pre">[1216]</span></code>;</p></li>
+<li><p>o professor do item agrupado vem de
+<code class="docutils literal notranslate"><span class="pre">agrupamento_atribuicao_territorio_saber.rf_professor</span></code>;</p></li>
+<li><p>o professor de cada item individual prioriza uma atribuicao propria do
+componente na turma em <code class="docutils literal notranslate"><span class="pre">atribuicao_territorio_saber</span></code>;</p></li>
+<li><p>se o componente individual nao tiver atribuicao propria, o MS sintetiza o
+professor a partir das atribuicoes individuais da mesma correlacao do
+agrupamento. Se tambem nao houver atribuicao individual, usa o historico do
+proprio agrupamento: primeiro a ultima atribuicao encerrada real, depois
+casos encerrados no mesmo instante e, por fim, o professor da origem;</p></li>
+<li><p>a vigencia considera <code class="docutils literal notranslate"><span class="pre">dataBase</span></code>/<code class="docutils literal notranslate"><span class="pre">dataBaseTicks</span></code> e a regra de
+disponibilizacao compativel com o legado;</p></li>
+<li><p>quando houver duplicidade fisica do mesmo <code class="docutils literal notranslate"><span class="pre">cod_agrupamento</span></code>, a saida deve
+ser deduplicada pelo identificador publico para manter o contrato.</p></li>
+</ul>
+<p>O endpoint <code class="docutils literal notranslate"><span class="pre">territorio-saber/agrupamentos</span></code> e mais restrito: ele retorna
+somente as linhas agrupadas cujos <code class="docutils literal notranslate"><span class="pre">cod_agrupamento</span></code> foram informados, sem
+expandir os componentes individuais correlacionados.</p>
+</section>
+<section id="validacao-pap">
+<h3>Validacao PAP<a class="headerlink" href="#validacao-pap" title="Link para este cabeçalho">¶</a></h3>
+<p>O endpoint de validacao PAP responde se a turma possui componente PAP para o
+funcionario informado.</p>
+<p>A regra aplicada e:</p>
+<ul class="simple">
+<li><p>buscar atribuicoes da turma e professor;</p></li>
+<li><p>ignorar atribuicoes canceladas;</p></li>
+<li><p>considerar atribuicoes sem disponibilizacao;</p></li>
+<li><p>considerar atribuicoes disponibilizadas a partir de <code class="docutils literal notranslate"><span class="pre">05/02</span></code> do ano letivo;</p></li>
+<li><p>considerar motivo de disponibilizacao de fim de ano letivo;</p></li>
+<li><p>validar se o componente esta em <code class="docutils literal notranslate"><span class="pre">componente_curricular_pap</span></code>.</p></li>
+</ul>
+<p>No MS, a consulta deve usar <code class="docutils literal notranslate"><span class="pre">SELECT</span> <span class="pre">EXISTS</span></code> para evitar materializar todos os
+componentes da atribuicao apenas para responder verdadeiro/falso.</p>
+</section>
+<section id="turmas-programa">
+<h3>Turmas programa<a class="headerlink" href="#turmas-programa" title="Link para este cabeçalho">¶</a></h3>
+<p>O endpoint de turmas programa lista componentes de turmas com
+<code class="docutils literal notranslate"><span class="pre">codigo_tipo_programa</span> <span class="pre">IS</span> <span class="pre">NOT</span> <span class="pre">NULL</span></code> e exclui turmas de evento para atribuicao.</p>
+<p>O legado obtem os componentes a partir das estruturas de grade regular e grade
+de programa, depois aplica normalizacao de componente pai e <code class="docutils literal notranslate"><span class="pre">DistinctBy</span></code>. No
+MS, a tabela <code class="docutils literal notranslate"><span class="pre">componente_turma</span></code> ja deve ter recebido do ETL os componentes
+necessarios para turmas regulares e de programa.</p>
+<p>Para compatibilidade de resposta, o MS ordena o resultado por <code class="docutils literal notranslate"><span class="pre">codigo</span></code>. O
+legado nao possui <code class="docutils literal notranslate"><span class="pre">ORDER</span> <span class="pre">BY</span></code> explicito nesse endpoint, mas o resultado
+observado costuma sair crescente por codigo do componente. Como o PostgreSQL
+nao garante ordem sem ordenacao explicita, a ordenacao no MS torna o contrato
+estavel.</p>
+</section>
+<section id="modalidade-educacao-infantil">
+<h3>Modalidade educacao infantil<a class="headerlink" href="#modalidade-educacao-infantil" title="Link para este cabeçalho">¶</a></h3>
+<p>Para modalidade de educacao infantil, o endpoint de turmas programa aplica o
+mesmo recorte de series usado pelo legado. As series atualmente consideradas
+sao:</p>
+<p><code class="docutils literal notranslate"><span class="pre">23,</span> <span class="pre">24,</span> <span class="pre">25,</span> <span class="pre">26,</span> <span class="pre">116,</span> <span class="pre">117,</span> <span class="pre">118,</span> <span class="pre">119,</span> <span class="pre">225,</span> <span class="pre">297</span></code>.</p>
+</section>
+<section id="vigencia-de-atribuicao">
+<h3>Vigencia de atribuicao<a class="headerlink" href="#vigencia-de-atribuicao" title="Link para este cabeçalho">¶</a></h3>
+<p>Ha dois filtros principais de vigencia:</p>
+<ul class="simple">
+<li><p>por turma: aceita atribuicoes sem cancelamento e com disponibilizacao nula,
+disponibilizacao a partir de <code class="docutils literal notranslate"><span class="pre">05/02</span></code> do ano letivo ou motivo de fim de ano;</p></li>
+<li><p>vigente por funcionario: exige cancelamento nulo e disponibilizacao nula.</p></li>
+</ul>
+<p>Esses filtros nao sao intercambiaveis. Endpoints por turma precisam enxergar
+casos disponibilizados que o endpoint de funcionario sem turma nao deve
+retornar.</p>
+</section>
+</section>
+<section id="decisoes-de-ordenacao">
+<h2>Decisoes de ordenacao<a class="headerlink" href="#decisoes-de-ordenacao" title="Link para este cabeçalho">¶</a></h2>
+<p>O legado nem sempre possui <code class="docutils literal notranslate"><span class="pre">ORDER</span> <span class="pre">BY</span></code> nas queries. Porem, varios endpoints
+sao comparados byte a byte pelo script de validacao. Onde a ordem observada do
+legado faz parte do contrato pratico, o MS deve ordenar explicitamente.</p>
+<p>Decisoes atuais:</p>
+<ul class="simple">
+<li><p>componentes por anos escolares: ordenar por <code class="docutils literal notranslate"><span class="pre">codigo</span></code>;</p></li>
+<li><p>componentes de turmas programa: ordenar por <code class="docutils literal notranslate"><span class="pre">codigo</span></code>;</p></li>
+<li><p>componentes por funcionario: preservar a primeira ocorrencia apos a consulta
+e a normalizacao de componente pai.</p></li>
+</ul>
+<p>Quando uma nova divergencia aparecer apenas por ordem, confirmar primeiro se o
+conjunto de codigos e igual. Se for igual, preferir ordenar no MS a alterar o
+ETL.</p>
+</section>
+<section id="responsabilidades-etl-x-ms">
+<h2>Responsabilidades: ETL x MS<a class="headerlink" href="#responsabilidades-etl-x-ms" title="Link para este cabeçalho">¶</a></h2>
+<p>O ETL deve:</p>
+<ul class="simple">
+<li><p>materializar os dados necessarios para todos os endpoints;</p></li>
+<li><p>manter as chaves de upsert coerentes com o conceito consultado;</p></li>
+<li><p>trazer regular, programa, SME, externo e historico quando esses dados forem
+necessarios ao contrato;</p></li>
+<li><p>evitar multiplicar linhas que nao representam vinculos diferentes para os
+endpoints.</p></li>
+</ul>
+<p>O MS deve:</p>
+<ul class="simple">
+<li><p>aplicar filtros de vigencia;</p></li>
+<li><p>normalizar componentes pais;</p></li>
+<li><p>aplicar regras pontuais de compatibilidade com o legado;</p></li>
+<li><p>deduplicar de acordo com o endpoint;</p></li>
+<li><p>retornar o formato esperado pelo gateway.</p></li>
+</ul>
+<p>Regra pratica: se a decisao define quais dados existem na tabela, ela pertence
+ao ETL. Se a decisao define como esses dados sao filtrados, agrupados ou
+serializados para um endpoint, ela pertence ao MS.</p>
+</section>
+<section id="consultas-de-apoio">
+<h2>Consultas de apoio<a class="headerlink" href="#consultas-de-apoio" title="Link para este cabeçalho">¶</a></h2>
+<p>Para investigar divergencia de componentes por funcionario, verificar no banco
+materializado:</p>
+<div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">SELECT</span>
+<span class="w">    </span><span class="n">professor</span><span class="p">,</span>
+<span class="w">    </span><span class="n">turma_codigo</span><span class="p">,</span>
+<span class="w">    </span><span class="n">componente_codigo</span><span class="p">,</span>
+<span class="w">    </span><span class="n">ano_letivo</span><span class="p">,</span>
+<span class="w">    </span><span class="n">dt_cancelamento</span><span class="p">,</span>
+<span class="w">    </span><span class="n">dt_disponibilizacao</span><span class="p">,</span>
+<span class="w">    </span><span class="n">cd_motivo_disponibilizacao</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">atribuicao_componente</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">professor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'&lt;RF&gt;'</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">ano_letivo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&lt;</span><span class="n">ANO</span><span class="o">&gt;</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">componente_codigo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&lt;</span><span class="n">COMPONENTE</span><span class="o">&gt;</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">turma_codigo</span><span class="p">,</span><span class="w"> </span><span class="n">componente_codigo</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>Para verificar se uma divergencia de turma programa e apenas ordenacao:</p>
+<div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">SELECT</span><span class="w"> </span><span class="k">DISTINCT</span>
+<span class="w">    </span><span class="n">ct</span><span class="p">.</span><span class="n">componente_codigo</span><span class="p">,</span>
+<span class="w">    </span><span class="n">cc</span><span class="p">.</span><span class="n">descricao</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">componente_turma</span><span class="w"> </span><span class="n">ct</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">componente_curricular</span><span class="w"> </span><span class="n">cc</span>
+<span class="w">  </span><span class="k">ON</span><span class="w"> </span><span class="n">cc</span><span class="p">.</span><span class="n">codigo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ct</span><span class="p">.</span><span class="n">componente_codigo</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">turma</span><span class="w"> </span><span class="n">t</span>
+<span class="w">  </span><span class="k">ON</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">codigo</span><span class="p">::</span><span class="nb">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ct</span><span class="p">.</span><span class="n">turma_codigo</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">ue_codigo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'&lt;UE&gt;'</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">ano_letivo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&lt;</span><span class="n">ANO</span><span class="o">&gt;</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">codigo_tipo_programa</span><span class="w"> </span><span class="k">IS</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">ct</span><span class="p">.</span><span class="n">componente_codigo</span><span class="p">;</span>
+</pre></div>
+</div>
+</section>
+<section id="manutencao-da-documentacao">
+<h2>Manutencao da documentacao<a class="headerlink" href="#manutencao-da-documentacao" title="Link para este cabeçalho">¶</a></h2>
+<p>Use esta pagina para regras de negocio e decisoes de compatibilidade. Use
+docstrings para o contrato tecnico de classes e metodos. Use comentarios inline
+apenas para explicar uma linha ou bloco cuja intencao nao seja obvia no codigo.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">SME-IntegracaoEOL-Pedagogico-Microsservico</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Ir" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navegação</h3>
+<p class="caption" role="heading"><span class="caption-text">Dominios</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Dominio Pedagogico</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Componentes curriculares</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Referencia de codigo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">Referência de código</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Dominio Pedagogico</a><ul>
+      <li>Previous: <a href="index.html" title="capítulo anterior">Dominio Pedagogico</a></li>
+      <li>Next: <a href="../../api.html" title="próximo capítulo">Referência de código</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../../_sources/dominios/pedagogico/componentes_curriculares.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

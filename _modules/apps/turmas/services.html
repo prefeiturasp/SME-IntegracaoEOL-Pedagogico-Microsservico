@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>apps.turmas.services &#8212; SME-IntegracaoEOL Pedagogico</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+    <script src="../../../_static/documentation_options.js?v=2346ddef"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/translations.js?v=71a39b36"></script>
+    <link rel="index" title="Índice" href="../../../genindex.html" />
+    <link rel="search" title="Buscar" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Código-fonte para apps.turmas.services</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Serviços do domínio Turmas."""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">apps.turmas.repository</span><span class="w"> </span><span class="kn">import</span> <span class="n">TurmasRepository</span>
+
+
+<div class="viewcode-block" id="TurmasService">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TurmasService</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Orquestra as operações do domínio Turmas."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span> <span class="o">=</span> <span class="n">TurmasRepository</span><span class="p">()</span>
+
+<div class="viewcode-block" id="TurmasService.turmas_regulares">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.turmas_regulares">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">turmas_regulares</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">codigos</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Retorna turmas regulares da lista de códigos.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            codigos: Códigos das turmas a consultar.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Lista de turmas regulares encontradas.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">turmas_regulares</span><span class="p">(</span><span class="n">codigos</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.turmas_programa">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.turmas_programa">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">turmas_programa</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">codigos</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Retorna turmas programa da lista de códigos.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            codigos: Códigos das turmas a consultar.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Lista de turmas programa encontradas.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">turmas_programa</span><span class="p">(</span><span class="n">codigos</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.listar_turmas">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.listar_turmas">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">listar_turmas</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">codigos</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Retorna turmas da lista de códigos.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            codigos: Códigos das turmas a consultar.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Lista de turmas encontradas.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">listar_turmas</span><span class="p">(</span><span class="n">codigos</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.turmas_atribuidas_dre_ue">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.turmas_atribuidas_dre_ue">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">turmas_atribuidas_dre_ue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">codigos_ue</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Retorna turmas atribuídas das unidades.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            codigos_ue: Códigos das unidades educacionais.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Lista de turmas atribuídas encontradas.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">turmas_atribuidas_dre_ue</span><span class="p">(</span><span class="n">codigos_ue</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.todas_turmas_atribuidas_dre_ue">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.todas_turmas_atribuidas_dre_ue">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">todas_turmas_atribuidas_dre_ue</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Retorna turmas atribuídas."""</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">todas_turmas_atribuidas_dre_ue</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.turmas_atribuidas_dre_ue_por_dre">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.turmas_atribuidas_dre_ue_por_dre">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">turmas_atribuidas_dre_ue_por_dre</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">codigo_dre</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Retorna a abrangência de uma DRE.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            codigo_dre: Código EOL da DRE.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Estrutura agrupada por DRE/UE/turma.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">turmas_atribuidas_dre_ue_por_dre</span><span class="p">(</span><span class="n">codigo_dre</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.turmas_atribuidas_dre_ue_por_turmas">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.turmas_atribuidas_dre_ue_por_turmas">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">turmas_atribuidas_dre_ue_por_turmas</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">codigos_turma</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Retorna a abrangência de uma lista de turmas.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            codigos_turma: Códigos das turmas a consultar.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Estrutura agrupada por DRE/UE/turma.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">turmas_atribuidas_dre_ue_por_turmas</span><span class="p">(</span><span class="n">codigos_turma</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.turmas_elegiveis">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.turmas_elegiveis">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">turmas_elegiveis</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">codigo_rf</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">codigo_turma</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">componente_curricular</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Retorna turmas elegíveis por atribuição.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            codigo_rf: RF usado na consulta.</span>
+<span class="sd">            codigo_turma: Turma base da consulta.</span>
+<span class="sd">            componente_curricular: Componente usado no filtro.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Lista de turmas elegíveis encontradas.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">turmas_elegiveis</span><span class="p">(</span>
+            <span class="n">codigo_rf</span><span class="p">,</span>
+            <span class="n">codigo_turma</span><span class="p">,</span>
+            <span class="n">componente_curricular</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.turmas_recorte_fund_medio_eja">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.turmas_recorte_fund_medio_eja">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">turmas_recorte_fund_medio_eja</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">codigos</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Retorna turmas no recorte de etapa (Fund/Médio/EJA).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            codigos: Códigos das turmas a consultar.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Lista de turmas no recorte de etapa encontradas.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">turmas_recorte_fund_medio_eja</span><span class="p">(</span><span class="n">codigos</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.codigos_turmas_por_ano_modalidade_dre">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.codigos_turmas_por_ano_modalidade_dre">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">codigos_turmas_por_ano_modalidade_dre</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">ues_codigos</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">ano_turma</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">codigo_modalidade</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">ano_letivo</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Lista códigos de turmas vigentes para a contagem de alunos.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ues_codigos: Códigos EOL das UEs consideradas.</span>
+<span class="sd">            ano_turma: Primeiro caractere da nomenclatura da turma.</span>
+<span class="sd">            codigo_modalidade: Modalidade materializada.</span>
+<span class="sd">            ano_letivo: Ano letivo da chamada.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Códigos distintos das turmas que atendem ao recorte.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">codigos_turmas_por_ano_modalidade_dre</span><span class="p">(</span>
+            <span class="n">ues_codigos</span><span class="p">,</span> <span class="n">ano_turma</span><span class="p">,</span> <span class="n">codigo_modalidade</span><span class="p">,</span> <span class="n">ano_letivo</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.turmas_recorte_por_tipo">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.turmas_recorte_por_tipo">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">turmas_recorte_por_tipo</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">codigos</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+        <span class="n">tipos_turma</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">ue_codigo</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">semestre</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Filtra códigos de turma por tipo de turma, UE e semestre.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            codigos: Códigos de turma candidatos.</span>
+<span class="sd">            tipos_turma: Tipos de turma aceitos; sem filtro quando vazio.</span>
+<span class="sd">            ue_codigo: Código da UE; sem filtro quando ausente.</span>
+<span class="sd">            semestre: Semestre da turma; sem filtro quando ausente.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Subconjunto dos códigos que atende ao recorte.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">turmas_recorte_por_tipo</span><span class="p">(</span>
+            <span class="n">codigos</span><span class="p">,</span> <span class="n">tipos_turma</span><span class="p">,</span> <span class="n">ue_codigo</span><span class="p">,</span> <span class="n">semestre</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.dados_turma">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.dados_turma">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dados_turma</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">codigo</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Retorna dados canônicos de uma turma.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            codigo: Código da turma.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dados da turma, ou None se não encontrada.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">dados_turma</span><span class="p">(</span><span class="n">codigo</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.sincronizacoes_institucionais">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.sincronizacoes_institucionais">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sincronizacoes_institucionais</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">ue_codigo</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">turma_codigo</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Retorna dados de sincronização institucional da turma.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ue_codigo: Código da unidade educacional, obrigatório no</span>
+<span class="sd">                contrato mas não usado na consulta.</span>
+<span class="sd">            turma_codigo: Código da turma.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dados de sincronização, ou None se não encontrada.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">sincronizacoes_institucionais</span><span class="p">(</span>
+            <span class="n">ue_codigo</span><span class="p">,</span> <span class="n">turma_codigo</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.codigos_turmas_por_ue">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.codigos_turmas_por_ue">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">codigos_turmas_por_ue</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">ue_codigo</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">anos_letivos</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Retorna códigos de turma da UE.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ue_codigo: Código da unidade educacional.</span>
+<span class="sd">            anos_letivos: Anos letivos a filtrar; quando vazio, lista todos.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Códigos de turma da UE, em ordem crescente.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">codigos_turmas_por_ue</span><span class="p">(</span><span class="n">ue_codigo</span><span class="p">,</span> <span class="n">anos_letivos</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.turmas_historicas_professor">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.turmas_historicas_professor">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">turmas_historicas_professor</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">ano_letivo</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">professor_rf</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Retorna turmas históricas do professor.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ano_letivo: Ano letivo consultado.</span>
+<span class="sd">            professor_rf: Registro funcional do professor.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Lista de turmas históricas do professor no ano letivo.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">turmas_historicas_professor</span><span class="p">(</span><span class="n">ano_letivo</span><span class="p">,</span> <span class="n">professor_rf</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.itinerarios_ensino_medio">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.itinerarios_ensino_medio">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">itinerarios_ensino_medio</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Retorna itinerários do Ensino Médio ordenados por id.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Lista de itinerários do Ensino Médio.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">itinerarios_ensino_medio</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.modalidades_ensino">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.modalidades_ensino">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">modalidades_ensino</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Retorna as descrições do catálogo de etapas de ensino.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Descrições das etapas de ensino.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">modalidades_ensino</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.turmas_por_tipo_sala">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.turmas_por_tipo_sala">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">turmas_por_tipo_sala</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">ue_codigo</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">tipo_sala</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">ano_letivo</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Retorna turmas de uma UE/ano letivo por tipo de sala.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ue_codigo: Código da unidade educacional.</span>
+<span class="sd">            tipo_sala: Tipo de sala informado na rota (texto).</span>
+<span class="sd">            ano_letivo: Ano letivo informado na rota (texto).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Turmas encontradas no recorte; lista vazia se ``tipo_sala`` ou</span>
+<span class="sd">            ``ano_letivo`` não forem numéricos (não filtram nada, mesma</span>
+<span class="sd">            convenção para os dois parâmetros).</span>
+<span class="sd">        """</span>
+        <span class="n">tipo_turma</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">tipo_sala</span><span class="p">)</span> <span class="k">if</span> <span class="n">tipo_sala</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ano_letivo</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">turmas_por_tipo_sala</span><span class="p">(</span>
+            <span class="n">ue_codigo</span><span class="p">,</span> <span class="n">tipo_turma</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">ano_letivo</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.turmas_por_escola">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.turmas_por_escola">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">turmas_por_escola</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">ue_codigo</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">ano_letivo</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Retorna turmas de uma UE/ano letivo cujo nome começa com dígito.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ue_codigo: Código da unidade educacional.</span>
+<span class="sd">            ano_letivo: Ano letivo informado na rota (texto).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Turmas encontradas, ordenadas por nome; lista vazia se</span>
+<span class="sd">            ``ano_letivo`` não for numérico.</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ano_letivo</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">turmas_por_escola</span><span class="p">(</span><span class="n">ue_codigo</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">ano_letivo</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="TurmasService.turmas_sondagem">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.services.TurmasService.turmas_sondagem">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">turmas_sondagem</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">ue_codigo</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">ano_letivo</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Retorna turmas regulares de 5º ano do Fundamental para Sondagem.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ue_codigo: Código da unidade educacional.</span>
+<span class="sd">            ano_letivo: Ano letivo informado na rota (texto).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Turmas encontradas, ordenadas por nome; lista vazia se</span>
+<span class="sd">            ``ano_letivo`` não for numérico.</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ano_letivo</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repo</span><span class="o">.</span><span class="n">turmas_sondagem</span><span class="p">(</span><span class="n">ue_codigo</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">ano_letivo</span><span class="p">))</span></div>
+</div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">SME-IntegracaoEOL-Pedagogico-Microsservico</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Ir" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navegação</h3>
+<p class="caption" role="heading"><span class="caption-text">Dominios</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../dominios/pedagogico/index.html">Dominio Pedagogico</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Referencia de codigo</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Referência de código</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Código do módulo</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
