@@ -214,7 +214,9 @@ SELECT {COMPONENTE_TURMA_CAMPOS_RESPOSTA}, ac.professor
 # por turma, para manter paridade com o legado (que retorna disciplinas mesmo
 # de turmas extintas). Derivada da query base para evitar duplicação.
 SQL_COMPONENTES_POR_LISTA_TURMAS_INCLUI_EXTINTAS = (
-    SQL_COMPONENTES_POR_LISTA_TURMAS.replace(" AND t.extinta = false", "")
+    SQL_COMPONENTES_POR_LISTA_TURMAS.replace(
+        " AND t.extinta = false", ""
+    ).replace(", ac.professor", "")
 )
 
 SQL_COMPONENTES_TURMAS_BRUTOS = f"""\

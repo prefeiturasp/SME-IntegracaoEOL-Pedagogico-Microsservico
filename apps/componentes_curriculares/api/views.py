@@ -697,24 +697,19 @@ class ComponentesPorListaTurmasView(BaseAPIView):
         codigos_turmas: list[str] = request.query_params.getlist(
             "codigo_turmas"
         ) or request.query_params.getlist("codigoTurmas")
-
+        adicionar_componentes_planejamento = _query_bool(
+            request,
+            "adicionar_componentes_planejamento",
+            "adicionarComponentesPlanejamento",
+            default=True,
+        )
+        incluir_extintas = _query_bool(
+            request,
+            "incluir_extintas",
+            "incluirExtintas",
+            default=False,
+        )
         service = ComponentesService()
-        adicionar_componentes_planejamento = (
-            request.query_params.get(
-                "adicionar_componentes_planejamento",
-                request.query_params.get(
-                    "adicionarComponentesPlanejamento", "true"
-                ),
-            ).lower()
-            == "true"
-        )
-        incluir_extintas = (
-            request.query_params.get(
-                "incluir_extintas",
-                request.query_params.get("incluirExtintas", "false"),
-            ).lower()
-            == "true"
-        )
         if incluir_extintas:
             dados = service.listar_por_lista_turmas_incluindo_extintas(
                 codigos_turmas,
