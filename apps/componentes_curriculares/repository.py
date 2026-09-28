@@ -253,8 +253,7 @@ def _normalizar_componente_atribuido(row: dict) -> dict:
     data_fim_turma = item.pop("data_fim_turma", None)
     item["atribuicao_ativa"] = (
         dt_disponibilizacao is None
-        or cd_motivo_disponibilizacao
-        == MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO
+        or cd_motivo_disponibilizacao == MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO
     )
     item["inicio_atribuicao"] = item.pop("dt_atribuicao", None)
     item["fim_atribuicao"] = dt_disponibilizacao or data_fim_turma
@@ -1118,12 +1117,25 @@ class ComponentesRepository:
         seen: set[tuple] = set()
         result: list[dict] = []
         for r in rows:
+            valor_codigo = r["codigo"]
+            codigo_componente_curricular_pai = (
+                r.get("codigo_componente_curricular_pai") or None
+            )
+            if (
+                codigo_componente_curricular_pai
+                == CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL
+            ):
+                valor_codigo = codigo_componente_curricular_pai
+            key = (
+                r["turma_codigo"],
+                valor_codigo,
+            )
+            if key in seen:
+                continue
+            seen.add(key)
             item = _normalizar_componente_turma(r)
-            key = (item["turma_codigo"], item["codigo"])
-            if key not in seen:
-                seen.add(key)
-                item["professor"] = None
-                result.append(item)
+            item["professor"] = None
+            result.append(item)
         return result
 
     def listar_turmas_brutos(
