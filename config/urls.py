@@ -7,7 +7,10 @@ from drf_spectacular.views import (
 )
 from rest_framework.permissions import AllowAny
 
+from apps.core.health import HealthView
+
 urlpatterns = [
+    path("api/v1/pedagogico/health/", HealthView.as_view(), name="health"),
     path(
         "api/v1/pedagogico/abrangencia/",
         include("apps.abrangencia.api.urls"),
