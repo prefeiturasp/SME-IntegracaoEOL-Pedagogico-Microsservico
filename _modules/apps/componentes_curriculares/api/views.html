@@ -808,24 +808,19 @@
         <span class="n">codigos_turmas</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span>
             <span class="s2">"codigo_turmas"</span>
         <span class="p">)</span> <span class="ow">or</span> <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">getlist</span><span class="p">(</span><span class="s2">"codigoTurmas"</span><span class="p">)</span>
-
+        <span class="n">adicionar_componentes_planejamento</span> <span class="o">=</span> <span class="n">_query_bool</span><span class="p">(</span>
+            <span class="n">request</span><span class="p">,</span>
+            <span class="s2">"adicionar_componentes_planejamento"</span><span class="p">,</span>
+            <span class="s2">"adicionarComponentesPlanejamento"</span><span class="p">,</span>
+            <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">incluir_extintas</span> <span class="o">=</span> <span class="n">_query_bool</span><span class="p">(</span>
+            <span class="n">request</span><span class="p">,</span>
+            <span class="s2">"incluir_extintas"</span><span class="p">,</span>
+            <span class="s2">"incluirExtintas"</span><span class="p">,</span>
+            <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="n">service</span> <span class="o">=</span> <span class="n">ComponentesService</span><span class="p">()</span>
-        <span class="n">adicionar_componentes_planejamento</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-                <span class="s2">"adicionar_componentes_planejamento"</span><span class="p">,</span>
-                <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-                    <span class="s2">"adicionarComponentesPlanejamento"</span><span class="p">,</span> <span class="s2">"true"</span>
-                <span class="p">),</span>
-            <span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-            <span class="o">==</span> <span class="s2">"true"</span>
-        <span class="p">)</span>
-        <span class="n">incluir_extintas</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-                <span class="s2">"incluir_extintas"</span><span class="p">,</span>
-                <span class="n">request</span><span class="o">.</span><span class="n">query_params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"incluirExtintas"</span><span class="p">,</span> <span class="s2">"false"</span><span class="p">),</span>
-            <span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-            <span class="o">==</span> <span class="s2">"true"</span>
-        <span class="p">)</span>
         <span class="k">if</span> <span class="n">incluir_extintas</span><span class="p">:</span>
             <span class="n">dados</span> <span class="o">=</span> <span class="n">service</span><span class="o">.</span><span class="n">listar_por_lista_turmas_incluindo_extintas</span><span class="p">(</span>
                 <span class="n">codigos_turmas</span><span class="p">,</span>

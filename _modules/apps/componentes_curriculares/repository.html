@@ -288,8 +288,7 @@
     <span class="n">data_fim_turma</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"data_fim_turma"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
     <span class="n">item</span><span class="p">[</span><span class="s2">"atribuicao_ativa"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">dt_disponibilizacao</span> <span class="ow">is</span> <span class="kc">None</span>
-        <span class="ow">or</span> <span class="n">cd_motivo_disponibilizacao</span>
-        <span class="o">==</span> <span class="n">MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO</span>
+        <span class="ow">or</span> <span class="n">cd_motivo_disponibilizacao</span> <span class="o">==</span> <span class="n">MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO</span>
     <span class="p">)</span>
     <span class="n">item</span><span class="p">[</span><span class="s2">"inicio_atribuicao"</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"dt_atribuicao"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
     <span class="n">item</span><span class="p">[</span><span class="s2">"fim_atribuicao"</span><span class="p">]</span> <span class="o">=</span> <span class="n">dt_disponibilizacao</span> <span class="ow">or</span> <span class="n">data_fim_turma</span>
@@ -1191,12 +1190,25 @@
         <span class="n">seen</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">tuple</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="n">result</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+            <span class="n">valor_codigo</span> <span class="o">=</span> <span class="n">r</span><span class="p">[</span><span class="s2">"codigo"</span><span class="p">]</span>
+            <span class="n">codigo_componente_curricular_pai</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"codigo_componente_curricular_pai"</span><span class="p">)</span> <span class="ow">or</span> <span class="kc">None</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="n">codigo_componente_curricular_pai</span>
+                <span class="o">==</span> <span class="n">CODIGO_COMPONENTE_REGENCIA_CLASSE_INFANTIL</span>
+            <span class="p">):</span>
+                <span class="n">valor_codigo</span> <span class="o">=</span> <span class="n">codigo_componente_curricular_pai</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">r</span><span class="p">[</span><span class="s2">"turma_codigo"</span><span class="p">],</span>
+                <span class="n">valor_codigo</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
             <span class="n">item</span> <span class="o">=</span> <span class="n">_normalizar_componente_turma</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
-            <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">"turma_codigo"</span><span class="p">],</span> <span class="n">item</span><span class="p">[</span><span class="s2">"codigo"</span><span class="p">])</span>
-            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
-                <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
-                <span class="n">item</span><span class="p">[</span><span class="s2">"professor"</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+            <span class="n">item</span><span class="p">[</span><span class="s2">"professor"</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">result</span>
 
 <div class="viewcode-block" id="ComponentesRepository.listar_turmas_brutos">
