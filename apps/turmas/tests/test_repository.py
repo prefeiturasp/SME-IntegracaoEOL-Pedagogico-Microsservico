@@ -51,6 +51,10 @@ class FakeQuerySet:
         self._values_mode = True
         return self
 
+    def only(self, *args):
+        self.calls.append(("only", args, {}))
+        return self
+
     def distinct(self):
         self.calls.append(("distinct", (), {}))
         return self
@@ -334,9 +338,7 @@ class TestTurmasRepository(TestCase):
         self, mock_using_atribuida, mock_using_turma
     ):
         """Completa tipoTurma/dataFim/etc. a partir de ``Turma``."""
-        mock_using_atribuida.return_value = FakeQuerySet(
-            [_turma_atribuida()]
-        )
+        mock_using_atribuida.return_value = FakeQuerySet([_turma_atribuida()])
         mock_using_turma.return_value = FakeQuerySet(
             [
                 _turma(
@@ -356,9 +358,7 @@ class TestTurmasRepository(TestCase):
 
         turma = resultado["dres"][0]["ues"][0]["turmas"][0]
         self.assertEqual(turma["tipoTurma"], 1)
-        self.assertEqual(
-            turma["dataFim"], datetime(2026, 12, 18, tzinfo=UTC)
-        )
+        self.assertEqual(turma["dataFim"], datetime(2026, 12, 18, tzinfo=UTC))
         self.assertEqual(
             turma["dataInicioTurma"], datetime(2026, 2, 2, tzinfo=UTC)
         )
@@ -1197,9 +1197,7 @@ class TestTurmasRepository(TestCase):
 
     @patch("apps.turmas.repository.Turma.objects.using")
     def test_turmas_por_escola_calcula_sigla_e_nome(self, mock_using):
-        qs = FakeQuerySet(
-            [_turma(modalidade="Fundamental", nome_turma="3A")]
-        )
+        qs = FakeQuerySet([_turma(modalidade="Fundamental", nome_turma="3A")])
         mock_using.return_value = qs
 
         resultado = self.repo.turmas_por_escola("000532", 2024)

@@ -366,9 +366,7 @@ def _turma_abrangencia(item: dict, turma: Turma | None) -> dict:
     }
 
 
-def _turmas_por_codigo(
-    db: str, codigos: Iterable[int]
-) -> dict[int, Turma]:
+def _turmas_por_codigo(db: str, codigos: Iterable[int]) -> dict[int, Turma]:
     """Monta um lookup código -> Turma para completar a abrangência.
 
     Args:
@@ -577,8 +575,9 @@ class TurmasRepository:
     def turmas_atribuidas_dre_ue_por_turmas(
         self, codigos_turma: list[int]
     ) -> dict:
-        """Abrangência SME vigente de uma lista de turmas (recorte de tipo
-        de escola).
+        """Abrangência SME vigente de uma lista de turmas.
+
+        Considera o recorte de tipo de escola.
 
         Args:
             codigos_turma: Códigos das turmas a consultar.
@@ -815,7 +814,35 @@ class TurmasRepository:
         Returns:
             Dados da turma, ou None se não encontrada.
         """
-        turma = Turma.objects.using(self._DB).filter(codigo=codigo).first()
+        turma = (
+            Turma.objects.using(self._DB)
+            .only(
+                "codigo",
+                "ano_letivo",
+                "ano",
+                "tipo_turma",
+                "nome_turma",
+                "duracao_turno",
+                "tipo_turno",
+                "data_inicio_turma",
+                "data_fim",
+                "extinta",
+                "situacao",
+                "ue_codigo",
+                "serie_ensino",
+                "codigo_serie_ensino",
+                "modalidade",
+                "codigo_modalidade",
+                "codigo_tipo_programa",
+                "codigo_modalidade_etapa",
+                "semestre",
+                "ensino_especial",
+                "data_atualizacao",
+                "data_status_turma_escola",
+            )
+            .filter(codigo=codigo)
+            .first()
+        )
         if turma is None:
             return None
         return _turma_para_dados(turma)
