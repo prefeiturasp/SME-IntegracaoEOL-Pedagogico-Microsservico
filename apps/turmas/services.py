@@ -1,8 +1,81 @@
 """Serviços do domínio Turmas."""
 
+from collections.abc import Iterable, Mapping
+from types import MappingProxyType
 from typing import Any
 
+from apps.componentes_curriculares.constants import MODALIDADE_EJA
+from apps.turmas.regras import ciclo_eja
 from apps.turmas.repository import TurmasRepository
+
+_TURMA_NAO_CADASTRADA: Mapping[str, Any] = MappingProxyType(
+    {
+        "tipo_turma": 0,
+        "data_inicio": None,
+        "data_fim": None,
+        "extinta": False,
+        "ensino_especial": False,
+        "serie_ensino": None,
+    }
+)
+
+
+def _turma_abrangencia(linha: Mapping[str, Any]) -> dict[str, Any]:
+    turma = linha["turma"] or _TURMA_NAO_CADASTRADA
+    codigo_modalidade = linha["codigo_modalidade"] or 0
+    etapa_eja = (
+        ciclo_eja(turma["serie_ensino"])
+        if codigo_modalidade == MODALIDADE_EJA
+        else 0
+    )
+    return {
+        "ano": linha["ano"],
+        "ano_letivo": linha["ano_letivo"],
+        "codigo": linha["codigo_turma"],
+        "tipo_turma": turma["tipo_turma"],
+        "modalidade": linha["modalidade"],
+        "codigo_modalidade": codigo_modalidade,
+        "nome_turma": linha["nome_turma"],
+        "semestre": linha["semestre"],
+        "duracao_turno": linha["duracao_turno"],
+        "tipo_turno": linha["tipo_turno"],
+        "data_fim": turma["data_fim"],
+        "eh_historico": False,
+        "ensino_especial": turma["ensino_especial"],
+        "etapa_eja": etapa_eja,
+        "serie_ensino": None,
+        "data_inicio_turma": turma["data_inicio"],
+        "extinta": turma["extinta"],
+        "situacao": None,
+        "ue_codigo": None,
+    }
+
+
+def _agrupar_por_dre_ue(
+    linhas: Iterable[Mapping[str, Any]],
+) -> dict[str, Any]:
+    dres: dict[str, dict[str, Any]] = {}
+    ues: dict[str, dict[str, Any]] = {}
+    for linha in linhas:
+        dre = dres.get(linha["codigo_dre"])
+        if dre is None:
+            dre = dres[linha["codigo_dre"]] = {
+                "codigo": linha["codigo_dre"],
+                "nome": linha["dre"],
+                "abreviacao": linha["dre_abreviacao"],
+                "ues": [],
+            }
+        ue = ues.get(linha["codigo_escola"])
+        if ue is None:
+            ue = ues[linha["codigo_escola"]] = {
+                "codigo": linha["codigo_escola"],
+                "nome": linha["ue"],
+                "codigo_tipo_escola": linha["codigo_tipo_escola"],
+                "turmas": [],
+            }
+            dre["ues"].append(ue)
+        ue["turmas"].append(_turma_abrangencia(linha))
+    return {"dres": list(dres.values())}
 
 
 class TurmasService:
@@ -55,35 +128,36 @@ class TurmasService:
         """
         return self._repo.turmas_atribuidas_dre_ue(codigos_ue)
 
-    def todas_turmas_atribuidas_dre_ue(self) -> dict[str, Any]:
-        """Retorna turmas atribuídas."""
-        return self._repo.todas_turmas_atribuidas_dre_ue()
-
-    def turmas_atribuidas_dre_ue_por_dre(
-        self, codigo_dre: str
+    def estrutura_abrangencia(
+        self, codigo_dre: str | None = None
     ) -> dict[str, Any]:
-        """Retorna a abrangência de uma DRE.
+        """Retorna a estrutura institucional vigente da SME ou de uma DRE.
 
         Args:
-            codigo_dre: Código EOL da DRE.
+            codigo_dre: Código da DRE; toda a SME quando ausente.
 
         Returns:
-            Estrutura agrupada por DRE/UE/turma.
+            Turmas agrupadas por DRE e UE.
         """
-        return self._repo.turmas_atribuidas_dre_ue_por_dre(codigo_dre)
+        linhas = self._repo.linhas_abrangencia_estrutura_vigente(codigo_dre=codigo_dre)
+        return _agrupar_por_dre_ue(linhas)
 
-    def turmas_atribuidas_dre_ue_por_turmas(
+    def estrutura_abrangencia_por_turmas(
         self, codigos_turma: list[int]
     ) -> dict[str, Any]:
-        """Retorna a abrangência de uma lista de turmas.
+        """Retorna a estrutura institucional vigente das turmas informadas.
 
         Args:
             codigos_turma: Códigos das turmas a consultar.
 
         Returns:
-            Estrutura agrupada por DRE/UE/turma.
+            Turmas agrupadas por DRE e UE; vazia quando nenhuma turma é
+            informada.
         """
-        return self._repo.turmas_atribuidas_dre_ue_por_turmas(codigos_turma)
+        if not codigos_turma:
+            return _agrupar_por_dre_ue([])
+        linhas = self._repo.linhas_abrangencia_estrutura_vigente(codigos_turma=codigos_turma)
+        return _agrupar_por_dre_ue(linhas)
 
     def turmas_elegiveis(
         self,
