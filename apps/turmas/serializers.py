@@ -1,9 +1,15 @@
 """Serializers do domínio Turmas."""
 
+from collections.abc import Callable, Mapping
+from functools import cached_property
 from typing import Any, cast
 
 from django.http import QueryDict
 from rest_framework import serializers
+
+from apps.core.datetime import DataHoraLegadoField
+
+_CampoSaida = tuple[str, str, Callable[[Any], Any] | None]
 
 
 class TurmaListSerializer(serializers.Serializer):
@@ -53,44 +59,94 @@ class TurmaAtribuidaDreUeSerializer(serializers.Serializer):
 
 
 class TurmaAbrangenciaSerializer(serializers.Serializer):
-    """Serializa turma no contrato de abrangência (DRE→UE→turma).
-
-    Campos em ``camelCase`` de propósito: o gateway repassa este payload
-    quase sem tradução (``TurmaDTO``).
-    """
+    """Serializa turma da estrutura institucional vigente."""
 
     ano = serializers.CharField(allow_null=True)
-    anoLetivo = serializers.IntegerField(allow_null=True)
+    anoLetivo = serializers.IntegerField(  # noqa: N815
+        source="ano_letivo", allow_null=True
+    )
     codigo = serializers.IntegerField(allow_null=True)
-    tipoTurma = serializers.IntegerField()
+    tipoTurma = serializers.IntegerField(source="tipo_turma")  # noqa: N815
     modalidade = serializers.CharField(allow_null=True)
-    codigoModalidade = serializers.IntegerField()
-    nomeTurma = serializers.CharField(allow_null=True)
+    codigoModalidade = serializers.IntegerField(  # noqa: N815
+        source="codigo_modalidade"
+    )
+    nomeTurma = serializers.CharField(  # noqa: N815
+        source="nome_turma", allow_null=True
+    )
     semestre = serializers.IntegerField(allow_null=True)
-    duracaoTurno = serializers.IntegerField(allow_null=True)
-    tipoTurno = serializers.IntegerField(allow_null=True)
-    dataFim = serializers.DateTimeField(allow_null=True)
-    ehistorico = serializers.BooleanField()
-    ensinoEspecial = serializers.BooleanField()
-    etapaEJA = serializers.IntegerField()
-    serieEnsino = serializers.CharField(allow_null=True)
-    dataInicioTurma = serializers.DateTimeField(allow_null=True)
+    duracaoTurno = serializers.IntegerField(  # noqa: N815
+        source="duracao_turno", allow_null=True
+    )
+    tipoTurno = serializers.IntegerField(  # noqa: N815
+        source="tipo_turno", allow_null=True
+    )
+    dataFim = DataHoraLegadoField(  # noqa: N815
+        source="data_fim", allow_null=True
+    )
+    ehistorico = serializers.BooleanField(source="eh_historico")
+    ensinoEspecial = serializers.BooleanField(  # noqa: N815
+        source="ensino_especial"
+    )
+    etapaEJA = serializers.IntegerField(source="etapa_eja")  # noqa: N815
+    serieEnsino = serializers.CharField(  # noqa: N815
+        source="serie_ensino", allow_null=True
+    )
+    dataInicioTurma = DataHoraLegadoField(  # noqa: N815
+        source="data_inicio_turma", allow_null=True
+    )
     extinta = serializers.BooleanField()
     situacao = serializers.CharField(allow_null=True)
-    ueCodigo = serializers.CharField(allow_null=True)
+    ueCodigo = serializers.CharField(  # noqa: N815
+        source="ue_codigo", allow_null=True
+    )
+
+    @cached_property
+    def _campos_saida(self) -> tuple[_CampoSaida, ...]:
+        return tuple(
+            (
+                nome,
+                cast(str, campo.source),
+                (
+                    campo.to_representation
+                    if isinstance(campo, serializers.DateTimeField)
+                    else None
+                ),
+            )
+            for nome, campo in self.fields.items()
+        )
+
+    def to_representation(self, instance: Mapping[str, Any]) -> dict[str, Any]:
+        """Serializa a turma a partir dos campos declarados.
+
+        Args:
+            instance: Turma da estrutura vigente, com valores já tipados.
+
+        Returns:
+            Turma no formato do contrato.
+        """
+        turma: dict[str, Any] = {}
+        for nome, origem, formatar in self._campos_saida:
+            valor = instance[origem]
+            turma[nome] = (
+                formatar(valor) if formatar and valor is not None else valor
+            )
+        return turma
 
 
 class UeAbrangenciaSerializer(serializers.Serializer):
-    """Serializa UE no contrato de abrangência (DRE→UE→turma)."""
+    """Serializa UE da estrutura institucional vigente."""
 
     codigo = serializers.CharField(allow_null=True)
     nome = serializers.CharField(allow_null=True)
-    codTipoEscola = serializers.IntegerField(allow_null=True)
+    codTipoEscola = serializers.IntegerField(  # noqa: N815
+        source="codigo_tipo_escola", allow_null=True
+    )
     turmas = TurmaAbrangenciaSerializer(many=True)
 
 
 class DreAbrangenciaSerializer(serializers.Serializer):
-    """Serializa DRE no contrato de abrangência (DRE→UE→turma)."""
+    """Serializa DRE da estrutura institucional vigente."""
 
     abreviacao = serializers.CharField(allow_null=True)
     codigo = serializers.CharField(allow_null=True)
@@ -99,10 +155,30 @@ class DreAbrangenciaSerializer(serializers.Serializer):
 
 
 class EstruturaAbrangenciaSerializer(serializers.Serializer):
-    """Serializa a estrutura de abrangência agrupada por DRE/UE/turma."""
+    """Serializa a estrutura institucional vigente por DRE e UE."""
 
-    abrangencia = serializers.JSONField(allow_null=True, required=False)
     dres = DreAbrangenciaSerializer(many=True)
+
+
+class EstruturaAbrangenciaQuerySerializer(serializers.Serializer):
+    """Valida o filtro opcional de DRE da estrutura institucional vigente."""
+
+    codigo_dre = serializers.CharField(
+        required=False, allow_blank=True, allow_null=True
+    )
+
+    def to_internal_value(self, data: Mapping[str, Any]) -> dict[str, Any]:
+        """Aceita o alias ``codigoDre`` e trata o valor em branco como nulo.
+
+        Args:
+            data: Query params recebidos.
+
+        Returns:
+            Filtro normalizado; ``codigo_dre`` nulo quando não informado.
+        """
+        codigo_dre = data.get("codigo_dre") or data.get("codigoDre") or ""
+        validados = super().to_internal_value({"codigo_dre": codigo_dre})
+        return {"codigo_dre": validados["codigo_dre"] or None}
 
 
 class TurmasElegiveisRequestSerializer(serializers.Serializer):
