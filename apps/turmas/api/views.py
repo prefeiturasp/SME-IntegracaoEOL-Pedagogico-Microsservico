@@ -190,11 +190,12 @@ class TurmasAtribuidasDreUePorTurmasView(BaseAPIView):
             Turmas agrupadas por DRE e UE; ``dres`` vazio quando nenhuma
             turma informada está na estrutura vigente.
         """
-        codigos: list[int] = [
-            int(codigo)
-            for codigo in (
-                request.data if isinstance(request.data, list) else []
-            )
+        corpo: list[object] = (
+            request.data if isinstance(request.data, list) else []
+        )
+        codigos = [
+            int(str(codigo))
+            for codigo in corpo
             if str(codigo).strip().lstrip("-").isdigit()
         ]
         dados = TurmasService().estrutura_abrangencia_por_turmas(codigos)
@@ -334,11 +335,10 @@ class CodigosTurmasContagemView(BaseAPIView):
         Returns:
             Códigos distintos das turmas que atendem ao recorte.
         """
-        ues_codigos = [
-            str(ue)
-            for ue in (request.data if isinstance(request.data, list) else [])
-            if ue
-        ]
+        corpo: list[object] = (
+            request.data if isinstance(request.data, list) else []
+        )
+        ues_codigos = [str(ue) for ue in corpo if ue]
         ano_turma = request.query_params.get(
             "ano_turma"
         ) or request.query_params.get("anoTurma")
@@ -392,7 +392,9 @@ class TurmasRecortePorTipoView(BaseAPIView):
         Returns:
             Subconjunto dos códigos informados que atende ao recorte.
         """
-        codigos = request.data if isinstance(request.data, list) else []
+        codigos: list[int] = (
+            request.data if isinstance(request.data, list) else []
+        )
         tipos_turma = _query_int_list(request, "tipos_turma", "tiposTurma")
         ue_codigo = request.query_params.get(
             "ue_codigo"

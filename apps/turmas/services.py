@@ -139,7 +139,9 @@ class TurmasService:
         Returns:
             Turmas agrupadas por DRE e UE.
         """
-        linhas = self._repo.linhas_abrangencia_estrutura_vigente(codigo_dre=codigo_dre)
+        linhas = self._repo.linhas_abrangencia_estrutura_vigente(
+            codigo_dre=codigo_dre
+        )
         return _agrupar_por_dre_ue(linhas)
 
     def estrutura_abrangencia_por_turmas(
@@ -156,7 +158,9 @@ class TurmasService:
         """
         if not codigos_turma:
             return _agrupar_por_dre_ue([])
-        linhas = self._repo.linhas_abrangencia_estrutura_vigente(codigos_turma=codigos_turma)
+        linhas = self._repo.linhas_abrangencia_estrutura_vigente(
+            codigos_turma=codigos_turma
+        )
         return _agrupar_por_dre_ue(linhas)
 
     def turmas_elegiveis(

@@ -86,7 +86,9 @@ class TestTurmasService(TestCase):
         self.repo.turmas_atribuidas_dre_ue.assert_called_once_with(["000001"])
 
     def test_estrutura_abrangencia_filtra_pela_dre(self) -> None:
-        self.repo.linhas_abrangencia_estrutura_vigente.return_value = iter([_linha()])
+        self.repo.linhas_abrangencia_estrutura_vigente.return_value = iter(
+            [_linha()]
+        )
 
         resultado = self.service.estrutura_abrangencia("100000")
 
@@ -104,7 +106,9 @@ class TestTurmasService(TestCase):
             self.service.estrutura_abrangencia(),
             {"dres": []},
         )
-        self.repo.linhas_abrangencia_estrutura_vigente.assert_called_once_with(codigo_dre=None)
+        self.repo.linhas_abrangencia_estrutura_vigente.assert_called_once_with(
+            codigo_dre=None
+        )
 
     def test_estrutura_abrangencia_agrupa_por_dre_e_ue(self) -> None:
         self.repo.linhas_abrangencia_estrutura_vigente.return_value = iter(
@@ -242,7 +246,9 @@ class TestTurmasService(TestCase):
     def test_estrutura_abrangencia_por_turmas_consulta_os_codigos(
         self,
     ) -> None:
-        self.repo.linhas_abrangencia_estrutura_vigente.return_value = iter([_linha()])
+        self.repo.linhas_abrangencia_estrutura_vigente.return_value = iter(
+            [_linha()]
+        )
 
         resultado = self.service.estrutura_abrangencia_por_turmas([9000001])
 
