@@ -82,6 +82,66 @@ class TestComponentesViews(TestCase):
         )
 
     @patch(_SVC)
+    def test_lista_disciplinas_por_turmas_lote(self, mock_service) -> None:
+        """Repassa as turmas e os códigos das disciplinas ao serviço."""
+        metodo = mock_service.return_value.listar_disciplinas_por_turmas
+        metodo.return_value = [
+            {
+                "turma_codigo": "9100001",
+                "desc_territorio_saber": "Território",
+                "desc_experiencia_pedagogica": "Experiência",
+                "componente_codigo": 1214,
+                "codigo_componente_territorio_saber": 1519,
+            }
+        ]
+
+        response = self.get(
+            "/turmas/componentes-turma/"
+            "?codigo_turma=9100001&codigo_turma=9100002"
+            "&codigos_componentes=1214&codigos_componentes=1215"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, metodo.return_value)
+        metodo.assert_called_once_with(
+            ["9100001", "9100002"], [1214, 1215]
+        )
+
+    def test_lista_disciplinas_por_turmas_lote_exige_turmas(self) -> None:
+        """Rejeita a consulta sem códigos de turmas."""
+        response = self.get(
+            "/turmas/componentes-turma/?codigos_componentes=1214"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_lista_disciplinas_por_turmas_lote_exige_disciplinas(
+        self,
+    ) -> None:
+        """Rejeita a consulta sem códigos de disciplinas."""
+        response = self.get("/turmas/componentes-turma/?codigo_turma=9100001")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_lista_disciplinas_por_turmas_lote_rejeita_codigo_invalido(
+        self,
+    ) -> None:
+        """Rejeita um código de disciplina não numérico."""
+        response = self.get(
+            "/turmas/componentes-turma/"
+            "?codigo_turma=9100001&codigos_componentes=invalido"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_lista_disciplinas_por_turmas_lote_exige_api_key(self) -> None:
+        """Rejeita a consulta sem API Key."""
+        self.assert_unauthorized(
+            "/turmas/componentes-turma/"
+            "?codigo_turma=9100001&codigos_componentes=1214"
+        )
+
+    @patch(_SVC)
     def test_ep1_lista_componentes(self, mock_service):
         """Lista componentes do funcionário."""
         service = mock_service.return_value

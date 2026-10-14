@@ -115,6 +115,56 @@ class TestDisciplinasPorTurmaRepository(TestCase):
         self.assertEqual(resultado, [])
 
 
+class TestDisciplinasPorTurmasRepository(TestCase):
+    """Valida a consulta de disciplinas selecionadas por várias turmas."""
+
+    def test_filtra_turmas_e_codigos_e_ordena_por_turma_e_disciplina(
+        self,
+    ) -> None:
+        """Retorna só os pares solicitados, ordenados por turma e código."""
+        for turma, componente in (
+            ("9100002", 1215),
+            ("9100001", 1215),
+            ("9100001", 1214),
+            ("9100001", 9999),
+            ("9100003", 1214),
+        ):
+            ComponenteTurma.objects.create(
+                turma_codigo=turma,
+                componente_codigo=componente,
+                desc_experiencia_pedagogica=f"Exp {turma}/{componente}",
+            )
+
+        resultado = ComponentesRepository().listar_disciplinas_por_turmas(
+            ["9100001", "9100002"],
+            [1214, 1215],
+        )
+
+        self.assertEqual(
+            [(r["turma_codigo"], r["componente_codigo"]) for r in resultado],
+            [("9100001", 1214), ("9100001", 1215), ("9100002", 1215)],
+        )
+        self.assertEqual(
+            set(resultado[0]),
+            {
+                "turma_codigo",
+                "desc_territorio_saber",
+                "desc_experiencia_pedagogica",
+                "componente_codigo",
+                "codigo_componente_territorio_saber",
+            },
+        )
+
+    def test_retorna_lista_vazia_quando_nao_encontra(self) -> None:
+        """Retorna lista vazia quando nenhum par corresponde."""
+        resultado = ComponentesRepository().listar_disciplinas_por_turmas(
+            ["9100001"],
+            [1214],
+        )
+
+        self.assertEqual(resultado, [])
+
+
 class TestAtribuicoesTerritorioProfessorAnoRepository(TestCase):
     """Valida a listagem anual de atribuições de território."""
 
