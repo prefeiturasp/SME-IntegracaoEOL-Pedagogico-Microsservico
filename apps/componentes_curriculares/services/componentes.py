@@ -33,6 +33,25 @@ class ComponentesService:
             codigos_disciplinas,
         )
 
+    def listar_disciplinas_por_turmas(
+        self,
+        codigos_turmas: list[str],
+        codigos_disciplinas: list[int],
+    ) -> list[dict]:
+        """Retorna disciplinas selecionadas vinculadas a várias turmas.
+
+        Args:
+            codigos_turmas: Códigos das turmas consultadas.
+            codigos_disciplinas: Códigos das disciplinas consultadas.
+
+        Returns:
+            Dados das disciplinas encontradas nas turmas.
+        """
+        return self._repo.listar_disciplinas_por_turmas(
+            codigos_turmas,
+            codigos_disciplinas,
+        )
+
     def listar_componentes_por_funcionario(
         self,
         login: str,

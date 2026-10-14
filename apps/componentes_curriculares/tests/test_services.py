@@ -52,6 +52,15 @@ class TestComponentesService(SimpleTestCase):
             [1214, 1215],
         )
 
+    def test_lista_disciplinas_por_turmas(self) -> None:
+        """Delega turmas e disciplinas para o repository."""
+        self.assert_delega(
+            "listar_disciplinas_por_turmas",
+            "listar_disciplinas_por_turmas",
+            ["9100001", "9100002"],
+            [1214, 1215],
+        )
+
     def test_ep1_sem_turma_delega_listar_por_funcionario(self) -> None:
         """Delega listagem sem turma para o repository."""
         self.repo.listar_por_funcionario.return_value = []

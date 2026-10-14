@@ -75,6 +75,72 @@ class DisciplinasPorTurmaView(BaseAPIView):
         return Response(dados)
 
 
+class DisciplinasPorTurmasLoteView(BaseAPIView):
+    """Lista disciplinas selecionadas vinculadas a várias turmas."""
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "codigo_turma",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                many=True,
+                required=True,
+                description=(
+                    "Código da turma. Repita o parâmetro para consultar "
+                    "mais de uma turma."
+                ),
+            ),
+            OpenApiParameter(
+                "codigos_componentes",
+                OpenApiTypes.INT,
+                OpenApiParameter.QUERY,
+                many=True,
+                required=True,
+                description=(
+                    "Código da disciplina. Repita o parâmetro para "
+                    "consultar mais de uma disciplina."
+                ),
+            ),
+        ],
+        responses={200: ComponenteTurmaDisciplinaSerializer(many=True)},
+        description=(
+            "Lista disciplinas selecionadas vinculadas às turmas "
+            "informadas. Retorna apenas os pares turma/disciplina que "
+            "existem."
+        ),
+        tags=_TAG,
+        operation_id="disciplinas_por_turmas_lote",
+    )
+    def get(self, request: Request) -> Response:
+        """Lista disciplinas selecionadas vinculadas a várias turmas.
+
+        Args:
+            request: Requisição HTTP com os códigos de turmas e disciplinas.
+
+        Returns:
+            Dados das disciplinas encontradas nas turmas.
+        """
+        turmas = CodigosTurmasLoteSerializer(
+            data=request.query_params.getlist("codigo_turma"),
+            allow_empty=False,
+        )
+        turmas.is_valid(raise_exception=True)
+        codigos = request.query_params.getlist(
+            "codigos_componentes"
+        ) or request.query_params.getlist("codigosComponentes")
+        disciplinas = CodigosDisciplinasSerializer(
+            data=codigos,
+            allow_empty=False,
+        )
+        disciplinas.is_valid(raise_exception=True)
+        dados = ComponentesService().listar_disciplinas_por_turmas(
+            turmas.validated_data,
+            disciplinas.validated_data,
+        )
+        return Response(dados)
+
+
 class AtribuicoesTerritorioTurmaView(BaseAPIView):
     """Lista todas as atribuições de Território do Saber da turma."""
 
