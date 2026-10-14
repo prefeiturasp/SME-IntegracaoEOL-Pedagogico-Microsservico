@@ -9,6 +9,7 @@ from apps.core.views import BaseAPIView
 from apps.turmas.constants import MENSAGEM_COMPORTAMENTO_INESPERADO
 from apps.turmas.serializers import (
     AnosLetivosVigenteQuerySerializer,
+    EstruturaAbrangenciaQuerySerializer,
     EstruturaAbrangenciaSerializer,
     TurmaAtribuidaDreUeSerializer,
     TurmaDadosSerializer,
@@ -141,40 +142,30 @@ class TurmasAtribuidasDreUeView(BaseAPIView):
 
 
 class TodasTurmasAtribuidasDreUeView(BaseAPIView):
-    """Lista turmas atribuídas, com recorte opcional por DRE."""
+    """Retorna a estrutura institucional vigente da SME ou de uma DRE."""
 
     @extend_schema(
         tags=_TAG,
-        summary="Listar turmas atribuídas (abrangência SME ou por DRE)",
-        parameters=[
-            OpenApiParameter(
-                "codigo_dre", str, OpenApiParameter.QUERY, required=False
-            ),
-        ],
+        summary="Listar turmas atribuídas vigente da SME ou por DRE.",
+        parameters=[EstruturaAbrangenciaQuerySerializer],
         responses={200: EstruturaAbrangenciaSerializer},
         operation_id="todas_turmas_atribuidas_dre_ue",
     )
     def get(self, request: Request) -> Response:
-        """Retorna a abrangência de turmas, de toda a SME ou de uma DRE.
+        """Retorna a estrutura institucional vigente.
 
         Args:
-            request: Requisição recebida; ``codigo_dre`` (query, opcional)
-                restringe o resultado a uma única DRE.
+            request: Requisição com o filtro opcional ``codigo_dre``.
 
         Returns:
-            Estrutura agrupada por DRE/UE/turma.
+            Turmas agrupadas por DRE e UE.
         """
-        codigo_dre = request.query_params.get(
-            "codigo_dre"
-        ) or request.query_params.get("codigoDre")
-        service = TurmasService()
-        if codigo_dre and codigo_dre.strip():
-            dados = service.turmas_atribuidas_dre_ue_por_dre(
-                codigo_dre.strip()
-            )
-        else:
-            dados = service.todas_turmas_atribuidas_dre_ue()
-        return Response(dados)
+        filtro = EstruturaAbrangenciaQuerySerializer(data=request.query_params)
+        filtro.is_valid(raise_exception=True)
+        dados = TurmasService().estrutura_abrangencia(
+            filtro.validated_data["codigo_dre"]
+        )
+        return Response(EstruturaAbrangenciaSerializer(dados).data)
 
 
 class TurmasAtribuidasDreUePorTurmasView(BaseAPIView):
@@ -190,24 +181,25 @@ class TurmasAtribuidasDreUePorTurmasView(BaseAPIView):
         operation_id="turmas_atribuidas_dre_ue_por_turmas",
     )
     def post(self, request: Request) -> Response:
-        """Retorna a abrangência das turmas informadas.
+        """Retorna a estrutura institucional vigente das turmas informadas.
 
         Args:
             request: Requisição com a lista de códigos de turma no corpo.
 
         Returns:
-            Estrutura agrupada por DRE/UE/turma; ``dres`` vazio quando a
-            lista é vazia ou nenhuma turma está no recorte.
+            Turmas agrupadas por DRE e UE; ``dres`` vazio quando nenhuma
+            turma informada está na estrutura vigente.
         """
-        codigos: list[int] = [
-            int(codigo)
-            for codigo in (
-                request.data if isinstance(request.data, list) else []
-            )
+        corpo: list[object] = (
+            request.data if isinstance(request.data, list) else []
+        )
+        codigos = [
+            int(str(codigo))
+            for codigo in corpo
             if str(codigo).strip().lstrip("-").isdigit()
         ]
-        dados = TurmasService().turmas_atribuidas_dre_ue_por_turmas(codigos)
-        return Response(dados)
+        dados = TurmasService().estrutura_abrangencia_por_turmas(codigos)
+        return Response(EstruturaAbrangenciaSerializer(dados).data)
 
 
 class TurmasElegiveisView(BaseAPIView):
@@ -343,11 +335,10 @@ class CodigosTurmasContagemView(BaseAPIView):
         Returns:
             Códigos distintos das turmas que atendem ao recorte.
         """
-        ues_codigos = [
-            str(ue)
-            for ue in (request.data if isinstance(request.data, list) else [])
-            if ue
-        ]
+        corpo: list[object] = (
+            request.data if isinstance(request.data, list) else []
+        )
+        ues_codigos = [str(ue) for ue in corpo if ue]
         ano_turma = request.query_params.get(
             "ano_turma"
         ) or request.query_params.get("anoTurma")
@@ -401,7 +392,9 @@ class TurmasRecortePorTipoView(BaseAPIView):
         Returns:
             Subconjunto dos códigos informados que atende ao recorte.
         """
-        codigos = request.data if isinstance(request.data, list) else []
+        codigos: list[int] = (
+            request.data if isinstance(request.data, list) else []
+        )
         tipos_turma = _query_int_list(request, "tipos_turma", "tiposTurma")
         ue_codigo = request.query_params.get(
             "ue_codigo"
