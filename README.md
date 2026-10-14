@@ -143,6 +143,8 @@ curl -H "X-API-Key: dev-key-default" http://localhost:8001/api/componentes-curri
 | T06 | GET | `/api/v1/pedagogico/turmas/ue/{ueCodigo}/sincronizacoes-institucionais/anosLetivos/` | Códigos de turma da UE (tipo_turma <> 4), filtráveis por `anos_letivos_vigente`; ausente/vazio lista todos da UE, `0` retorna `[]` |
 | T07 | GET | `/api/v1/pedagogico/turmas/anos-letivos/{anoLetivo}/professor/{professorRf}/turmas-historicas-geral/` | Turmas do professor por ano letivo com atribuição válida. Resposta no contrato legado de 7 campos (`ano`, `ano_letivo`, `codigo`, `modalidade`, `codigo_modalidade`, `nome_turma`, `semestre`); sem resultado retorna `200 []` |
 | T08 | GET | `/api/v1/pedagogico/turmas/itinerario/ensino-medio/` | Itinerários do Ensino Médio (fixture local) |
+| — | GET | `/api/v1/pedagogico/turmas/turmas-atribuidas-dre-ue/todas/` | Estrutura institucional vigente DRE, UE e turmas de toda a SME ou da DRE. |
+| — | POST | `/api/v1/pedagogico/turmas/turmas-atribuidas-dre-ue/por-turmas/` | Estrutura institucional vigente aos códigos de turma informados. |
 
 ### Componentes Curriculares
 
