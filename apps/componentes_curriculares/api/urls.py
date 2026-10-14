@@ -22,6 +22,7 @@ from apps.componentes_curriculares.api.views import (
     ComponentesTurmaProgramaView,
     ComponentesTurmasBrutosView,
     DisciplinasPorTurmaView,
+    DisciplinasPorTurmasLoteView,
     GradeCurricularView,
     ListagemTurmasComponentesView,
     ValidarPapView,
@@ -135,6 +136,11 @@ urlpatterns = [
         "turmas/atribuicoes-territorio-saber/",
         AtribuicoesTerritorioTurmasLoteView.as_view(),
         name="atribuicoes-territorio-turmas-lote",
+    ),
+    path(
+        "turmas/componentes-turma/",
+        DisciplinasPorTurmasLoteView.as_view(),
+        name="componentes-turma-lote",
     ),
     path(
         "turmas/<str:codigo_turma>/componentes-turma/",
