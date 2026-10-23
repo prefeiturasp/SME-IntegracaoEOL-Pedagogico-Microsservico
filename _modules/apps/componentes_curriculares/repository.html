@@ -431,6 +431,28 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            Dados de território e experiência das disciplinas encontradas.</span>
 <span class="sd">        """</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">listar_disciplinas_por_turmas</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">codigo_turma</span><span class="p">],</span> <span class="n">codigos_disciplinas</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ComponentesRepository.listar_disciplinas_por_turmas">
+<a class="viewcode-back" href="../../../api.html#apps.componentes_curriculares.repository.ComponentesRepository.listar_disciplinas_por_turmas">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">listar_disciplinas_por_turmas</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">codigos_turmas</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">codigos_disciplinas</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Lista disciplinas selecionadas vinculadas a várias turmas.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            codigos_turmas: Códigos das turmas consultadas.</span>
+<span class="sd">            codigos_disciplinas: Códigos das disciplinas consultadas.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dados de território e experiência das disciplinas encontradas,</span>
+<span class="sd">            ordenados por turma e disciplina.</span>
+<span class="sd">        """</span>
         <span class="n">campos</span> <span class="o">=</span> <span class="p">(</span>
             <span class="s2">"turma_codigo"</span><span class="p">,</span>
             <span class="s2">"desc_territorio_saber"</span><span class="p">,</span>
@@ -441,11 +463,11 @@
         <span class="k">return</span> <span class="nb">list</span><span class="p">(</span>
             <span class="n">ComponenteTurma</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">using</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_DB</span><span class="p">)</span>
             <span class="o">.</span><span class="n">filter</span><span class="p">(</span>
-                <span class="n">turma_codigo</span><span class="o">=</span><span class="n">codigo_turma</span><span class="p">,</span>
+                <span class="n">turma_codigo__in</span><span class="o">=</span><span class="n">codigos_turmas</span><span class="p">,</span>
                 <span class="n">componente_codigo__in</span><span class="o">=</span><span class="n">codigos_disciplinas</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="o">*</span><span class="n">campos</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="s2">"componente_codigo"</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="s2">"turma_codigo"</span><span class="p">,</span> <span class="s2">"componente_codigo"</span><span class="p">)</span>
         <span class="p">)</span></div>
 
 

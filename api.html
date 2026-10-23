@@ -147,30 +147,75 @@ não for fornecida.</p>
 <dt class="sig sig-object py" id="apps.turmas.serializers.TurmaAbrangenciaSerializer">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.turmas.serializers.</span></span><span class="sig-name descname"><span class="pre">TurmaAbrangenciaSerializer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/serializers.html#TurmaAbrangenciaSerializer"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.serializers.TurmaAbrangenciaSerializer" title="Link para esta definição">¶</a></dt>
 <dd><p>Base: <code class="xref py py-class docutils literal notranslate"><span class="pre">Serializer</span></code></p>
-<p>Serializa turma no contrato de abrangência (DRE→UE→turma).</p>
-<p>Campos em <code class="docutils literal notranslate"><span class="pre">camelCase</span></code> de propósito: o gateway repassa este payload
-quase sem tradução (<code class="docutils literal notranslate"><span class="pre">TurmaDTO</span></code>).</p>
+<p>Serializa turma da estrutura institucional vigente.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="apps.turmas.serializers.TurmaAbrangenciaSerializer.to_representation">
+<span class="sig-name descname"><span class="pre">to_representation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">instance</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/serializers.html#TurmaAbrangenciaSerializer.to_representation"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.serializers.TurmaAbrangenciaSerializer.to_representation" title="Link para esta definição">¶</a></dt>
+<dd><p>Serializa a turma a partir dos campos declarados.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>instance</strong> – Turma da estrutura vigente, com valores já tipados.</p>
+</dd>
+<dt class="field-even">Retorna<span class="colon">:</span></dt>
+<dd class="field-even"><p>Turma no formato do contrato.</p>
+</dd>
+<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>instance</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p>
+</dd>
+<dt class="field-even">Tipo de retorno<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, <em>Any</em>]</p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="apps.turmas.serializers.UeAbrangenciaSerializer">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.turmas.serializers.</span></span><span class="sig-name descname"><span class="pre">UeAbrangenciaSerializer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/serializers.html#UeAbrangenciaSerializer"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.serializers.UeAbrangenciaSerializer" title="Link para esta definição">¶</a></dt>
 <dd><p>Base: <code class="xref py py-class docutils literal notranslate"><span class="pre">Serializer</span></code></p>
-<p>Serializa UE no contrato de abrangência (DRE→UE→turma).</p>
+<p>Serializa UE da estrutura institucional vigente.</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="apps.turmas.serializers.DreAbrangenciaSerializer">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.turmas.serializers.</span></span><span class="sig-name descname"><span class="pre">DreAbrangenciaSerializer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/serializers.html#DreAbrangenciaSerializer"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.serializers.DreAbrangenciaSerializer" title="Link para esta definição">¶</a></dt>
 <dd><p>Base: <code class="xref py py-class docutils literal notranslate"><span class="pre">Serializer</span></code></p>
-<p>Serializa DRE no contrato de abrangência (DRE→UE→turma).</p>
+<p>Serializa DRE da estrutura institucional vigente.</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="apps.turmas.serializers.EstruturaAbrangenciaSerializer">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.turmas.serializers.</span></span><span class="sig-name descname"><span class="pre">EstruturaAbrangenciaSerializer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/serializers.html#EstruturaAbrangenciaSerializer"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.serializers.EstruturaAbrangenciaSerializer" title="Link para esta definição">¶</a></dt>
 <dd><p>Base: <code class="xref py py-class docutils literal notranslate"><span class="pre">Serializer</span></code></p>
-<p>Serializa a estrutura de abrangência agrupada por DRE/UE/turma.</p>
+<p>Serializa a estrutura institucional vigente por DRE e UE.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.turmas.serializers.EstruturaAbrangenciaQuerySerializer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.turmas.serializers.</span></span><span class="sig-name descname"><span class="pre">EstruturaAbrangenciaQuerySerializer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/serializers.html#EstruturaAbrangenciaQuerySerializer"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.serializers.EstruturaAbrangenciaQuerySerializer" title="Link para esta definição">¶</a></dt>
+<dd><p>Base: <code class="xref py py-class docutils literal notranslate"><span class="pre">Serializer</span></code></p>
+<p>Valida o filtro opcional de DRE da estrutura institucional vigente.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="apps.turmas.serializers.EstruturaAbrangenciaQuerySerializer.to_internal_value">
+<span class="sig-name descname"><span class="pre">to_internal_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/serializers.html#EstruturaAbrangenciaQuerySerializer.to_internal_value"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.serializers.EstruturaAbrangenciaQuerySerializer.to_internal_value" title="Link para esta definição">¶</a></dt>
+<dd><p>Aceita o alias <code class="docutils literal notranslate"><span class="pre">codigoDre</span></code> e trata o valor em branco como nulo.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> – Query params recebidos.</p>
+</dd>
+<dt class="field-even">Retorna<span class="colon">:</span></dt>
+<dd class="field-even"><p>Filtro normalizado; <code class="docutils literal notranslate"><span class="pre">codigo_dre</span></code> nulo quando não informado.</p>
+</dd>
+<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p>
+</dd>
+<dt class="field-even">Tipo de retorno<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, <em>Any</em>]</p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -352,29 +397,18 @@ quase sem tradução (<code class="docutils literal notranslate"><span class="pr
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="apps.turmas.services.TurmasService.todas_turmas_atribuidas_dre_ue">
-<span class="sig-name descname"><span class="pre">todas_turmas_atribuidas_dre_ue</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/services.html#TurmasService.todas_turmas_atribuidas_dre_ue"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.services.TurmasService.todas_turmas_atribuidas_dre_ue" title="Link para esta definição">¶</a></dt>
-<dd><p>Retorna turmas atribuídas.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Tipo de retorno<span class="colon">:</span></dt>
-<dd class="field-odd"><p>dict[str, <em>Any</em>]</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="apps.turmas.services.TurmasService.turmas_atribuidas_dre_ue_por_dre">
-<span class="sig-name descname"><span class="pre">turmas_atribuidas_dre_ue_por_dre</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">codigo_dre</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/services.html#TurmasService.turmas_atribuidas_dre_ue_por_dre"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.services.TurmasService.turmas_atribuidas_dre_ue_por_dre" title="Link para esta definição">¶</a></dt>
-<dd><p>Retorna a abrangência de uma DRE.</p>
+<dt class="sig sig-object py" id="apps.turmas.services.TurmasService.estrutura_abrangencia">
+<span class="sig-name descname"><span class="pre">estrutura_abrangencia</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">codigo_dre</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/services.html#TurmasService.estrutura_abrangencia"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.services.TurmasService.estrutura_abrangencia" title="Link para esta definição">¶</a></dt>
+<dd><p>Retorna a estrutura institucional vigente da SME ou de uma DRE.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>codigo_dre</strong> – Código EOL da DRE.</p>
+<dd class="field-odd"><p><strong>codigo_dre</strong> – Código da DRE; toda a SME quando ausente.</p>
 </dd>
 <dt class="field-even">Retorna<span class="colon">:</span></dt>
-<dd class="field-even"><p>Estrutura agrupada por DRE/UE/turma.</p>
+<dd class="field-even"><p>Turmas agrupadas por DRE e UE.</p>
 </dd>
 <dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>codigo_dre</strong> (<em>str</em>)</p>
+<dd class="field-odd"><p><strong>codigo_dre</strong> (<em>str</em><em> | </em><em>None</em>)</p>
 </dd>
 <dt class="field-even">Tipo de retorno<span class="colon">:</span></dt>
 <dd class="field-even"><p>dict[str, <em>Any</em>]</p>
@@ -383,15 +417,16 @@ quase sem tradução (<code class="docutils literal notranslate"><span class="pr
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="apps.turmas.services.TurmasService.turmas_atribuidas_dre_ue_por_turmas">
-<span class="sig-name descname"><span class="pre">turmas_atribuidas_dre_ue_por_turmas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">codigos_turma</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/services.html#TurmasService.turmas_atribuidas_dre_ue_por_turmas"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.services.TurmasService.turmas_atribuidas_dre_ue_por_turmas" title="Link para esta definição">¶</a></dt>
-<dd><p>Retorna a abrangência de uma lista de turmas.</p>
+<dt class="sig sig-object py" id="apps.turmas.services.TurmasService.estrutura_abrangencia_por_turmas">
+<span class="sig-name descname"><span class="pre">estrutura_abrangencia_por_turmas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">codigos_turma</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/services.html#TurmasService.estrutura_abrangencia_por_turmas"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.services.TurmasService.estrutura_abrangencia_por_turmas" title="Link para esta definição">¶</a></dt>
+<dd><p>Retorna a estrutura institucional vigente das turmas informadas.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>codigos_turma</strong> – Códigos das turmas a consultar.</p>
 </dd>
 <dt class="field-even">Retorna<span class="colon">:</span></dt>
-<dd class="field-even"><p>Estrutura agrupada por DRE/UE/turma.</p>
+<dd class="field-even"><p>Turmas agrupadas por DRE e UE; vazia quando nenhuma turma é
+informada.</p>
 </dd>
 <dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>codigos_turma</strong> (<em>list</em><em>[</em><em>int</em><em>]</em>)</p>
@@ -810,61 +845,28 @@ convenção para os dois parâmetros).</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="apps.turmas.repository.TurmasRepository.todas_turmas_atribuidas_dre_ue">
-<span class="sig-name descname"><span class="pre">todas_turmas_atribuidas_dre_ue</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/repository.html#TurmasRepository.todas_turmas_atribuidas_dre_ue"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.repository.TurmasRepository.todas_turmas_atribuidas_dre_ue" title="Link para esta definição">¶</a></dt>
-<dd><p>Abrangência SME agrupada por DRE/UE (recorte de tipo de escola).</p>
-<p><code class="docutils literal notranslate"><span class="pre">turma_atribuida_dre_ue</span></code> é recarregada pelo MS-ETL para todos os
-anos letivos presentes no EOL, não só o corrente — outros consumos
-dessa tabela dependem do histórico. Como este endpoint é a estrutura
-<em>vigente</em>, o filtro de ano corrente é aplicado aqui.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Tipo de retorno<span class="colon">:</span></dt>
-<dd class="field-odd"><p>dict</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="apps.turmas.repository.TurmasRepository.turmas_atribuidas_dre_ue_por_dre">
-<span class="sig-name descname"><span class="pre">turmas_atribuidas_dre_ue_por_dre</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">codigo_dre</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/repository.html#TurmasRepository.turmas_atribuidas_dre_ue_por_dre"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.repository.TurmasRepository.turmas_atribuidas_dre_ue_por_dre" title="Link para esta definição">¶</a></dt>
-<dd><p>Abrangência SME vigente de uma DRE (recorte de tipo de escola).</p>
+<dt class="sig sig-object py" id="apps.turmas.repository.TurmasRepository.linhas_abrangencia_estrutura_vigente">
+<span class="sig-name descname"><span class="pre">linhas_abrangencia_estrutura_vigente</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">codigo_dre</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">codigos_turma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/repository.html#TurmasRepository.linhas_abrangencia_estrutura_vigente"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.repository.TurmasRepository.linhas_abrangencia_estrutura_vigente" title="Link para esta definição">¶</a></dt>
+<dd><p>Lista as turmas da estrutura institucional vigente.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>codigo_dre</strong> – Código EOL da DRE.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>codigo_dre</strong> – Código da DRE; sem filtro quando ausente.</p></li>
+<li><p><strong>codigos_turma</strong> – Códigos das turmas; sem filtro quando
+ausente.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Retorna<span class="colon">:</span></dt>
-<dd class="field-even"><p>Estrutura agrupada por DRE/UE/turma do ano letivo corrente;
-<code class="docutils literal notranslate"><span class="pre">dres</span></code> vazio quando a DRE não tem turmas no recorte de tipo
-de escola.</p>
+<dd class="field-even"><p>Linhas ordenadas pelo código da turma.</p>
 </dd>
 <dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>codigo_dre</strong> (<em>str</em>)</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>codigo_dre</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>codigos_turma</strong> (<em>Sequence</em><em>[</em><em>int</em><em>] </em><em>| </em><em>None</em>)</p></li>
+</ul>
 </dd>
 <dt class="field-even">Tipo de retorno<span class="colon">:</span></dt>
-<dd class="field-even"><p>dict</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="apps.turmas.repository.TurmasRepository.turmas_atribuidas_dre_ue_por_turmas">
-<span class="sig-name descname"><span class="pre">turmas_atribuidas_dre_ue_por_turmas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">codigos_turma</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/repository.html#TurmasRepository.turmas_atribuidas_dre_ue_por_turmas"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.repository.TurmasRepository.turmas_atribuidas_dre_ue_por_turmas" title="Link para esta definição">¶</a></dt>
-<dd><p>Abrangência SME vigente de uma lista de turmas (recorte de tipo
-de escola).</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>codigos_turma</strong> – Códigos das turmas a consultar.</p>
-</dd>
-<dt class="field-even">Retorna<span class="colon">:</span></dt>
-<dd class="field-even"><p>Estrutura agrupada por DRE/UE/turma do ano letivo corrente;
-<code class="docutils literal notranslate"><span class="pre">dres</span></code> vazio quando a lista é vazia ou nenhuma turma está no
-recorte de tipo de escola.</p>
-</dd>
-<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>codigos_turma</strong> (<em>list</em><em>[</em><em>int</em><em>]</em>)</p>
-</dd>
-<dt class="field-even">Tipo de retorno<span class="colon">:</span></dt>
-<dd class="field-even"><p>dict</p>
+<dd class="field-even"><p><em>Iterator</em>[dict[str, <em>Any</em>]]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1313,18 +1315,17 @@ EOL.</p>
 <dt class="sig sig-object py" id="apps.turmas.api.views.TodasTurmasAtribuidasDreUeView">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.turmas.api.views.</span></span><span class="sig-name descname"><span class="pre">TodasTurmasAtribuidasDreUeView</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/api/views.html#TodasTurmasAtribuidasDreUeView"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.api.views.TodasTurmasAtribuidasDreUeView" title="Link para esta definição">¶</a></dt>
 <dd><p>Base: <a class="reference internal" href="#apps.core.views.BaseAPIView" title="apps.core.views.BaseAPIView"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseAPIView</span></code></a></p>
-<p>Lista turmas atribuídas, com recorte opcional por DRE.</p>
+<p>Retorna a estrutura institucional vigente da SME ou de uma DRE.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="apps.turmas.api.views.TodasTurmasAtribuidasDreUeView.get">
 <span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/api/views.html#TodasTurmasAtribuidasDreUeView.get"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.api.views.TodasTurmasAtribuidasDreUeView.get" title="Link para esta definição">¶</a></dt>
-<dd><p>Retorna a abrangência de turmas, de toda a SME ou de uma DRE.</p>
+<dd><p>Retorna a estrutura institucional vigente.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>request</strong> – Requisição recebida; <code class="docutils literal notranslate"><span class="pre">codigo_dre</span></code> (query, opcional)
-restringe o resultado a uma única DRE.</p>
+<dd class="field-odd"><p><strong>request</strong> – Requisição com o filtro opcional <code class="docutils literal notranslate"><span class="pre">codigo_dre</span></code>.</p>
 </dd>
 <dt class="field-even">Retorna<span class="colon">:</span></dt>
-<dd class="field-even"><p>Estrutura agrupada por DRE/UE/turma.</p>
+<dd class="field-even"><p>Turmas agrupadas por DRE e UE.</p>
 </dd>
 <dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>request</strong> (<em>Request</em>)</p>
@@ -1345,14 +1346,14 @@ restringe o resultado a uma única DRE.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="apps.turmas.api.views.TurmasAtribuidasDreUePorTurmasView.post">
 <span class="sig-name descname"><span class="pre">post</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/turmas/api/views.html#TurmasAtribuidasDreUePorTurmasView.post"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.turmas.api.views.TurmasAtribuidasDreUePorTurmasView.post" title="Link para esta definição">¶</a></dt>
-<dd><p>Retorna a abrangência das turmas informadas.</p>
+<dd><p>Retorna a estrutura institucional vigente das turmas informadas.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>request</strong> – Requisição com a lista de códigos de turma no corpo.</p>
 </dd>
 <dt class="field-even">Retorna<span class="colon">:</span></dt>
-<dd class="field-even"><p>Estrutura agrupada por DRE/UE/turma; <code class="docutils literal notranslate"><span class="pre">dres</span></code> vazio quando a
-lista é vazia ou nenhuma turma está no recorte.</p>
+<dd class="field-even"><p>Turmas agrupadas por DRE e UE; <code class="docutils literal notranslate"><span class="pre">dres</span></code> vazio quando nenhuma
+turma informada está na estrutura vigente.</p>
 </dd>
 <dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>request</strong> (<em>Request</em>)</p>
@@ -1901,6 +1902,33 @@ filtra nada).</p></li>
 <dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>codigo_turma</strong> (<em>str</em>)</p></li>
+<li><p><strong>codigos_disciplinas</strong> (<em>list</em><em>[</em><em>int</em><em>]</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Tipo de retorno<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[dict]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="apps.componentes_curriculares.repository.ComponentesRepository.listar_disciplinas_por_turmas">
+<span class="sig-name descname"><span class="pre">listar_disciplinas_por_turmas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">codigos_turmas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">codigos_disciplinas</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/componentes_curriculares/repository.html#ComponentesRepository.listar_disciplinas_por_turmas"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.componentes_curriculares.repository.ComponentesRepository.listar_disciplinas_por_turmas" title="Link para esta definição">¶</a></dt>
+<dd><p>Lista disciplinas selecionadas vinculadas a várias turmas.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>codigos_turmas</strong> – Códigos das turmas consultadas.</p></li>
+<li><p><strong>codigos_disciplinas</strong> – Códigos das disciplinas consultadas.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Retorna<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dados de território e experiência das disciplinas encontradas,
+ordenados por turma e disciplina.</p>
+</dd>
+<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>codigos_turmas</strong> (<em>list</em><em>[</em><em>str</em><em>]</em>)</p></li>
 <li><p><strong>codigos_disciplinas</strong> (<em>list</em><em>[</em><em>int</em><em>]</em>)</p></li>
 </ul>
 </dd>
@@ -2588,6 +2616,33 @@ regência com os componentes de planejamento.</p></li>
 <li><p><strong>request</strong> (<em>Request</em>)</p></li>
 <li><p><strong>codigo_turma</strong> (<em>str</em>)</p></li>
 </ul>
+</dd>
+<dt class="field-even">Tipo de retorno<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Response</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="apps.componentes_curriculares.api.views.DisciplinasPorTurmasLoteView">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">apps.componentes_curriculares.api.views.</span></span><span class="sig-name descname"><span class="pre">DisciplinasPorTurmasLoteView</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/componentes_curriculares/api/views.html#DisciplinasPorTurmasLoteView"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.componentes_curriculares.api.views.DisciplinasPorTurmasLoteView" title="Link para esta definição">¶</a></dt>
+<dd><p>Base: <a class="reference internal" href="#apps.core.views.BaseAPIView" title="apps.core.views.BaseAPIView"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseAPIView</span></code></a></p>
+<p>Lista disciplinas selecionadas vinculadas a várias turmas.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="apps.componentes_curriculares.api.views.DisciplinasPorTurmasLoteView.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/apps/componentes_curriculares/api/views.html#DisciplinasPorTurmasLoteView.get"><span class="viewcode-link"><span class="pre">[código-fonte]</span></span></a><a class="headerlink" href="#apps.componentes_curriculares.api.views.DisciplinasPorTurmasLoteView.get" title="Link para esta definição">¶</a></dt>
+<dd><p>Lista disciplinas selecionadas vinculadas a várias turmas.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> – Requisição HTTP com os códigos de turmas e disciplinas.</p>
+</dd>
+<dt class="field-even">Retorna<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dados das disciplinas encontradas nas turmas.</p>
+</dd>
+<dt class="field-odd">Parâmetros<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<em>Request</em>)</p>
 </dd>
 <dt class="field-even">Tipo de retorno<span class="colon">:</span></dt>
 <dd class="field-even"><p><em>Response</em></p>

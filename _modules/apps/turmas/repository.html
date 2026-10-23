@@ -35,9 +35,11 @@
   <h1>Código-fonte para apps.turmas.repository</h1><div class="highlight"><pre>
 <span></span><span class="sd">"""Repositório do domínio Turmas."""</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Sequence</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">UTC</span><span class="p">,</span> <span class="n">datetime</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">timezone</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">apps.componentes_curriculares.constants</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">TIPO_TURMA_ED_FISICA</span><span class="p">,</span>
@@ -68,6 +70,7 @@
     <span class="n">TurmaAtribuidaDreUe</span><span class="p">,</span>
     <span class="n">TurmaItinerarioEnsinoMedio</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">apps.turmas.regras</span><span class="w"> </span><span class="kn">import</span> <span class="n">ciclo_eja</span>
 
 <span class="c1"># (EOL cd_etapa_ensino): EJA (2,3,7,11) + Fundamental (4,5,12,13)</span>
 <span class="c1"># + Médio (6,7,8,14,17). Exclui Infantil (1,10).</span>
@@ -182,33 +185,17 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_etapa_eja</span><span class="p">(</span><span class="n">turma</span><span class="p">:</span> <span class="n">Turma</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""Deriva o ciclo EJA (I/II) a partir do texto da série ensino.</span>
-
-<span class="sd">    Só se aplica a turmas de modalidade EJA. O ciclo não é uma coluna do</span>
-<span class="sd">    EOL: é inferido de marcadores romanos (" I "/" II") presentes no texto</span>
-<span class="sd">    de ``serie_ensino``.</span>
+<span class="w">    </span><span class="sd">"""Retorna o ciclo EJA da turma; 0 fora da modalidade EJA.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        turma: Turma consultada.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        1 para ciclo I, 2 para ciclo II, 0 quando não aplicável/detectável.</span>
+<span class="sd">        1 para ciclo I, 2 para ciclo II, 0 quando não aplicável.</span>
 <span class="sd">    """</span>
-    <span class="n">serie</span> <span class="o">=</span> <span class="n">turma</span><span class="o">.</span><span class="n">serie_ensino</span>
-    <span class="k">if</span> <span class="n">turma</span><span class="o">.</span><span class="n">modalidade</span> <span class="o">!=</span> <span class="s2">"EJA"</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">serie</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">serie</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">turma</span><span class="o">.</span><span class="n">modalidade</span> <span class="o">!=</span> <span class="s2">"EJA"</span><span class="p">:</span>
         <span class="k">return</span> <span class="mi">0</span>
-    <span class="n">etapa</span> <span class="o">=</span> <span class="n">serie</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">:]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-    <span class="n">index_primeiro_ciclo</span> <span class="o">=</span> <span class="n">serie</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">" I "</span><span class="p">)</span>
-    <span class="n">index_segundo_ciclo</span> <span class="o">=</span> <span class="n">serie</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">" II"</span><span class="p">)</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">etapa</span> <span class="o">==</span> <span class="s2">"I"</span> <span class="ow">and</span> <span class="n">index_segundo_ciclo</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span>
-        <span class="n">index_primeiro_ciclo</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">index_segundo_ciclo</span> <span class="o">&lt;</span> <span class="mi">0</span>
-    <span class="p">):</span>
-        <span class="k">return</span> <span class="mi">1</span>
-    <span class="k">if</span> <span class="p">(</span><span class="n">etapa</span> <span class="o">==</span> <span class="s2">"II"</span> <span class="ow">and</span> <span class="n">index_primeiro_ciclo</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span>
-        <span class="n">index_primeiro_ciclo</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">index_segundo_ciclo</span> <span class="o">&gt;=</span> <span class="mi">0</span>
-    <span class="p">):</span>
-        <span class="k">return</span> <span class="mi">2</span>
-    <span class="k">return</span> <span class="mi">0</span>
+    <span class="k">return</span> <span class="n">ciclo_eja</span><span class="p">(</span><span class="n">turma</span><span class="o">.</span><span class="n">serie_ensino</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_turma_para_sincronizacao</span><span class="p">(</span>
@@ -291,61 +278,6 @@
     <span class="p">}</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_turma_atribuida_para_lista</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="n">TurmaAtribuidaDreUe</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-    <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">"codigo_escola"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">codigo_escola</span><span class="p">,</span>
-        <span class="s2">"codigo_turma"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">codigo_turma</span><span class="p">,</span>
-        <span class="s2">"ano_letivo"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">ano_letivo</span><span class="p">,</span>
-        <span class="s2">"modalidade"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">modalidade</span><span class="p">,</span>
-        <span class="s2">"semestre"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">semestre</span><span class="p">,</span>
-        <span class="s2">"codigo_modalidade"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">codigo_modalidade</span><span class="p">,</span>
-        <span class="s2">"codigo_dre"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">codigo_dre</span><span class="p">,</span>
-        <span class="s2">"dre"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">dre</span><span class="p">,</span>
-        <span class="s2">"dre_abreviacao"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">dre_abreviacao</span><span class="p">,</span>
-        <span class="s2">"ue"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">ue</span><span class="p">,</span>
-        <span class="s2">"ue_abreviacao"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">ue_abreviacao</span><span class="p">,</span>
-        <span class="s2">"nome_turma"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">nome_turma</span><span class="p">,</span>
-        <span class="s2">"ano"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">ano</span><span class="p">,</span>
-        <span class="s2">"tipo_ue"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">tipo_ue</span><span class="p">,</span>
-        <span class="s2">"codigo_tipo_ue"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">codigo_tipo_ue</span><span class="p">,</span>
-        <span class="s2">"codigo_tipo_escola"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">codigo_tipo_escola</span><span class="p">,</span>
-        <span class="s2">"tipo_escola"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">tipo_escola</span><span class="p">,</span>
-        <span class="s2">"duracao_turno"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">duracao_turno</span><span class="p">,</span>
-        <span class="s2">"tipo_turno"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">tipo_turno</span><span class="p">,</span>
-    <span class="p">}</span>
-
-
-<span class="c1"># Tipos de escola considerados pela abrangência de SME (parâmetro</span>
-<span class="c1"># tipo_escola_sgp do legado); recorta o universo de turmas atribuídas.</span>
-<span class="n">_TIPOS_ESCOLA_SGP</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="mi">1</span><span class="p">,</span>
-    <span class="mi">2</span><span class="p">,</span>
-    <span class="mi">3</span><span class="p">,</span>
-    <span class="mi">4</span><span class="p">,</span>
-    <span class="mi">10</span><span class="p">,</span>
-    <span class="mi">11</span><span class="p">,</span>
-    <span class="mi">12</span><span class="p">,</span>
-    <span class="mi">13</span><span class="p">,</span>
-    <span class="mi">14</span><span class="p">,</span>
-    <span class="mi">15</span><span class="p">,</span>
-    <span class="mi">16</span><span class="p">,</span>
-    <span class="mi">17</span><span class="p">,</span>
-    <span class="mi">18</span><span class="p">,</span>
-    <span class="mi">19</span><span class="p">,</span>
-    <span class="mi">22</span><span class="p">,</span>
-    <span class="mi">23</span><span class="p">,</span>
-    <span class="mi">25</span><span class="p">,</span>
-    <span class="mi">26</span><span class="p">,</span>
-    <span class="mi">27</span><span class="p">,</span>
-    <span class="mi">28</span><span class="p">,</span>
-    <span class="mi">29</span><span class="p">,</span>
-    <span class="mi">30</span><span class="p">,</span>
-    <span class="mi">31</span><span class="p">,</span>
-    <span class="mi">32</span><span class="p">,</span>
-    <span class="mi">33</span><span class="p">,</span>
-    <span class="mi">38</span><span class="p">,</span>
-<span class="p">)</span>
-
 <span class="n">_CAMPOS_TURMA_ATRIBUIDA</span> <span class="o">=</span> <span class="p">(</span>
     <span class="s2">"codigo_escola"</span><span class="p">,</span>
     <span class="s2">"codigo_turma"</span><span class="p">,</span>
@@ -369,106 +301,37 @@
 <span class="p">)</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_turma_abrangencia</span><span class="p">(</span><span class="n">item</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">turma</span><span class="p">:</span> <span class="n">Turma</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""Monta a turma no contrato de abrangência.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        item: Linha achatada de ``turma_atribuida_dre_ue``.</span>
-<span class="sd">        turma: Turma correspondente em ``turma`` (mesmo banco), usada para</span>
-<span class="sd">            completar os campos que a tabela pré-agregada não carrega;</span>
-<span class="sd">            ``None`` quando a turma não é encontrada (mantém os defaults).</span>
-<span class="sd">    """</span>
-    <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">"ano"</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ano"</span><span class="p">),</span>
-        <span class="s2">"anoLetivo"</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ano_letivo"</span><span class="p">),</span>
-        <span class="s2">"codigo"</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"codigo_turma"</span><span class="p">),</span>
-        <span class="s2">"tipoTurma"</span><span class="p">:</span> <span class="n">turma</span><span class="o">.</span><span class="n">tipo_turma</span> <span class="k">if</span> <span class="n">turma</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
-        <span class="s2">"modalidade"</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"modalidade"</span><span class="p">),</span>
-        <span class="s2">"codigoModalidade"</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"codigo_modalidade"</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">0</span><span class="p">,</span>
-        <span class="s2">"nomeTurma"</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"nome_turma"</span><span class="p">),</span>
-        <span class="s2">"semestre"</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"semestre"</span><span class="p">),</span>
-        <span class="s2">"duracaoTurno"</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"duracao_turno"</span><span class="p">),</span>
-        <span class="s2">"tipoTurno"</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tipo_turno"</span><span class="p">),</span>
-        <span class="s2">"dataFim"</span><span class="p">:</span> <span class="n">turma</span><span class="o">.</span><span class="n">data_fim</span> <span class="k">if</span> <span class="n">turma</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="s2">"ehistorico"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="s2">"ensinoEspecial"</span><span class="p">:</span> <span class="n">turma</span><span class="o">.</span><span class="n">ensino_especial</span> <span class="k">if</span> <span class="n">turma</span> <span class="k">else</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="s2">"etapaEJA"</span><span class="p">:</span> <span class="n">_etapa_eja</span><span class="p">(</span><span class="n">turma</span><span class="p">)</span> <span class="k">if</span> <span class="n">turma</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
-        <span class="s2">"serieEnsino"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="s2">"dataInicioTurma"</span><span class="p">:</span> <span class="n">turma</span><span class="o">.</span><span class="n">data_inicio</span> <span class="k">if</span> <span class="n">turma</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="s2">"extinta"</span><span class="p">:</span> <span class="n">turma</span><span class="o">.</span><span class="n">extinta</span> <span class="k">if</span> <span class="n">turma</span> <span class="k">else</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="s2">"situacao"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="s2">"ueCodigo"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">}</span>
+<span class="n">_CAMPOS_LINHA_ABRANGENCIA</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"codigo_dre"</span><span class="p">,</span>
+    <span class="s2">"dre"</span><span class="p">,</span>
+    <span class="s2">"dre_abreviacao"</span><span class="p">,</span>
+    <span class="s2">"codigo_escola"</span><span class="p">,</span>
+    <span class="s2">"ue"</span><span class="p">,</span>
+    <span class="s2">"codigo_tipo_escola"</span><span class="p">,</span>
+    <span class="s2">"codigo_turma"</span><span class="p">,</span>
+    <span class="s2">"ano"</span><span class="p">,</span>
+    <span class="s2">"ano_letivo"</span><span class="p">,</span>
+    <span class="s2">"modalidade"</span><span class="p">,</span>
+    <span class="s2">"codigo_modalidade"</span><span class="p">,</span>
+    <span class="s2">"nome_turma"</span><span class="p">,</span>
+    <span class="s2">"semestre"</span><span class="p">,</span>
+    <span class="s2">"duracao_turno"</span><span class="p">,</span>
+    <span class="s2">"tipo_turno"</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">_CAMPOS_TURMA_ABRANGENCIA</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"codigo"</span><span class="p">,</span>
+    <span class="s2">"tipo_turma"</span><span class="p">,</span>
+    <span class="s2">"data_inicio"</span><span class="p">,</span>
+    <span class="s2">"data_fim"</span><span class="p">,</span>
+    <span class="s2">"extinta"</span><span class="p">,</span>
+    <span class="s2">"ensino_especial"</span><span class="p">,</span>
+    <span class="s2">"serie_ensino"</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">_TAMANHO_LOTE_ABRANGENCIA</span> <span class="o">=</span> <span class="mi">2000</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_turmas_por_codigo</span><span class="p">(</span>
-    <span class="n">db</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">codigos</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Turma</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">"""Monta um lookup código -&gt; Turma para completar a abrangência.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        db: Alias do banco Django a consultar.</span>
-<span class="sd">        codigos: Códigos de turma a buscar.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Dicionário código -&gt; ``Turma``; códigos sem turma correspondente</span>
-<span class="sd">        ficam de fora.</span>
-<span class="sd">    """</span>
-    <span class="n">codigos_unicos</span> <span class="o">=</span> <span class="p">{</span><span class="n">codigo</span> <span class="k">for</span> <span class="n">codigo</span> <span class="ow">in</span> <span class="n">codigos</span> <span class="k">if</span> <span class="n">codigo</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">}</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">codigos_unicos</span><span class="p">:</span>
-        <span class="k">return</span> <span class="p">{}</span>
-    <span class="n">turmas</span> <span class="o">=</span> <span class="n">Turma</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">using</span><span class="p">(</span><span class="n">db</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">codigo__in</span><span class="o">=</span><span class="n">codigos_unicos</span><span class="p">)</span>
-    <span class="k">return</span> <span class="p">{</span><span class="n">turma</span><span class="o">.</span><span class="n">codigo</span><span class="p">:</span> <span class="n">turma</span> <span class="k">for</span> <span class="n">turma</span> <span class="ow">in</span> <span class="n">turmas</span><span class="p">}</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">_agrupar_abrangencia_dre_ue</span><span class="p">(</span>
-    <span class="n">rows</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">turmas_por_codigo</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Turma</span><span class="p">]</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""Agrupa as turmas atribuídas por DRE e UE no contrato de abrangência.</span>
-
-<span class="sd">    Feito no domínio para o gateway apenas repassar, evitando reprocessar</span>
-<span class="sd">    todo o conjunto de turmas.</span>
-<span class="sd">    """</span>
-    <span class="n">dres</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="n">ues_por_dre</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="n">turmas_vistas</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-
-    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
-        <span class="n">codigo_ue</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"codigo_escola"</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">codigo_ue</span><span class="p">:</span>
-            <span class="k">continue</span>
-        <span class="n">codigo_dre</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"codigo_dre"</span><span class="p">)</span>
-        <span class="n">chave_dre</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">codigo_dre</span><span class="p">)</span> <span class="k">if</span> <span class="n">codigo_dre</span> <span class="k">else</span> <span class="s2">"__sem_dre__"</span>
-        <span class="n">dre</span> <span class="o">=</span> <span class="n">dres</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">chave_dre</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">dre</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">dre</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">"abreviacao"</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"dre_abreviacao"</span><span class="p">),</span>
-                <span class="s2">"codigo"</span><span class="p">:</span> <span class="n">codigo_dre</span><span class="p">,</span>
-                <span class="s2">"nome"</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"dre"</span><span class="p">),</span>
-                <span class="s2">"ues"</span><span class="p">:</span> <span class="p">[],</span>
-            <span class="p">}</span>
-            <span class="n">dres</span><span class="p">[</span><span class="n">chave_dre</span><span class="p">]</span> <span class="o">=</span> <span class="n">dre</span>
-
-        <span class="n">chave_ue</span> <span class="o">=</span> <span class="p">(</span><span class="n">chave_dre</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">codigo_ue</span><span class="p">))</span>
-        <span class="n">ue</span> <span class="o">=</span> <span class="n">ues_por_dre</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">chave_ue</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">ue</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">ue</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">"codigo"</span><span class="p">:</span> <span class="n">codigo_ue</span><span class="p">,</span>
-                <span class="s2">"nome"</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ue"</span><span class="p">),</span>
-                <span class="s2">"codTipoEscola"</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"codigo_tipo_escola"</span><span class="p">),</span>
-                <span class="s2">"turmas"</span><span class="p">:</span> <span class="p">[],</span>
-            <span class="p">}</span>
-            <span class="n">ues_por_dre</span><span class="p">[</span><span class="n">chave_ue</span><span class="p">]</span> <span class="o">=</span> <span class="n">ue</span>
-            <span class="n">dre</span><span class="p">[</span><span class="s2">"ues"</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ue</span><span class="p">)</span>
-
-        <span class="n">chave_turma</span> <span class="o">=</span> <span class="p">(</span><span class="n">chave_dre</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">codigo_ue</span><span class="p">),</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"codigo_turma"</span><span class="p">))</span>
-        <span class="k">if</span> <span class="n">chave_turma</span> <span class="ow">in</span> <span class="n">turmas_vistas</span><span class="p">:</span>
-            <span class="k">continue</span>
-        <span class="n">turmas_vistas</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">chave_turma</span><span class="p">)</span>
-        <span class="n">turma</span> <span class="o">=</span> <span class="n">turmas_por_codigo</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"codigo_turma"</span><span class="p">))</span>
-        <span class="n">ue</span><span class="p">[</span><span class="s2">"turmas"</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_turma_abrangencia</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">turma</span><span class="p">))</span>
-
-    <span class="k">return</span> <span class="p">{</span><span class="s2">"abrangencia"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">"dres"</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">dres</span><span class="o">.</span><span class="n">values</span><span class="p">())}</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_ano_letivo_vigente</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">timezone</span><span class="o">.</span><span class="n">localdate</span><span class="p">()</span><span class="o">.</span><span class="n">year</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_codigos_por_atribuicao_origem</span><span class="p">(</span>
@@ -577,89 +440,44 @@
         <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">turmas</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="TurmasRepository.todas_turmas_atribuidas_dre_ue">
-<a class="viewcode-back" href="../../../api.html#apps.turmas.repository.TurmasRepository.todas_turmas_atribuidas_dre_ue">[documentos]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">todas_turmas_atribuidas_dre_ue</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">"""Abrangência SME agrupada por DRE/UE (recorte de tipo de escola).</span>
-
-<span class="sd">        ``turma_atribuida_dre_ue`` é recarregada pelo MS-ETL para todos os</span>
-<span class="sd">        anos letivos presentes no EOL, não só o corrente — outros consumos</span>
-<span class="sd">        dessa tabela dependem do histórico. Como este endpoint é a estrutura</span>
-<span class="sd">        *vigente*, o filtro de ano corrente é aplicado aqui.</span>
-<span class="sd">        """</span>
-        <span class="n">turmas</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
-            <span class="n">TurmaAtribuidaDreUe</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">using</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_DB</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">filter</span><span class="p">(</span>
-                <span class="n">codigo_tipo_escola__in</span><span class="o">=</span><span class="n">_TIPOS_ESCOLA_SGP</span><span class="p">,</span>
-                <span class="n">ano_letivo</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">UTC</span><span class="p">)</span><span class="o">.</span><span class="n">year</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="o">*</span><span class="n">_CAMPOS_TURMA_ATRIBUIDA</span><span class="p">)</span>
-        <span class="p">)</span>
-        <span class="n">turmas_por_codigo</span> <span class="o">=</span> <span class="n">_turmas_por_codigo</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_DB</span><span class="p">,</span> <span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="s2">"codigo_turma"</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">turmas</span><span class="p">)</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="n">_agrupar_abrangencia_dre_ue</span><span class="p">(</span><span class="n">turmas</span><span class="p">,</span> <span class="n">turmas_por_codigo</span><span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="TurmasRepository.turmas_atribuidas_dre_ue_por_dre">
-<a class="viewcode-back" href="../../../api.html#apps.turmas.repository.TurmasRepository.turmas_atribuidas_dre_ue_por_dre">[documentos]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">turmas_atribuidas_dre_ue_por_dre</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">codigo_dre</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">"""Abrangência SME vigente de uma DRE (recorte de tipo de escola).</span>
+<div class="viewcode-block" id="TurmasRepository.linhas_abrangencia_estrutura_vigente">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.repository.TurmasRepository.linhas_abrangencia_estrutura_vigente">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">linhas_abrangencia_estrutura_vigente</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">codigo_dre</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">codigos_turma</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">"""Lista as turmas da estrutura institucional vigente.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            codigo_dre: Código EOL da DRE.</span>
+<span class="sd">            codigo_dre: Código da DRE; sem filtro quando ausente.</span>
+<span class="sd">            codigos_turma: Códigos das turmas; sem filtro quando</span>
+<span class="sd">                ausente.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            Estrutura agrupada por DRE/UE/turma do ano letivo corrente;</span>
-<span class="sd">            ``dres`` vazio quando a DRE não tem turmas no recorte de tipo</span>
-<span class="sd">            de escola.</span>
+<span class="sd">            Linhas ordenadas pelo código da turma.</span>
 <span class="sd">        """</span>
-        <span class="n">turmas</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
-            <span class="n">TurmaAtribuidaDreUe</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">using</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_DB</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">filter</span><span class="p">(</span>
-                <span class="n">codigo_tipo_escola__in</span><span class="o">=</span><span class="n">_TIPOS_ESCOLA_SGP</span><span class="p">,</span>
-                <span class="n">codigo_dre</span><span class="o">=</span><span class="n">codigo_dre</span><span class="p">,</span>
-                <span class="n">ano_letivo</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">UTC</span><span class="p">)</span><span class="o">.</span><span class="n">year</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="o">*</span><span class="n">_CAMPOS_TURMA_ATRIBUIDA</span><span class="p">)</span>
+        <span class="n">atribuidas</span> <span class="o">=</span> <span class="n">TurmaAtribuidaDreUe</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">using</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_DB</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span>
+            <span class="n">ano_letivo</span><span class="o">=</span><span class="n">_ano_letivo_vigente</span><span class="p">()</span>
         <span class="p">)</span>
-        <span class="n">turmas_por_codigo</span> <span class="o">=</span> <span class="n">_turmas_por_codigo</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_DB</span><span class="p">,</span> <span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="s2">"codigo_turma"</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">turmas</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">codigo_dre</span><span class="p">:</span>
+            <span class="n">atribuidas</span> <span class="o">=</span> <span class="n">atribuidas</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">codigo_dre</span><span class="o">=</span><span class="n">codigo_dre</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">codigos_turma</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">atribuidas</span> <span class="o">=</span> <span class="n">atribuidas</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">codigo_turma__in</span><span class="o">=</span><span class="n">codigos_turma</span><span class="p">)</span>
+
+        <span class="n">turmas</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">turma</span><span class="p">[</span><span class="s2">"codigo"</span><span class="p">]:</span> <span class="n">turma</span>
+            <span class="k">for</span> <span class="n">turma</span> <span class="ow">in</span> <span class="n">Turma</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">using</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_DB</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">codigo__in</span><span class="o">=</span><span class="n">atribuidas</span><span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="s2">"codigo_turma"</span><span class="p">))</span>
+            <span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="o">*</span><span class="n">_CAMPOS_TURMA_ABRANGENCIA</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="n">linhas</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">atribuidas</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="s2">"codigo_turma"</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="o">*</span><span class="n">_CAMPOS_LINHA_ABRANGENCIA</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">iterator</span><span class="p">(</span><span class="n">chunk_size</span><span class="o">=</span><span class="n">_TAMANHO_LOTE_ABRANGENCIA</span><span class="p">)</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="n">_agrupar_abrangencia_dre_ue</span><span class="p">(</span><span class="n">turmas</span><span class="p">,</span> <span class="n">turmas_por_codigo</span><span class="p">)</span></div>
-
-
-<div class="viewcode-block" id="TurmasRepository.turmas_atribuidas_dre_ue_por_turmas">
-<a class="viewcode-back" href="../../../api.html#apps.turmas.repository.TurmasRepository.turmas_atribuidas_dre_ue_por_turmas">[documentos]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">turmas_atribuidas_dre_ue_por_turmas</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">codigos_turma</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">"""Abrangência SME vigente de uma lista de turmas (recorte de tipo</span>
-<span class="sd">        de escola).</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            codigos_turma: Códigos das turmas a consultar.</span>
-
-<span class="sd">        Returns:</span>
-<span class="sd">            Estrutura agrupada por DRE/UE/turma do ano letivo corrente;</span>
-<span class="sd">            ``dres`` vazio quando a lista é vazia ou nenhuma turma está no</span>
-<span class="sd">            recorte de tipo de escola.</span>
-<span class="sd">        """</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">codigos_turma</span><span class="p">:</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">"abrangencia"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">"dres"</span><span class="p">:</span> <span class="p">[]}</span>
-        <span class="n">turmas</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
-            <span class="n">TurmaAtribuidaDreUe</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">using</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_DB</span><span class="p">)</span>
-            <span class="o">.</span><span class="n">filter</span><span class="p">(</span>
-                <span class="n">codigo_turma__in</span><span class="o">=</span><span class="n">codigos_turma</span><span class="p">,</span>
-                <span class="n">codigo_tipo_escola__in</span><span class="o">=</span><span class="n">_TIPOS_ESCOLA_SGP</span><span class="p">,</span>
-                <span class="n">ano_letivo</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">UTC</span><span class="p">)</span><span class="o">.</span><span class="n">year</span><span class="p">,</span>
-            <span class="p">)</span>
-            <span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="o">*</span><span class="n">_CAMPOS_TURMA_ATRIBUIDA</span><span class="p">)</span>
-        <span class="p">)</span>
-        <span class="n">turmas_por_codigo</span> <span class="o">=</span> <span class="n">_turmas_por_codigo</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_DB</span><span class="p">,</span> <span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="s2">"codigo_turma"</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">turmas</span><span class="p">)</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="n">_agrupar_abrangencia_dre_ue</span><span class="p">(</span><span class="n">turmas</span><span class="p">,</span> <span class="n">turmas_por_codigo</span><span class="p">)</span></div>
+        <span class="k">for</span> <span class="n">linha</span> <span class="ow">in</span> <span class="n">linhas</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="p">{</span><span class="o">**</span><span class="n">linha</span><span class="p">,</span> <span class="s2">"turma"</span><span class="p">:</span> <span class="n">turmas</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">linha</span><span class="p">[</span><span class="s2">"codigo_turma"</span><span class="p">])}</span></div>
 
 
 <div class="viewcode-block" id="TurmasRepository.turmas_recorte_fund_medio_eja">
@@ -887,7 +705,35 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            Dados da turma, ou None se não encontrada.</span>
 <span class="sd">        """</span>
-        <span class="n">turma</span> <span class="o">=</span> <span class="n">Turma</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">using</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_DB</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">codigo</span><span class="o">=</span><span class="n">codigo</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+        <span class="n">turma</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">Turma</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">using</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_DB</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">only</span><span class="p">(</span>
+                <span class="s2">"codigo"</span><span class="p">,</span>
+                <span class="s2">"ano_letivo"</span><span class="p">,</span>
+                <span class="s2">"ano"</span><span class="p">,</span>
+                <span class="s2">"tipo_turma"</span><span class="p">,</span>
+                <span class="s2">"nome_turma"</span><span class="p">,</span>
+                <span class="s2">"duracao_turno"</span><span class="p">,</span>
+                <span class="s2">"tipo_turno"</span><span class="p">,</span>
+                <span class="s2">"data_inicio_turma"</span><span class="p">,</span>
+                <span class="s2">"data_fim"</span><span class="p">,</span>
+                <span class="s2">"extinta"</span><span class="p">,</span>
+                <span class="s2">"situacao"</span><span class="p">,</span>
+                <span class="s2">"ue_codigo"</span><span class="p">,</span>
+                <span class="s2">"serie_ensino"</span><span class="p">,</span>
+                <span class="s2">"codigo_serie_ensino"</span><span class="p">,</span>
+                <span class="s2">"modalidade"</span><span class="p">,</span>
+                <span class="s2">"codigo_modalidade"</span><span class="p">,</span>
+                <span class="s2">"codigo_tipo_programa"</span><span class="p">,</span>
+                <span class="s2">"codigo_modalidade_etapa"</span><span class="p">,</span>
+                <span class="s2">"semestre"</span><span class="p">,</span>
+                <span class="s2">"ensino_especial"</span><span class="p">,</span>
+                <span class="s2">"data_atualizacao"</span><span class="p">,</span>
+                <span class="s2">"data_status_turma_escola"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">codigo</span><span class="o">=</span><span class="n">codigo</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">first</span><span class="p">()</span>
+        <span class="p">)</span>
         <span class="k">if</span> <span class="n">turma</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">_turma_para_dados</span><span class="p">(</span><span class="n">turma</span><span class="p">)</span></div>

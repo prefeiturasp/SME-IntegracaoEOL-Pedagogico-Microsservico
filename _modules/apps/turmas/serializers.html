@@ -35,10 +35,16 @@
   <h1>Código-fonte para apps.turmas.serializers</h1><div class="highlight"><pre>
 <span></span><span class="sd">"""Serializers do domínio Turmas."""</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Mapping</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">cached_property</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">django.http</span><span class="w"> </span><span class="kn">import</span> <span class="n">QueryDict</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">rest_framework</span><span class="w"> </span><span class="kn">import</span> <span class="n">serializers</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">apps.core.datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataHoraLegadoField</span>
+
+<span class="n">_CampoSaida</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span>
 
 
 <div class="viewcode-block" id="TurmaListSerializer">
@@ -96,42 +102,95 @@
 <div class="viewcode-block" id="TurmaAbrangenciaSerializer">
 <a class="viewcode-back" href="../../../api.html#apps.turmas.serializers.TurmaAbrangenciaSerializer">[documentos]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">TurmaAbrangenciaSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""Serializa turma no contrato de abrangência (DRE→UE→turma).</span>
-
-<span class="sd">    Campos em ``camelCase`` de propósito: o gateway repassa este payload</span>
-<span class="sd">    quase sem tradução (``TurmaDTO``).</span>
-<span class="sd">    """</span>
+<span class="w">    </span><span class="sd">"""Serializa turma da estrutura institucional vigente."""</span>
 
     <span class="n">ano</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">anoLetivo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">anoLetivo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"ano_letivo"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
     <span class="n">codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">tipoTurma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
+    <span class="n">tipoTurma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"tipo_turma"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
     <span class="n">modalidade</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">codigoModalidade</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
-    <span class="n">nomeTurma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">codigoModalidade</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"codigo_modalidade"</span>
+    <span class="p">)</span>
+    <span class="n">nomeTurma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"nome_turma"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
     <span class="n">semestre</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">duracaoTurno</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">tipoTurno</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">dataFim</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">ehistorico</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">()</span>
-    <span class="n">ensinoEspecial</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">()</span>
-    <span class="n">etapaEJA</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
-    <span class="n">serieEnsino</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">dataInicioTurma</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">duracaoTurno</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"duracao_turno"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">tipoTurno</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"tipo_turno"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">dataFim</span> <span class="o">=</span> <span class="n">DataHoraLegadoField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"data_fim"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">ehistorico</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"eh_historico"</span><span class="p">)</span>
+    <span class="n">ensinoEspecial</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"ensino_especial"</span>
+    <span class="p">)</span>
+    <span class="n">etapaEJA</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="s2">"etapa_eja"</span><span class="p">)</span>  <span class="c1"># noqa: N815</span>
+    <span class="n">serieEnsino</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"serie_ensino"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">dataInicioTurma</span> <span class="o">=</span> <span class="n">DataHoraLegadoField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"data_inicio_turma"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
     <span class="n">extinta</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">BooleanField</span><span class="p">()</span>
     <span class="n">situacao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">ueCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+    <span class="n">ueCodigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"ue_codigo"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+
+    <span class="nd">@cached_property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_campos_saida</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">_CampoSaida</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span>
+            <span class="p">(</span>
+                <span class="n">nome</span><span class="p">,</span>
+                <span class="n">cast</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">campo</span><span class="o">.</span><span class="n">source</span><span class="p">),</span>
+                <span class="p">(</span>
+                    <span class="n">campo</span><span class="o">.</span><span class="n">to_representation</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">campo</span><span class="p">,</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">)</span>
+                    <span class="k">else</span> <span class="kc">None</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">nome</span><span class="p">,</span> <span class="n">campo</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="TurmaAbrangenciaSerializer.to_representation">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.serializers.TurmaAbrangenciaSerializer.to_representation">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_representation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Serializa a turma a partir dos campos declarados.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            instance: Turma da estrutura vigente, com valores já tipados.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Turma no formato do contrato.</span>
+<span class="sd">        """</span>
+        <span class="n">turma</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">nome</span><span class="p">,</span> <span class="n">origem</span><span class="p">,</span> <span class="n">formatar</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_campos_saida</span><span class="p">:</span>
+            <span class="n">valor</span> <span class="o">=</span> <span class="n">instance</span><span class="p">[</span><span class="n">origem</span><span class="p">]</span>
+            <span class="n">turma</span><span class="p">[</span><span class="n">nome</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">formatar</span><span class="p">(</span><span class="n">valor</span><span class="p">)</span> <span class="k">if</span> <span class="n">formatar</span> <span class="ow">and</span> <span class="n">valor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">valor</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">turma</span></div>
+</div>
 
 
 
 <div class="viewcode-block" id="UeAbrangenciaSerializer">
 <a class="viewcode-back" href="../../../api.html#apps.turmas.serializers.UeAbrangenciaSerializer">[documentos]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">UeAbrangenciaSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""Serializa UE no contrato de abrangência (DRE→UE→turma)."""</span>
+<span class="w">    </span><span class="sd">"""Serializa UE da estrutura institucional vigente."""</span>
 
     <span class="n">codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">nome</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">codTipoEscola</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">codTipoEscola</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span>  <span class="c1"># noqa: N815</span>
+        <span class="n">source</span><span class="o">=</span><span class="s2">"codigo_tipo_escola"</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
     <span class="n">turmas</span> <span class="o">=</span> <span class="n">TurmaAbrangenciaSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
 
@@ -139,7 +198,7 @@
 <div class="viewcode-block" id="DreAbrangenciaSerializer">
 <a class="viewcode-back" href="../../../api.html#apps.turmas.serializers.DreAbrangenciaSerializer">[documentos]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">DreAbrangenciaSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""Serializa DRE no contrato de abrangência (DRE→UE→turma)."""</span>
+<span class="w">    </span><span class="sd">"""Serializa DRE da estrutura institucional vigente."""</span>
 
     <span class="n">abreviacao</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">codigo</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -151,10 +210,36 @@
 <div class="viewcode-block" id="EstruturaAbrangenciaSerializer">
 <a class="viewcode-back" href="../../../api.html#apps.turmas.serializers.EstruturaAbrangenciaSerializer">[documentos]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">EstruturaAbrangenciaSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""Serializa a estrutura de abrangência agrupada por DRE/UE/turma."""</span>
+<span class="w">    </span><span class="sd">"""Serializa a estrutura institucional vigente por DRE e UE."""</span>
 
-    <span class="n">abrangencia</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">JSONField</span><span class="p">(</span><span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">dres</span> <span class="o">=</span> <span class="n">DreAbrangenciaSerializer</span><span class="p">(</span><span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="EstruturaAbrangenciaQuerySerializer">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.serializers.EstruturaAbrangenciaQuerySerializer">[documentos]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">EstruturaAbrangenciaQuerySerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Valida o filtro opcional de DRE da estrutura institucional vigente."""</span>
+
+    <span class="n">codigo_dre</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span>
+        <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">allow_blank</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">allow_null</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="EstruturaAbrangenciaQuerySerializer.to_internal_value">
+<a class="viewcode-back" href="../../../api.html#apps.turmas.serializers.EstruturaAbrangenciaQuerySerializer.to_internal_value">[documentos]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_internal_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Aceita o alias ``codigoDre`` e trata o valor em branco como nulo.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: Query params recebidos.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Filtro normalizado; ``codigo_dre`` nulo quando não informado.</span>
+<span class="sd">        """</span>
+        <span class="n">codigo_dre</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"codigo_dre"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"codigoDre"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span>
+        <span class="n">validados</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">to_internal_value</span><span class="p">({</span><span class="s2">"codigo_dre"</span><span class="p">:</span> <span class="n">codigo_dre</span><span class="p">})</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"codigo_dre"</span><span class="p">:</span> <span class="n">validados</span><span class="p">[</span><span class="s2">"codigo_dre"</span><span class="p">]</span> <span class="ow">or</span> <span class="kc">None</span><span class="p">}</span></div>
+</div>
 
 
 
