@@ -392,6 +392,25 @@ class ComponentesRepository:
         Returns:
             Dados de território e experiência das disciplinas encontradas.
         """
+        return self.listar_disciplinas_por_turmas(
+            [codigo_turma], codigos_disciplinas
+        )
+
+    def listar_disciplinas_por_turmas(
+        self,
+        codigos_turmas: list[str],
+        codigos_disciplinas: list[int],
+    ) -> list[dict]:
+        """Lista disciplinas selecionadas vinculadas a várias turmas.
+
+        Args:
+            codigos_turmas: Códigos das turmas consultadas.
+            codigos_disciplinas: Códigos das disciplinas consultadas.
+
+        Returns:
+            Dados de território e experiência das disciplinas encontradas,
+            ordenados por turma e disciplina.
+        """
         campos = (
             "turma_codigo",
             "desc_territorio_saber",
@@ -402,11 +421,11 @@ class ComponentesRepository:
         return list(
             ComponenteTurma.objects.using(self._DB)
             .filter(
-                turma_codigo=codigo_turma,
+                turma_codigo__in=codigos_turmas,
                 componente_codigo__in=codigos_disciplinas,
             )
             .values(*campos)
-            .order_by("componente_codigo")
+            .order_by("turma_codigo", "componente_codigo")
         )
 
     @staticmethod

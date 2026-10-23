@@ -112,6 +112,48 @@ _TURMA_ATRIBUIDA = {
     "tipo_turno": 1,
 }
 
+_ESTRUTURA_VAZIA: dict = {"dres": []}
+
+_ESTRUTURA_ABRANGENCIA = {
+    "dres": [
+        {
+            "codigo": "100000",
+            "nome": "DRE FICTICIA",
+            "abreviacao": "X",
+            "ues": [
+                {
+                    "codigo": "000001",
+                    "nome": "EMEF FICTICIA DE TESTE",
+                    "codigo_tipo_escola": 1,
+                    "turmas": [
+                        {
+                            "ano": "5",
+                            "ano_letivo": 2026,
+                            "codigo": 9000001,
+                            "tipo_turma": 1,
+                            "modalidade": "Fundamental",
+                            "codigo_modalidade": 5,
+                            "nome_turma": "5A",
+                            "semestre": 0,
+                            "duracao_turno": 6,
+                            "tipo_turno": 1,
+                            "data_fim": None,
+                            "eh_historico": False,
+                            "ensino_especial": False,
+                            "etapa_eja": 0,
+                            "serie_ensino": None,
+                            "data_inicio_turma": None,
+                            "extinta": False,
+                            "situacao": None,
+                            "ue_codigo": None,
+                        }
+                    ],
+                }
+            ],
+        }
+    ],
+}
+
 _TURMA_ELEGIVEL = {
     "cod_turma": 3011229,
     "nome_turma": "5A",
@@ -275,67 +317,91 @@ class TestTurmasViews(TestCase):
     def test_todas_turmas_atribuidas_dre_ue_sem_filtro_retorna_200(
         self, mock_svc
     ):
-        mock_svc.return_value.todas_turmas_atribuidas_dre_ue.return_value = {
-            "abrangencia": None,
-            "dres": [{"codigo": "100000"}],
-        }
+        mock_svc.return_value.estrutura_abrangencia.return_value = (
+            _ESTRUTURA_ABRANGENCIA
+        )
 
         res = self.get("/turmas-atribuidas-dre-ue/todas/")
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data["dres"][0]["codigo"], "100000")
-        mock_svc.return_value.todas_turmas_atribuidas_dre_ue.assert_called_once_with()
-        mock_svc.return_value.turmas_atribuidas_dre_ue_por_dre.assert_not_called()
+        mock_svc.return_value.estrutura_abrangencia.assert_called_once_with(
+            None
+        )
+
+    @patch(_SVC)
+    def test_todas_turmas_atribuidas_dre_ue_serializa_contrato(self, mock_svc):
+        mock_svc.return_value.estrutura_abrangencia.return_value = (
+            _ESTRUTURA_ABRANGENCIA
+        )
+
+        res = self.get("/turmas-atribuidas-dre-ue/todas/")
+
+        ue = res.json()["dres"][0]["ues"][0]
+        self.assertEqual(ue["codTipoEscola"], 1)
+        self.assertEqual(ue["turmas"][0]["anoLetivo"], 2026)
+        self.assertEqual(ue["turmas"][0]["etapaEJA"], 0)
 
     @patch(_SVC)
     def test_todas_turmas_atribuidas_dre_ue_com_codigo_dre_filtra(
         self, mock_svc
     ):
-        mock_svc.return_value.turmas_atribuidas_dre_ue_por_dre.return_value = {
-            "abrangencia": None,
-            "dres": [{"codigo": "100000"}],
-        }
+        mock_svc.return_value.estrutura_abrangencia.return_value = (
+            _ESTRUTURA_ABRANGENCIA
+        )
 
         res = self.get("/turmas-atribuidas-dre-ue/todas/?codigo_dre=100000")
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data["dres"][0]["codigo"], "100000")
-        mock_svc.return_value.turmas_atribuidas_dre_ue_por_dre.assert_called_once_with(
+        mock_svc.return_value.estrutura_abrangencia.assert_called_once_with(
             "100000"
         )
-        mock_svc.return_value.todas_turmas_atribuidas_dre_ue.assert_not_called()
+
+    @patch(_SVC)
+    def test_todas_turmas_atribuidas_dre_ue_aceita_codigo_dre_camel_case(
+        self, mock_svc
+    ):
+        mock_svc.return_value.estrutura_abrangencia.return_value = (
+            _ESTRUTURA_VAZIA
+        )
+
+        res = self.get("/turmas-atribuidas-dre-ue/todas/?codigoDre=100000")
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        mock_svc.return_value.estrutura_abrangencia.assert_called_once_with(
+            "100000"
+        )
 
     @patch(_SVC)
     def test_todas_turmas_atribuidas_dre_ue_codigo_dre_em_branco_ignora_filtro(
         self, mock_svc
     ):
-        mock_svc.return_value.todas_turmas_atribuidas_dre_ue.return_value = {
-            "abrangencia": None,
-            "dres": [],
-        }
+        mock_svc.return_value.estrutura_abrangencia.return_value = (
+            _ESTRUTURA_VAZIA
+        )
 
         res = self.get("/turmas-atribuidas-dre-ue/todas/?codigo_dre=  ")
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        mock_svc.return_value.todas_turmas_atribuidas_dre_ue.assert_called_once_with()
+        self.assertEqual(res.json(), {"dres": []})
+        mock_svc.return_value.estrutura_abrangencia.assert_called_once_with(
+            None
+        )
 
     def test_todas_turmas_atribuidas_dre_ue_sem_api_key_retorna_401(self):
         self.assert_401("/turmas-atribuidas-dre-ue/todas/")
 
     @patch(_SVC)
     def test_turmas_atribuidas_dre_ue_por_turmas_retorna_200(self, mock_svc):
-        mock_svc.return_value.turmas_atribuidas_dre_ue_por_turmas.return_value = {
-            "abrangencia": None,
-            "dres": [{"codigo": "100000"}],
-        }
-
-        res = self.post(
-            "/turmas-atribuidas-dre-ue/por-turmas/", [9000001]
+        mock_svc.return_value.estrutura_abrangencia_por_turmas.return_value = (
+            _ESTRUTURA_ABRANGENCIA
         )
 
+        res = self.post("/turmas-atribuidas-dre-ue/por-turmas/", [9000001])
+
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data["dres"][0]["codigo"], "100000")
-        mock_svc.return_value.turmas_atribuidas_dre_ue_por_turmas.assert_called_once_with(
+        self.assertEqual(res.json()["dres"][0]["ues"][0]["codTipoEscola"], 1)
+        mock_svc.return_value.estrutura_abrangencia_por_turmas.assert_called_once_with(
             [9000001]
         )
 
@@ -343,10 +409,9 @@ class TestTurmasViews(TestCase):
     def test_turmas_atribuidas_dre_ue_por_turmas_ignora_codigos_invalidos(
         self, mock_svc
     ):
-        mock_svc.return_value.turmas_atribuidas_dre_ue_por_turmas.return_value = {
-            "abrangencia": None,
-            "dres": [],
-        }
+        mock_svc.return_value.estrutura_abrangencia_por_turmas.return_value = (
+            _ESTRUTURA_VAZIA
+        )
 
         res = self.post(
             "/turmas-atribuidas-dre-ue/por-turmas/",
@@ -354,25 +419,24 @@ class TestTurmasViews(TestCase):
         )
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        mock_svc.return_value.turmas_atribuidas_dre_ue_por_turmas.assert_called_once_with(
+        mock_svc.return_value.estrutura_abrangencia_por_turmas.assert_called_once_with(
             [9000001]
         )
 
     @patch(_SVC)
-    def test_turmas_atribuidas_dre_ue_por_turmas_corpo_invalido_usa_lista_vazia(
+    def test_turmas_atribuidas_dre_ue_por_turmas_corpo_invalido_lista_vazia(
         self, mock_svc
     ):
-        mock_svc.return_value.turmas_atribuidas_dre_ue_por_turmas.return_value = {
-            "abrangencia": None,
-            "dres": [],
-        }
+        mock_svc.return_value.estrutura_abrangencia_por_turmas.return_value = (
+            _ESTRUTURA_VAZIA
+        )
 
         res = self.post(
             "/turmas-atribuidas-dre-ue/por-turmas/", {"codigo": 9000001}
         )
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        mock_svc.return_value.turmas_atribuidas_dre_ue_por_turmas.assert_called_once_with(
+        mock_svc.return_value.estrutura_abrangencia_por_turmas.assert_called_once_with(
             []
         )
 
@@ -945,18 +1009,14 @@ class TestTurmasViews(TestCase):
         )
 
     def test_turmas_sondagem_sem_api_key_retorna_401(self):
-        self.assert_401(
-            "/escolas/000532/turmas-sondagem/anos-letivos/2024/"
-        )
+        self.assert_401("/escolas/000532/turmas-sondagem/anos-letivos/2024/")
 
     @patch(_SVC)
     def test_turmas_sondagem_ano_letivo_nao_numerico_retorna_200_vazio(
         self, mock_svc
     ):
         mock_svc.return_value.turmas_sondagem.return_value = []
-        res = self.get(
-            "/escolas/019487/turmas-sondagem/anos-letivos/wewe/"
-        )
+        res = self.get("/escolas/019487/turmas-sondagem/anos-letivos/wewe/")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data, [])
         mock_svc.return_value.turmas_sondagem.assert_called_once_with(

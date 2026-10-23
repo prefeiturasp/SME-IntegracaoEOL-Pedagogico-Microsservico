@@ -1,8 +1,10 @@
 """Repositório do domínio Turmas."""
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterator, Sequence
 from datetime import UTC, datetime
 from typing import Any, cast
+
+from django.utils import timezone
 
 from apps.componentes_curriculares.constants import (
     TIPO_TURMA_ED_FISICA,
@@ -33,6 +35,7 @@ from apps.turmas.models import (
     TurmaAtribuidaDreUe,
     TurmaItinerarioEnsinoMedio,
 )
+from apps.turmas.regras import ciclo_eja
 
 # (EOL cd_etapa_ensino): EJA (2,3,7,11) + Fundamental (4,5,12,13)
 # + Médio (6,7,8,14,17). Exclui Infantil (1,10).
@@ -147,33 +150,17 @@ def _turma_para_dados(t: Turma) -> dict:
 
 
 def _etapa_eja(turma: Turma) -> int:
-    """Deriva o ciclo EJA (I/II) a partir do texto da série ensino.
-
-    Só se aplica a turmas de modalidade EJA. O ciclo não é uma coluna do
-    EOL: é inferido de marcadores romanos (" I "/" II") presentes no texto
-    de ``serie_ensino``.
+    """Retorna o ciclo EJA da turma; 0 fora da modalidade EJA.
 
     Args:
         turma: Turma consultada.
 
     Returns:
-        1 para ciclo I, 2 para ciclo II, 0 quando não aplicável/detectável.
+        1 para ciclo I, 2 para ciclo II, 0 quando não aplicável.
     """
-    serie = turma.serie_ensino
-    if turma.modalidade != "EJA" or not serie or len(serie) <= 2:
+    if turma.modalidade != "EJA":
         return 0
-    etapa = serie[-2:].strip()
-    index_primeiro_ciclo = serie.find(" I ")
-    index_segundo_ciclo = serie.find(" II")
-    if (etapa == "I" and index_segundo_ciclo < 0) or (
-        index_primeiro_ciclo >= 0 and index_segundo_ciclo < 0
-    ):
-        return 1
-    if (etapa == "II" and index_primeiro_ciclo < 0) or (
-        index_primeiro_ciclo < 0 and index_segundo_ciclo >= 0
-    ):
-        return 2
-    return 0
+    return ciclo_eja(turma.serie_ensino)
 
 
 def _turma_para_sincronizacao(
@@ -256,61 +243,6 @@ def _turma_para_historico(t: Turma) -> dict:
     }
 
 
-def _turma_atribuida_para_lista(t: TurmaAtribuidaDreUe) -> dict:
-    return {
-        "codigo_escola": t.codigo_escola,
-        "codigo_turma": t.codigo_turma,
-        "ano_letivo": t.ano_letivo,
-        "modalidade": t.modalidade,
-        "semestre": t.semestre,
-        "codigo_modalidade": t.codigo_modalidade,
-        "codigo_dre": t.codigo_dre,
-        "dre": t.dre,
-        "dre_abreviacao": t.dre_abreviacao,
-        "ue": t.ue,
-        "ue_abreviacao": t.ue_abreviacao,
-        "nome_turma": t.nome_turma,
-        "ano": t.ano,
-        "tipo_ue": t.tipo_ue,
-        "codigo_tipo_ue": t.codigo_tipo_ue,
-        "codigo_tipo_escola": t.codigo_tipo_escola,
-        "tipo_escola": t.tipo_escola,
-        "duracao_turno": t.duracao_turno,
-        "tipo_turno": t.tipo_turno,
-    }
-
-
-# Tipos de escola considerados pela abrangência de SME (parâmetro
-# tipo_escola_sgp do legado); recorta o universo de turmas atribuídas.
-_TIPOS_ESCOLA_SGP = (
-    1,
-    2,
-    3,
-    4,
-    10,
-    11,
-    12,
-    13,
-    14,
-    15,
-    16,
-    17,
-    18,
-    19,
-    22,
-    23,
-    25,
-    26,
-    27,
-    28,
-    29,
-    30,
-    31,
-    32,
-    33,
-    38,
-)
-
 _CAMPOS_TURMA_ATRIBUIDA = (
     "codigo_escola",
     "codigo_turma",
@@ -334,106 +266,37 @@ _CAMPOS_TURMA_ATRIBUIDA = (
 )
 
 
-def _turma_abrangencia(item: dict, turma: Turma | None) -> dict:
-    """Monta a turma no contrato de abrangência.
-
-    Args:
-        item: Linha achatada de ``turma_atribuida_dre_ue``.
-        turma: Turma correspondente em ``turma`` (mesmo banco), usada para
-            completar os campos que a tabela pré-agregada não carrega;
-            ``None`` quando a turma não é encontrada (mantém os defaults).
-    """
-    return {
-        "ano": item.get("ano"),
-        "anoLetivo": item.get("ano_letivo"),
-        "codigo": item.get("codigo_turma"),
-        "tipoTurma": turma.tipo_turma if turma else 0,
-        "modalidade": item.get("modalidade"),
-        "codigoModalidade": item.get("codigo_modalidade") or 0,
-        "nomeTurma": item.get("nome_turma"),
-        "semestre": item.get("semestre"),
-        "duracaoTurno": item.get("duracao_turno"),
-        "tipoTurno": item.get("tipo_turno"),
-        "dataFim": turma.data_fim if turma else None,
-        "ehistorico": False,
-        "ensinoEspecial": turma.ensino_especial if turma else False,
-        "etapaEJA": _etapa_eja(turma) if turma else 0,
-        "serieEnsino": None,
-        "dataInicioTurma": turma.data_inicio if turma else None,
-        "extinta": turma.extinta if turma else False,
-        "situacao": None,
-        "ueCodigo": None,
-    }
+_CAMPOS_LINHA_ABRANGENCIA = (
+    "codigo_dre",
+    "dre",
+    "dre_abreviacao",
+    "codigo_escola",
+    "ue",
+    "codigo_tipo_escola",
+    "codigo_turma",
+    "ano",
+    "ano_letivo",
+    "modalidade",
+    "codigo_modalidade",
+    "nome_turma",
+    "semestre",
+    "duracao_turno",
+    "tipo_turno",
+)
+_CAMPOS_TURMA_ABRANGENCIA = (
+    "codigo",
+    "tipo_turma",
+    "data_inicio",
+    "data_fim",
+    "extinta",
+    "ensino_especial",
+    "serie_ensino",
+)
+_TAMANHO_LOTE_ABRANGENCIA = 2000
 
 
-def _turmas_por_codigo(
-    db: str, codigos: Iterable[int]
-) -> dict[int, Turma]:
-    """Monta um lookup código -> Turma para completar a abrangência.
-
-    Args:
-        db: Alias do banco Django a consultar.
-        codigos: Códigos de turma a buscar.
-
-    Returns:
-        Dicionário código -> ``Turma``; códigos sem turma correspondente
-        ficam de fora.
-    """
-    codigos_unicos = {codigo for codigo in codigos if codigo is not None}
-    if not codigos_unicos:
-        return {}
-    turmas = Turma.objects.using(db).filter(codigo__in=codigos_unicos)
-    return {turma.codigo: turma for turma in turmas}
-
-
-def _agrupar_abrangencia_dre_ue(
-    rows: Any, turmas_por_codigo: dict[int, Turma]
-) -> dict:
-    """Agrupa as turmas atribuídas por DRE e UE no contrato de abrangência.
-
-    Feito no domínio para o gateway apenas repassar, evitando reprocessar
-    todo o conjunto de turmas.
-    """
-    dres: dict[str, dict] = {}
-    ues_por_dre: dict[tuple[str, str], dict] = {}
-    turmas_vistas: set[tuple[str, str, Any]] = set()
-
-    for item in rows:
-        codigo_ue = item.get("codigo_escola")
-        if not codigo_ue:
-            continue
-        codigo_dre = item.get("codigo_dre")
-        chave_dre = str(codigo_dre) if codigo_dre else "__sem_dre__"
-        dre = dres.get(chave_dre)
-        if dre is None:
-            dre = {
-                "abreviacao": item.get("dre_abreviacao"),
-                "codigo": codigo_dre,
-                "nome": item.get("dre"),
-                "ues": [],
-            }
-            dres[chave_dre] = dre
-
-        chave_ue = (chave_dre, str(codigo_ue))
-        ue = ues_por_dre.get(chave_ue)
-        if ue is None:
-            ue = {
-                "codigo": codigo_ue,
-                "nome": item.get("ue"),
-                "codTipoEscola": item.get("codigo_tipo_escola"),
-                "turmas": [],
-            }
-            ues_por_dre[chave_ue] = ue
-            dre["ues"].append(ue)
-
-        chave_turma = (chave_dre, str(codigo_ue), item.get("codigo_turma"))
-        if chave_turma in turmas_vistas:
-            continue
-        turmas_vistas.add(chave_turma)
-        turma = turmas_por_codigo.get(item.get("codigo_turma"))
-        ue["turmas"].append(_turma_abrangencia(item, turma))
-
-    return {"abrangencia": None, "dres": list(dres.values())}
+def _ano_letivo_vigente() -> int:
+    return timezone.localdate().year
 
 
 def _codigos_por_atribuicao_origem(
@@ -528,81 +391,42 @@ class TurmasRepository:
         )
         return list(turmas)
 
-    def todas_turmas_atribuidas_dre_ue(self) -> dict:
-        """Abrangência SME agrupada por DRE/UE (recorte de tipo de escola).
-
-        ``turma_atribuida_dre_ue`` é recarregada pelo MS-ETL para todos os
-        anos letivos presentes no EOL, não só o corrente — outros consumos
-        dessa tabela dependem do histórico. Como este endpoint é a estrutura
-        *vigente*, o filtro de ano corrente é aplicado aqui.
-        """
-        turmas = list(
-            TurmaAtribuidaDreUe.objects.using(self._DB)
-            .filter(
-                codigo_tipo_escola__in=_TIPOS_ESCOLA_SGP,
-                ano_letivo=datetime.now(UTC).year,
-            )
-            .values(*_CAMPOS_TURMA_ATRIBUIDA)
-        )
-        turmas_por_codigo = _turmas_por_codigo(
-            self._DB, (t["codigo_turma"] for t in turmas)
-        )
-        return _agrupar_abrangencia_dre_ue(turmas, turmas_por_codigo)
-
-    def turmas_atribuidas_dre_ue_por_dre(self, codigo_dre: str) -> dict:
-        """Abrangência SME vigente de uma DRE (recorte de tipo de escola).
+    def linhas_abrangencia_estrutura_vigente(
+        self,
+        codigo_dre: str | None = None,
+        codigos_turma: Sequence[int] | None = None,
+    ) -> Iterator[dict[str, Any]]:
+        """Lista as turmas da estrutura institucional vigente.
 
         Args:
-            codigo_dre: Código EOL da DRE.
+            codigo_dre: Código da DRE; sem filtro quando ausente.
+            codigos_turma: Códigos das turmas; sem filtro quando
+                ausente.
 
         Returns:
-            Estrutura agrupada por DRE/UE/turma do ano letivo corrente;
-            ``dres`` vazio quando a DRE não tem turmas no recorte de tipo
-            de escola.
+            Linhas ordenadas pelo código da turma.
         """
-        turmas = list(
-            TurmaAtribuidaDreUe.objects.using(self._DB)
-            .filter(
-                codigo_tipo_escola__in=_TIPOS_ESCOLA_SGP,
-                codigo_dre=codigo_dre,
-                ano_letivo=datetime.now(UTC).year,
-            )
-            .values(*_CAMPOS_TURMA_ATRIBUIDA)
+        atribuidas = TurmaAtribuidaDreUe.objects.using(self._DB).filter(
+            ano_letivo=_ano_letivo_vigente()
         )
-        turmas_por_codigo = _turmas_por_codigo(
-            self._DB, (t["codigo_turma"] for t in turmas)
-        )
-        return _agrupar_abrangencia_dre_ue(turmas, turmas_por_codigo)
+        if codigo_dre:
+            atribuidas = atribuidas.filter(codigo_dre=codigo_dre)
+        if codigos_turma is not None:
+            atribuidas = atribuidas.filter(codigo_turma__in=codigos_turma)
 
-    def turmas_atribuidas_dre_ue_por_turmas(
-        self, codigos_turma: list[int]
-    ) -> dict:
-        """Abrangência SME vigente de uma lista de turmas (recorte de tipo
-        de escola).
-
-        Args:
-            codigos_turma: Códigos das turmas a consultar.
-
-        Returns:
-            Estrutura agrupada por DRE/UE/turma do ano letivo corrente;
-            ``dres`` vazio quando a lista é vazia ou nenhuma turma está no
-            recorte de tipo de escola.
-        """
-        if not codigos_turma:
-            return {"abrangencia": None, "dres": []}
-        turmas = list(
-            TurmaAtribuidaDreUe.objects.using(self._DB)
-            .filter(
-                codigo_turma__in=codigos_turma,
-                codigo_tipo_escola__in=_TIPOS_ESCOLA_SGP,
-                ano_letivo=datetime.now(UTC).year,
-            )
-            .values(*_CAMPOS_TURMA_ATRIBUIDA)
+        turmas = {
+            turma["codigo"]: turma
+            for turma in Turma.objects.using(self._DB)
+            .filter(codigo__in=atribuidas.values("codigo_turma"))
+            .values(*_CAMPOS_TURMA_ABRANGENCIA)
+        }
+        linhas = (
+            atribuidas.order_by("codigo_turma")
+            .values(*_CAMPOS_LINHA_ABRANGENCIA)
+            .iterator(chunk_size=_TAMANHO_LOTE_ABRANGENCIA)
         )
-        turmas_por_codigo = _turmas_por_codigo(
-            self._DB, (t["codigo_turma"] for t in turmas)
-        )
-        return _agrupar_abrangencia_dre_ue(turmas, turmas_por_codigo)
+        for linha in linhas:
+            yield {**linha, "turma": turmas.get(linha["codigo_turma"])}
 
     def turmas_recorte_fund_medio_eja(self, codigos: list[int]) -> list[dict]:
         """Lista turmas no recorte de etapa (Fund/Médio/EJA).
@@ -815,7 +639,35 @@ class TurmasRepository:
         Returns:
             Dados da turma, ou None se não encontrada.
         """
-        turma = Turma.objects.using(self._DB).filter(codigo=codigo).first()
+        turma = (
+            Turma.objects.using(self._DB)
+            .only(
+                "codigo",
+                "ano_letivo",
+                "ano",
+                "tipo_turma",
+                "nome_turma",
+                "duracao_turno",
+                "tipo_turno",
+                "data_inicio_turma",
+                "data_fim",
+                "extinta",
+                "situacao",
+                "ue_codigo",
+                "serie_ensino",
+                "codigo_serie_ensino",
+                "modalidade",
+                "codigo_modalidade",
+                "codigo_tipo_programa",
+                "codigo_modalidade_etapa",
+                "semestre",
+                "ensino_especial",
+                "data_atualizacao",
+                "data_status_turma_escola",
+            )
+            .filter(codigo=codigo)
+            .first()
+        )
         if turma is None:
             return None
         return _turma_para_dados(turma)
