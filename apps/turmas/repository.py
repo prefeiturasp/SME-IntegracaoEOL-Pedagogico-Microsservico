@@ -4,6 +4,8 @@ from collections.abc import Iterator, Sequence
 from datetime import UTC, datetime
 from typing import Any, cast
 
+from django.db.models import CharField, Exists, F, OuterRef, Q, Subquery
+from django.db.models.functions import Cast
 from django.utils import timezone
 
 from apps.componentes_curriculares.constants import (
@@ -16,6 +18,7 @@ from apps.componentes_curriculares.constants import (
 from apps.componentes_curriculares.models import (
     AtribuicaoComponente,
     ComponenteCurricular,
+    ComponenteCurricularHierarquia,
     ComponenteTurma,
 )
 from apps.turmas.constants import (
@@ -449,17 +452,22 @@ class TurmasRepository:
         tipos_turma: list[int] | None = None,
         ue_codigo: str | None = None,
         semestre: int | None = None,
+        componente_codigo: int | None = None,
     ) -> list[int]:
-        """Filtra os códigos de turma por tipo de turma, UE e semestre.
+        """Filtra os códigos de turma por tipo, UE, semestre e componente.
 
         Um semestre fora do mapeamento ``PERIODICIDADES_POR_SEMESTRE`` não
-        aplica filtro de periodicidade.
+        aplica filtro de periodicidade. A turma tem o componente quando ele
+        está vinculado diretamente a ela ou é o pai vigente (maior vigência na
+        hierarquia) de algum componente vinculado.
 
         Args:
             codigos: Códigos de turma candidatos.
             tipos_turma: Tipos de turma aceitos; sem filtro quando vazio.
             ue_codigo: Código da UE; sem filtro quando ausente.
             semestre: Semestre da turma; sem filtro quando ausente.
+            componente_codigo: Componente exigido na turma; sem filtro quando
+                ausente.
 
         Returns:
             Subconjunto dos códigos informados que atende ao recorte.
@@ -477,7 +485,36 @@ class TurmasRepository:
                 consulta = consulta.filter(
                     codigo_tipo_periodicidade__in=periodicidades
                 )
+        if componente_codigo is not None:
+            consulta = consulta.filter(
+                Exists(self._vinculos_do_componente(componente_codigo))
+            )
         return list(consulta.values_list("codigo", flat=True).distinct())
+
+    def _vinculos_do_componente(self, componente_codigo: int) -> Any:
+        """Seleciona vínculos da turma externa que cobrem o componente.
+
+        Args:
+            componente_codigo: Componente direto ou pai vigente procurado.
+
+        Returns:
+            Consulta correlacionada com ``Turma.codigo``.
+        """
+        pai_vigente = (
+            ComponenteCurricularHierarquia.objects.using(self._DB)
+            .filter(id_componente_curricular=OuterRef("componente_codigo"))
+            .order_by(F("vigencia").desc(nulls_last=True))
+            .values("id_componente_curricular_pai")[:1]
+        )
+        return (
+            ComponenteTurma.objects.using(self._DB)
+            .annotate(pai_vigente=Subquery(pai_vigente))
+            .filter(turma_codigo=Cast(OuterRef("codigo"), CharField()))
+            .filter(
+                Q(componente_codigo=componente_codigo)
+                | Q(pai_vigente=componente_codigo)
+            )
+        )
 
     def codigos_turmas_por_ano_modalidade_dre(
         self,
