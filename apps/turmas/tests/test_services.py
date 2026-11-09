@@ -302,7 +302,19 @@ class TestTurmasService(TestCase):
             [2112345],
         )
         self.repo.turmas_recorte_por_tipo.assert_called_once_with(
-            [2112345], [1], "000532", 1
+            [2112345], [1], "000532", 1, None
+        )
+
+    def test_turmas_recorte_por_tipo_com_componente(self) -> None:
+        """Repassa o componente exigido ao repository."""
+        self.repo.turmas_recorte_por_tipo.return_value = [2112345]
+
+        self.service.turmas_recorte_por_tipo(
+            [2112345], componente_codigo=9999
+        )
+
+        self.repo.turmas_recorte_por_tipo.assert_called_once_with(
+            [2112345], None, None, None, 9999
         )
 
     def test_codigos_turmas_por_ano_modalidade_dre(self) -> None:

@@ -224,20 +224,23 @@ class TurmasService:
         tipos_turma: list[int] | None = None,
         ue_codigo: str | None = None,
         semestre: int | None = None,
+        componente_codigo: int | None = None,
     ) -> list[int]:
-        """Filtra códigos de turma por tipo de turma, UE e semestre.
+        """Filtra códigos de turma por tipo, UE, semestre e componente.
 
         Args:
             codigos: Códigos de turma candidatos.
             tipos_turma: Tipos de turma aceitos; sem filtro quando vazio.
             ue_codigo: Código da UE; sem filtro quando ausente.
             semestre: Semestre da turma; sem filtro quando ausente.
+            componente_codigo: Componente exigido na turma; sem filtro quando
+                ausente.
 
         Returns:
             Subconjunto dos códigos que atende ao recorte.
         """
         return self._repo.turmas_recorte_por_tipo(
-            codigos, tipos_turma, ue_codigo, semestre
+            codigos, tipos_turma, ue_codigo, semestre, componente_codigo
         )
 
     def dados_turma(self, codigo: int) -> dict | None:

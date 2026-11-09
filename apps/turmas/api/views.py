@@ -372,6 +372,16 @@ class TurmasRecortePorTipoView(BaseAPIView):
             OpenApiParameter(
                 "semestre", int, OpenApiParameter.QUERY, required=False
             ),
+            OpenApiParameter(
+                "componente_codigo",
+                int,
+                OpenApiParameter.QUERY,
+                required=False,
+                description=(
+                    "Mantém as turmas que têm o componente, direto ou como "
+                    "pai vigente de um componente vinculado."
+                ),
+            ),
         ],
         request={
             "application/json": {"type": "array", "items": {"type": "integer"}}
@@ -383,11 +393,12 @@ class TurmasRecortePorTipoView(BaseAPIView):
         """Retorna os códigos de turma que atendem ao recorte.
 
         Recebe a lista de códigos de turma no corpo e os filtros de tipo de
-        turma, UE e semestre na query string.
+        turma, UE, semestre e componente na query string.
 
         Args:
             request: Requisição com a lista de códigos no corpo e os
-                filtros ``tipos_turma``/``ue_codigo``/``semestre`` na query.
+                filtros ``tipos_turma``/``ue_codigo``/``semestre``/
+                ``componente_codigo`` na query.
 
         Returns:
             Subconjunto dos códigos informados que atende ao recorte.
@@ -400,8 +411,11 @@ class TurmasRecortePorTipoView(BaseAPIView):
             "ue_codigo"
         ) or request.query_params.get("ueCodigo")
         semestre = _query_int(request, "semestre")
+        componente_codigo = _query_int(
+            request, "componente_codigo", "componenteCodigo"
+        )
         dados = TurmasService().turmas_recorte_por_tipo(
-            codigos, tipos_turma, ue_codigo, semestre
+            codigos, tipos_turma, ue_codigo, semestre, componente_codigo
         )
         return Response(dados)
 

@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from django.db.models import Exists
 from django.test import TestCase
 from django.utils import timezone
 
@@ -375,6 +376,35 @@ class TestTurmasRepository(TestCase):
 
         filtros = [kwargs for nome, _a, kwargs in qs.calls if nome == "filter"]
         self.assertEqual(filtros, [{"codigo__in": [2112345]}])
+
+    @patch("apps.turmas.repository.Turma.objects.using")
+    def test_recorte_por_tipo_aplica_filtro_de_componente(self, mock_using):
+        """Com componente informado, acrescenta o filtro por vínculo."""
+        qs = FakeQuerySet(values=[2112345])
+        mock_using.return_value = qs
+
+        resultado = self.repo.turmas_recorte_por_tipo(
+            [2112345], componente_codigo=9999
+        )
+
+        self.assertEqual(resultado, [2112345])
+        filtros = [(a, k) for nome, a, k in qs.calls if nome == "filter"]
+        self.assertEqual(len(filtros), 2)
+        self.assertEqual(filtros[0], ((), {"codigo__in": [2112345]}))
+        self.assertIsInstance(filtros[1][0][0], Exists)
+
+    def test_vinculos_do_componente_cobre_direto_e_pai_vigente(self):
+        """Casa o componente direto ou o pai de maior vigência."""
+        consulta = Turma.objects.filter(
+            Exists(self.repo._vinculos_do_componente(9999))
+        )
+        sql = str(consulta.query)
+
+        self.assertIn("componente_turma", sql)
+        self.assertIn("componente_curricular_hierarquia", sql)
+        self.assertIn("ORDER BY", sql)
+        self.assertIn("DESC", sql)
+        self.assertIn("9999", sql)
 
     def test_recorte_por_tipo_sem_codigos_retorna_vazio(self):
         """Lista de códigos vazia curto-circuita sem consultar o banco."""

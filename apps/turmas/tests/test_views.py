@@ -524,7 +524,27 @@ class TestTurmasViews(TestCase):
         self.assertEqual(res.data, [2112345])
         (
             mock_svc.return_value.turmas_recorte_por_tipo
-        ).assert_called_once_with([2112345, 9], [1, 5], "000532", 1)
+        ).assert_called_once_with([2112345, 9], [1, 5], "000532", 1, None)
+
+    @patch(_SVC)
+    def test_recorte_por_tipo_repassa_componente_codigo(self, mock_svc):
+        """Lê componente_codigo (snake e camelCase) da query string."""
+        mock_svc.return_value.turmas_recorte_por_tipo.return_value = [2112345]
+        for nome in ("componente_codigo", "componenteCodigo"):
+            with self.subTest(nome=nome):
+                mock_svc.reset_mock()
+                mock_svc.return_value.turmas_recorte_por_tipo.return_value = [
+                    2112345
+                ]
+                res = self.client.post(
+                    f"{_BASE}/recorte-por-tipo/?{nome}=9999",
+                    [2112345],
+                    format="json",
+                )
+                self.assertEqual(res.status_code, status.HTTP_200_OK)
+                (
+                    mock_svc.return_value.turmas_recorte_por_tipo
+                ).assert_called_once_with([2112345], [], None, None, 9999)
 
     @patch(_SVC)
     def test_codigos_turmas_contagem_repassa_ues_e_filtros(self, mock_svc):
@@ -564,7 +584,7 @@ class TestTurmasViews(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         (
             mock_svc.return_value.turmas_recorte_por_tipo
-        ).assert_called_once_with([2112345], [], None, None)
+        ).assert_called_once_with([2112345], [], None, None, None)
 
     @patch(_SVC)
     def test_recorte_por_tipo_aceita_camelcase(self, mock_svc):
@@ -578,7 +598,7 @@ class TestTurmasViews(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         (
             mock_svc.return_value.turmas_recorte_por_tipo
-        ).assert_called_once_with([2112345], [3], "000999", None)
+        ).assert_called_once_with([2112345], [3], "000999", None, None)
 
     def test_recorte_por_tipo_sem_api_key_retorna_401(self):
         self.assert_401("/recorte-por-tipo/", method="post", payload=[1])
