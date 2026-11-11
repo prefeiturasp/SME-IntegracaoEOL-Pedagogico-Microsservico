@@ -3,7 +3,7 @@
 from datetime import date
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -583,3 +583,169 @@ class TestListagemTurmasComponentesView(TestCase):
         """Rejeita requisição sem API Key."""
         response = self.anon.get(f"{_BASE}{self.path}")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+@override_settings(API_KEY="dev-key-default", API_KEY_HEADER="x-api-key")
+class TestComponentesConsolidadosView(SimpleTestCase):
+    """Valida o contrato HTTP dos componentes consolidados."""
+
+    def setUp(self) -> None:
+        """Configura um cliente autenticado para a rota consolidada."""
+        self.client = APIClient()
+        self.client.credentials(HTTP_X_API_KEY="dev-key-default")
+        self.path = (
+            f"{_BASE}/ues/009148/modalidades/5/anos/2026/consolidado/"
+        )
+
+    @patch(_SVC)
+    def test_sem_filtros_consulta_grade(self, mock_service) -> None:
+        """Consulta a grade sem restringir os anos escolares."""
+        dados = [
+            {
+                "codigo": 2,
+                "descricao": "MATEMATICA",
+                "regencia": False,
+            }
+        ]
+        metodo = mock_service.return_value.listar_componentes_consolidados
+        metodo.return_value = dados
+
+        response = self.client.get(self.path)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, dados)
+        metodo.assert_called_once_with(
+            "009148", 5, 2026, [], False
+        )
+
+    @patch(_SVC)
+    def test_filtra_um_ano_escolar(self, mock_service) -> None:
+        """Encaminha o filtro de ano escolar ao service."""
+        metodo = mock_service.return_value.listar_componentes_consolidados
+        metodo.return_value = [{"codigo": 6}]
+
+        response = self.client.get(f"{self.path}?anos_escolares=1")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [{"codigo": 6}])
+        metodo.assert_called_once_with(
+            "009148", 5, 2026, ["1"], False
+        )
+
+    @patch(_SVC)
+    def test_filtra_multiplos_anos_escolares(self, mock_service) -> None:
+        """Preserva os anos escolares repetidos na query string."""
+        metodo = mock_service.return_value.listar_componentes_consolidados
+        metodo.return_value = []
+
+        response = self.client.get(
+            f"{self.path}?anos_escolares=1&anos_escolares=2"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        metodo.assert_called_once_with(
+            "009148", 5, 2026, ["1", "2"], False
+        )
+
+    @patch(_SVC)
+    def test_aceita_alias_anos_escolares_camel_case(
+        self, mock_service
+    ) -> None:
+        """Aceita o nome alternativo de anos escolares."""
+        metodo = mock_service.return_value.listar_componentes_consolidados
+        metodo.return_value = []
+
+        response = self.client.get(f"{self.path}?anosEscolares=1")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        metodo.assert_called_once_with(
+            "009148", 5, 2026, ["1"], False
+        )
+
+    @patch(_SVC)
+    def test_consulta_turmas_programa(self, mock_service) -> None:
+        """Seleciona turmas programa sem aplicar anos escolares."""
+        metodo = mock_service.return_value.listar_componentes_consolidados
+        metodo.return_value = [{"codigo": 220}]
+
+        response = self.client.get(
+            f"{self.path}?somente_programa=true"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [{"codigo": 220}])
+        metodo.assert_called_once_with(
+            "009148", 5, 2026, [], True
+        )
+
+    @patch(_SVC)
+    def test_somente_programa_false_consulta_grade(
+        self, mock_service
+    ) -> None:
+        """Mantém a consulta de grade quando o indicador é falso."""
+        metodo = mock_service.return_value.listar_componentes_consolidados
+        metodo.return_value = []
+
+        response = self.client.get(
+            f"{self.path}?somente_programa=false"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        metodo.assert_called_once_with(
+            "009148", 5, 2026, [], False
+        )
+
+    @patch(_SVC)
+    def test_rejeita_programa_com_anos_escolares(
+        self, mock_service
+    ) -> None:
+        """Rejeita filtros incompatíveis antes de consultar o service."""
+        response = self.client.get(
+            f"{self.path}?somente_programa=true&anos_escolares=1"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        metodo = mock_service.return_value.listar_componentes_consolidados
+        metodo.assert_not_called()
+
+    @patch(_SVC)
+    def test_rejeita_valor_booleano_invalido(
+        self, mock_service
+    ) -> None:
+        """Rejeita valores que não representam booleanos."""
+        response = self.client.get(
+            f"{self.path}?somente_programa=talvez"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        metodo = mock_service.return_value.listar_componentes_consolidados
+        metodo.assert_not_called()
+
+    @patch(_SVC)
+    def test_rejeita_ano_escolar_vazio(self, mock_service) -> None:
+        """Impede filtro de ano escolar com valor vazio."""
+        response = self.client.get(
+            f"{self.path}?anos_escolares="
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        metodo = mock_service.return_value.listar_componentes_consolidados
+        metodo.assert_not_called()
+
+    def test_exige_api_key(self) -> None:
+        """Impede o acesso sem a API Key de autenticação."""
+        response = APIClient().get(self.path)
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )

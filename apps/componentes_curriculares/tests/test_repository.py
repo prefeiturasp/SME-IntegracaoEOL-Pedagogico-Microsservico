@@ -3,7 +3,7 @@
 from datetime import UTC, date, datetime
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 
 from apps.componentes_curriculares.constants import (
     MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO,
@@ -2539,3 +2539,243 @@ class TestValidarAtribuicaoTerritorioSaberRepository(TestCase):
         )
 
         self.assertFalse(resultado)
+
+
+class TestComponentesConsolidadosRepository(SimpleTestCase):
+    """Valida os filtros e a normalização dos componentes consolidados."""
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_grade_filtra_modalidade_e_multiplos_anos(self, mock_raw) -> None:
+        """Restringe a grade à modalidade e aos anos informados."""
+        mock_raw.return_value = []
+
+        resultado = ComponentesRepository().listar_componentes_consolidados(
+            "009148", 5, 2026, ["1", "2"]
+        )
+
+        sql, params, alias = mock_raw.call_args.args
+
+        self.assertEqual(resultado, [])
+        self.assertIn("t.codigo_modalidade_etapa = %s", sql)
+        self.assertIn("t.ano = ANY(%s::varchar[])", sql)
+        self.assertNotIn("t.codigo_tipo_programa IS NOT NULL", sql)
+        self.assertNotIn("UNION", sql.upper())
+        self.assertEqual(params, ["009148", 2026, 5, ["1", "2"]])
+        self.assertEqual(alias, "default")
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_grade_sem_anos_nao_restringe_ano_escolar(self, mock_raw) -> None:
+        """Mantém a consulta por modalidade quando não há anos escolares."""
+        mock_raw.return_value = []
+
+        ComponentesRepository().listar_componentes_consolidados(
+            "009148", 5, 2026
+        )
+
+        sql, params, _ = mock_raw.call_args.args
+
+        self.assertIn("t.codigo_modalidade_etapa = %s", sql)
+        self.assertNotIn("t.ano = ANY", sql)
+        self.assertNotIn("t.codigo_tipo_programa IS NOT NULL", sql)
+        self.assertEqual(params, ["009148", 2026, 5])
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_programa_preserva_filtros_para_modalidades_validas(
+        self, mock_raw
+    ) -> None:
+        """Seleciona turmas programa sem filtrar diretamente a modalidade."""
+        mock_raw.return_value = []
+        repository = ComponentesRepository()
+
+        for modalidade in (3, 4, 5, 6):
+            with self.subTest(modalidade=modalidade):
+                repository.listar_componentes_consolidados(
+                    "009148", modalidade, 2026, somente_programa=True
+                )
+
+                sql, params, _ = mock_raw.call_args.args
+
+                self.assertIn("t.codigo_tipo_programa IS NOT NULL", sql)
+                self.assertIn("t.tipo_turma != %s", sql)
+                self.assertNotIn("t.codigo_modalidade_etapa = %s", sql)
+                self.assertNotIn("t.codigo_serie_ensino", sql)
+                self.assertNotIn("t.ano = ANY", sql)
+                self.assertEqual(params, ["009148", 2026, 4])
+
+        self.assertEqual(mock_raw.call_count, 4)
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_programa_infantil_filtra_series_especificas(
+        self, mock_raw
+    ) -> None:
+        """Aplica as séries previstas para a modalidade infantil."""
+        mock_raw.return_value = []
+
+        ComponentesRepository().listar_componentes_consolidados(
+            "307926", 1, 2026, somente_programa=True
+        )
+
+        sql, params, _ = mock_raw.call_args.args
+
+        self.assertIn("t.codigo_tipo_programa IS NOT NULL", sql)
+        self.assertIn("t.codigo_serie_ensino = ANY(%s::integer[])", sql)
+        self.assertEqual(params[:3], ["307926", 2026, 4])
+        self.assertEqual(
+            params[3],
+            [23, 24, 25, 26, 116, 117, 118, 119, 225, 297],
+        )
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_programa_modalidade_invalida_retorna_vazio(
+        self, mock_raw
+    ) -> None:
+        """Não consulta o banco para modalidade de programa inválida."""
+        resultado = ComponentesRepository().listar_componentes_consolidados(
+            "009148", 0, 2026, somente_programa=True
+        )
+
+        self.assertEqual(resultado, [])
+        mock_raw.assert_not_called()
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_grade_permite_modalidade_zero(self, mock_raw) -> None:
+        """Não aplica a restrição do recorte programa à grade."""
+        mock_raw.return_value = []
+
+        ComponentesRepository().listar_componentes_consolidados(
+            "009148", 0, 2026
+        )
+
+        sql, params, _ = mock_raw.call_args.args
+
+        self.assertIn("t.codigo_modalidade_etapa = %s", sql)
+        self.assertEqual(params, ["009148", 2026, 0])
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_rejeita_programa_com_anos_escolares(self, mock_raw) -> None:
+        """Não permite combinar filtros de recortes distintos."""
+        with self.assertRaises(ValueError):
+            ComponentesRepository().listar_componentes_consolidados(
+                "009148", 5, 2026, ["1"], somente_programa=True
+            )
+
+        mock_raw.assert_not_called()
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_parametros_externos_nao_entram_no_texto_sql(
+        self, mock_raw
+    ) -> None:
+        """Passa os valores recebidos por parâmetros do driver."""
+        mock_raw.return_value = []
+        valor = "1'); DROP TABLE turma; --"
+
+        ComponentesRepository().listar_componentes_consolidados(
+            valor, 5, 2026, [valor]
+        )
+
+        sql, params, _ = mock_raw.call_args.args
+
+        self.assertNotIn(valor, sql)
+        self.assertIn(valor, params)
+        self.assertIn([valor], params)
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_preserva_normalizacao_de_hierarquia_e_regencia(
+        self, mock_raw
+    ) -> None:
+        """Mantém os dados normalizados e a ordenação dos componentes."""
+        mock_raw.return_value = [
+            {
+                "codigo_componente_curricular": 900,
+                "codigo_componente_curricular_pai": 900,
+                "descricao_componente_curricular": "COMPONENTE PAI",
+                "regencia": True,
+            },
+            {
+                "codigo_componente_curricular": 6,
+                "codigo_componente_curricular_pai": None,
+                "descricao_componente_curricular": "ED. FISICA",
+                "regencia": False,
+            },
+        ]
+
+        resultado = ComponentesRepository().listar_componentes_consolidados(
+            "009148", 5, 2026
+        )
+
+        self.assertEqual([item["codigo"] for item in resultado], [6, 900])
+        self.assertEqual(resultado[1]["codigo_componente_curricular_pai"], 900)
+        self.assertEqual(resultado[1]["descricao"], "COMPONENTE PAI")
+        self.assertTrue(resultado[1]["regencia"])
+        self.assertEqual(resultado[1]["codigo_componente_territorio_saber"], 0)
+        self.assertFalse(resultado[1]["planejamento_regencia"])
+        self.assertIsNone(resultado[1]["turma_codigo"])
+        self.assertEqual(resultado[1]["codigos_territorios_agrupamento"], [])
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_normalizacao_equivale_aos_metodos_existentes(
+        self, mock_raw
+    ) -> None:
+        """Reutiliza os mesmos valores de componente nos dois recortes."""
+        mock_raw.return_value = [
+            {
+                "codigo_componente_curricular": 512,
+                "codigo_componente_curricular_pai": None,
+                "descricao_componente_curricular": "NOME ORIGINAL",
+                "regencia": False,
+            },
+            {
+                "codigo_componente_curricular": 1307,
+                "codigo_componente_curricular_pai": None,
+                "descricao_componente_curricular": "CRECHE MANHA",
+                "regencia": False,
+            },
+        ]
+
+        repository = ComponentesRepository()
+
+        grade_original = (
+            repository.listar_por_ue_modalidade_ano_e_anos_escolares(
+                "307926", 1, 2026, ["1"]
+            )
+        )
+        grade_consolidada = repository.listar_componentes_consolidados(
+            "307926", 1, 2026, ["1"]
+        )
+
+        programa_original = (
+            repository.listar_turma_programa_por_ue_modalidade_ano(
+                "307926", 1, 2026
+            )
+        )
+        programa_consolidado = repository.listar_componentes_consolidados(
+            "307926", 1, 2026, somente_programa=True
+        )
+
+        self.assertEqual(grade_original, grade_consolidada)
+        self.assertEqual(programa_original, programa_consolidado)
+        self.assertEqual(grade_consolidada[0]["codigo"], 512)
+        self.assertEqual(
+            grade_consolidada[0]["codigo_componente_curricular_pai"],
+            512,
+        )
+        self.assertTrue(grade_consolidada[0]["regencia"])
+
+    @patch("apps.componentes_curriculares.repository._raw")
+    def test_sql_mantem_relacionamentos_e_distinct(self, mock_raw) -> None:
+        """Preserva a seleção distinta e o vínculo com a hierarquia."""
+        mock_raw.return_value = []
+
+        ComponentesRepository().listar_componentes_consolidados(
+            "009148", 5, 2026
+        )
+
+        sql, _, _ = mock_raw.call_args.args
+
+        self.assertIn("SELECT DISTINCT", sql)
+        self.assertIn("LEFT JOIN LATERAL", sql)
+        self.assertIn("componente_curricular_hierarquia", sql)
+        self.assertIn("ORDER BY h.vigencia DESC NULLS LAST", sql)
+        self.assertIn("COALESCE(", sql)
+        self.assertNotIn("LIMIT %s", sql)
+        self.assertNotIn("OFFSET %s", sql)
