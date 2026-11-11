@@ -165,6 +165,7 @@ curl -H "X-API-Key: dev-key-default" http://localhost:8001/api/componentes-curri
 | CC13 | GET | `/api/v1/pedagogico/componentes-curriculares/{codigoComponente}/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados por `cod_agrupamento` |
 | CC14 | POST | `/api/v1/pedagogico/componentes-curriculares/territorio-saber/agrupamentos-correlacionados/` | Obter Agrupamentos Correlacionados em Lote por `cod_agrupamento` |
 | CC15 | POST | `/api/v1/pedagogico/componentes-curriculares/territorio-saber/agrupamentos/` | Obter Agrupamentos de Território do Saber por `cod_agrupamento` |
+| CC16 | GET | `/api/v1/pedagogico/componentes-curriculares/ues/{ueId}/modalidades/{modalidade}/anos/{anoLetivo}/consolidado/` | Listar Componentes de Turmas Programa |
 
 ---
 
