@@ -5,6 +5,7 @@ from datetime import date, datetime
 from django.utils.dateparse import parse_date, parse_datetime
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
+from rest_framework import serializers
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -503,8 +504,13 @@ class ComponentesPorUeAnosEscolaresView(BaseAPIView):
                 description="Lista de anos escolares",
             ),
         ],
+        deprecated=True,
+        description=(
+            "DEPRECIADO — use "
+            "GET /api/v1/pedagogico/componentes-curriculares/ues/{ue_id}/"
+            "modalidades/{modalidade}/anos/{ano_letivo}/consolidado/"
+        ),
         responses={200: ComponenteCurricularSerializer(many=True)},
-        description="Lista componentes da grade por UE, modalidade e séries.",
         tags=_TAG,
         operation_id="componentes_ue_anos_escolares",
     )
@@ -541,7 +547,12 @@ class ComponentesTurmaProgramaView(BaseAPIView):
 
     @extend_schema(
         responses={200: ComponenteCurricularSerializer(many=True)},
-        description="Lista componentes de turmas programa.",
+        deprecated=True,
+        description=(
+            "DEPRECIADO — use "
+            "GET /api/v1/pedagogico/componentes-curriculares/ues/{ue_id}/"
+            "modalidades/{modalidade}/anos/{ano_letivo}/consolidado/"
+        ),
         tags=_TAG,
         operation_id="componentes_turma_programa",
     )
@@ -1200,3 +1211,83 @@ class ComponenteCurricularTurmaProfessorValidarAtribuicaoData(BaseAPIView):
             codigo_componente, codigo_turma, codigo_rf, data
         )
         return Response(resultado)
+
+
+class ComponentesConsolidadosView(BaseAPIView):
+    """Consulta componentes curriculares por unidade e modalidade."""
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "anos_escolares",
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                many=True,
+                required=False,
+                description="Anos escolares a serem considerados.",
+            ),
+            OpenApiParameter(
+                "somente_programa",
+                OpenApiTypes.BOOL,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="Restringe a consulta a turmas programa.",
+            ),
+        ],
+        responses={200: ComponenteCurricularSerializer(many=True)},
+        description="Consulta componentes por modalidade e anos escolares.",
+        tags=_TAG,
+        operation_id="componentes_curriculares_consolidados",
+    )
+    def get(
+        self,
+        request: Request,
+        ue_id: str,
+        modalidade: int,
+        ano_letivo: int,
+    ) -> Response:
+        """Retorna componentes curriculares conforme os filtros.
+
+        Args:
+            request: Requisição HTTP com os filtros opcionais.
+            ue_id: Código da unidade educacional.
+            modalidade: Código da modalidade de ensino.
+            ano_letivo: Ano letivo consultado.
+
+        Returns:
+            Resposta com a lista de componentes curriculares.
+        """
+        anos = request.query_params.getlist(
+            "anos_escolares"
+        ) or request.query_params.getlist("anosEscolares")
+
+        validador_anos = serializers.ListField(
+            child=serializers.CharField(
+                allow_blank=False,
+                trim_whitespace=False,
+            ),
+            required=False,
+        )
+
+        anos_escolares = validador_anos.run_validation(anos)
+
+        validador_programa = serializers.BooleanField(default=False)
+
+        somente_programa = validador_programa.run_validation(
+            request.query_params.get("somente_programa", False)
+        )
+
+        if somente_programa and anos_escolares:
+            raise serializers.ValidationError(
+                {"anos_escolares": ("Não aplicável a turmas programa.")}
+            )
+
+        dados = ComponentesService().listar_componentes_consolidados(
+            ue_id,
+            modalidade,
+            ano_letivo,
+            anos_escolares,
+            somente_programa,
+        )
+
+        return Response(dados)
