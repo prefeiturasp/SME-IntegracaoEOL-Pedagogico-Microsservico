@@ -11,6 +11,7 @@ from apps.componentes_curriculares.constants import (
     DESCRICAO_COMPONENTE_REGENCIA_CLASSE_INFANTIL,
     MODALIDADE_EJA,
     MOTIVO_DISPONIBILIZACAO_FIM_ANO_LETIVO,
+    TIPO_TURMA_EVENTO_PARA_ATRIBUICAO,
 )
 from apps.componentes_curriculares.models import (
     AgrupamentoAtribuicaoTerritorioSaber,
@@ -22,6 +23,7 @@ from apps.componentes_curriculares.models import (
     GradeComponenteCurricular,
 )
 from apps.componentes_curriculares.queries import (
+    SQL_COMPONENTES_CONSOLIDADOS,
     SQL_COMPONENTES_GRADE_POR_UE_MODALIDADE_ANO,
     SQL_COMPONENTES_POR_LISTA_TURMAS,
     SQL_COMPONENTES_POR_LISTA_TURMAS_INCLUI_EXTINTAS,
@@ -2429,4 +2431,78 @@ class ComponentesRepository:
                 | Q(dt_disponibilizacao__gte=data)
             )
             .exists()
+        )
+
+    def listar_componentes_consolidados(
+        self,
+        ue_codigo: str,
+        modalidade: int,
+        ano_letivo: int,
+        anos_escolares: list[str] | None = None,
+        somente_programa: bool = False,
+    ) -> list[dict]:
+        """Lista componentes curriculares por unidade e modalidade.
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+            modalidade: Código da modalidade de ensino.
+            ano_letivo: Ano letivo consultado.
+            anos_escolares: Anos escolares para o filtro curricular.
+            somente_programa: Restringe a consulta às turmas programa.
+
+        Returns:
+            Lista de componentes curriculares distintos.
+
+        Raises:
+            ValueError: Quando anos escolares e programa são combinados.
+        """
+        if somente_programa and anos_escolares:
+            raise ValueError(
+                "Anos escolares não se aplicam a turmas programa."
+            )
+
+        sql = SQL_COMPONENTES_CONSOLIDADOS
+        params: list = [ue_codigo, ano_letivo]
+
+        if somente_programa:
+            if modalidade not in {1, 3, 4, 5, 6}:
+                return []
+
+            sql += " AND t.codigo_tipo_programa IS NOT NULL"
+            sql += " AND t.tipo_turma != %s"
+
+            params.append(TIPO_TURMA_EVENTO_PARA_ATRIBUICAO)
+
+            if modalidade == 1:
+                series = (
+                    23,
+                    24,
+                    25,
+                    26,
+                    116,
+                    117,
+                    118,
+                    119,
+                    225,
+                    297,
+                )
+
+                sql += " AND t.codigo_serie_ensino = ANY(%s::integer[])"
+                params.append(list(series))
+
+        else:
+            sql += " AND t.codigo_modalidade_etapa = %s"
+            params.append(modalidade)
+
+            if anos_escolares:
+                sql += " AND t.ano = ANY(%s::varchar[])"
+                params.append(list(anos_escolares))
+
+        rows = _raw(sql, params, self._DB)
+
+        componentes = [_grade_para_componente(row) for row in rows]
+
+        return sorted(
+            componentes,
+            key=lambda item: item["codigo"],
         )
