@@ -520,3 +520,31 @@ class ComponentesService:
             codigo_componente
             >= COMPONENTE_AGRUPAMENTO_TERRITORIO_SABER_ID_INICIAL
         )
+
+    def listar_componentes_consolidados(
+        self,
+        ue_codigo: str,
+        modalidade: int,
+        ano_letivo: int,
+        anos_escolares: list[str] | None = None,
+        somente_programa: bool = False,
+    ) -> list[dict]:
+        """Consulta componentes curriculares da unidade educacional.
+
+        Args:
+            ue_codigo: Código da unidade educacional.
+            modalidade: Código da modalidade de ensino.
+            ano_letivo: Ano letivo de referência.
+            anos_escolares: Anos escolares selecionados.
+            somente_programa: Indica o filtro de turmas programa.
+
+        Returns:
+            Lista de componentes curriculares encontrados.
+        """
+        return self._repo.listar_componentes_consolidados(
+            ue_codigo,
+            modalidade,
+            ano_letivo,
+            anos_escolares,
+            somente_programa,
+        )

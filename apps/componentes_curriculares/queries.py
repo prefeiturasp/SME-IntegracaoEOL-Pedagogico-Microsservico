@@ -392,3 +392,38 @@ SELECT DISTINCT ct.componente_codigo AS codigo
  WHERE ct.turma_codigo = %s
    AND ac.turma_codigo IS NULL
  ORDER BY ct.componente_codigo"""
+
+SQL_COMPONENTES_CONSOLIDADOS = """
+    SELECT DISTINCT
+        COALESCE(
+            ccp.codigo,
+            ct.componente_codigo
+        ) AS codigo_componente_curricular,
+        cch.idcomponentecurricularpai
+            AS codigo_componente_curricular_pai,
+        COALESCE(
+            ccp.descricao,
+            cc.descricao
+        ) AS descricao_componente_curricular,
+        COALESCE(
+            ccp.regencia,
+            cc.regencia,
+            false
+        ) AS regencia
+    FROM componente_turma ct
+    INNER JOIN componente_curricular cc
+            ON cc.codigo = ct.componente_codigo
+    LEFT JOIN LATERAL (
+        SELECT h.idcomponentecurricularpai
+        FROM componente_curricular_hierarquia h
+        WHERE h.idcomponentecurricular = ct.componente_codigo
+        ORDER BY h.vigencia DESC NULLS LAST
+        LIMIT 1
+    ) cch ON true
+    LEFT JOIN componente_curricular ccp
+           ON ccp.codigo = cch.idcomponentecurricularpai
+    INNER JOIN turma t
+            ON t.codigo::text = ct.turma_codigo
+    WHERE t.ue_codigo = %s
+      AND t.ano_letivo = %s
+"""

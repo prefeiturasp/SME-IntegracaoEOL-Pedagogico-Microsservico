@@ -435,3 +435,53 @@ class TestListagemTurmasComponentesService(SimpleTestCase):
 
         self.assertEqual(resultado["total_paginas"], 0)
         self.assertEqual(resultado["total_registros"], 0)
+
+
+class TestComponentesConsolidadosService(SimpleTestCase):
+    """Valida a delegação do serviço de componentes consolidados."""
+
+    @patch(_REPO)
+    def test_delega_anos_escolares(self, mock_repository) -> None:
+        """Repassa a modalidade e os anos escolares sem transformações."""
+        itens = [{"codigo": 6, "descricao": "ED. FISICA"}]
+        metodo = mock_repository.return_value.listar_componentes_consolidados
+        metodo.return_value = itens
+
+        resultado = ComponentesService().listar_componentes_consolidados(
+            "009148", 5, 2026, ["1", "2"]
+        )
+
+        self.assertIs(resultado, itens)
+        metodo.assert_called_once_with(
+            "009148", 5, 2026, ["1", "2"], False
+        )
+
+    @patch(_REPO)
+    def test_delega_turmas_programa(self, mock_repository) -> None:
+        """Encaminha explicitamente a seleção de turmas programa."""
+        metodo = mock_repository.return_value.listar_componentes_consolidados
+        metodo.return_value = [{"codigo": 220}]
+
+        resultado = ComponentesService().listar_componentes_consolidados(
+            "009148", 5, 2026, somente_programa=True
+        )
+
+        self.assertEqual(resultado, [{"codigo": 220}])
+        metodo.assert_called_once_with(
+            "009148", 5, 2026, None, True
+        )
+
+    @patch(_REPO)
+    def test_delega_sem_filtros(self, mock_repository) -> None:
+        """Mantém o recorte de grade quando não há filtros opcionais."""
+        metodo = mock_repository.return_value.listar_componentes_consolidados
+        metodo.return_value = []
+
+        resultado = ComponentesService().listar_componentes_consolidados(
+            "009148", 5, 2026
+        )
+
+        self.assertEqual(resultado, [])
+        metodo.assert_called_once_with(
+            "009148", 5, 2026, None, False
+        )

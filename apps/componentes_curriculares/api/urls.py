@@ -13,6 +13,7 @@ from apps.componentes_curriculares.api.views import (
     ComponenteCurricularTurmaProfessorValidarAtribuicaoData,
     ComponentesApiEolView,
     ComponentesCatalogoView,
+    ComponentesConsolidadosView,
     ComponentesPorFuncionarioView,
     ComponentesPorListaTurmasView,
     ComponentesPorUeAnosEscolaresView,
@@ -21,8 +22,8 @@ from apps.componentes_curriculares.api.views import (
     ComponentesSemAtribuicaoView,
     ComponentesTurmaProgramaView,
     ComponentesTurmasBrutosView,
-    DisciplinasPorTurmaView,
     DisciplinasPorTurmasLoteView,
+    DisciplinasPorTurmaView,
     GradeCurricularView,
     ListagemTurmasComponentesView,
     ValidarPapView,
@@ -78,6 +79,12 @@ urlpatterns = [
         "/componentes/",
         ListagemTurmasComponentesView.as_view(),
         name="listagem-turmas-componentes",
+    ),
+    path(
+        "ues/<str:ue_id>/modalidades/<int:modalidade>/anos/<int:ano_letivo>"
+        "/consolidado/",
+        ComponentesConsolidadosView.as_view(),
+        name="componentes-consolidados",
     ),
     path(
         "ues/<str:ue_id>/modalidades/<int:modalidade>/anos/<int:ano_letivo>/",
